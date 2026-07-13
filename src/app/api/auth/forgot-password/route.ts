@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db";
 import { User } from "@/lib/models/User";
 import { PasswordReset } from "@/lib/models/PasswordReset";
 import { generateResetToken } from "@/lib/auth";
+import { resolveLoginEmail } from "@/lib/email-aliases";
 import { sendPasswordResetEmail } from "@/lib/email";
 
 const schema = z.object({
@@ -22,8 +23,13 @@ export async function POST(request: Request) {
     }
 
     await connectDB();
-    const email = parsed.data.email.toLowerCase().trim();
-    const user = await User.findOne({ email });
+    const email = resolveLoginEmail(parsed.data.email);
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await User.findOne({
+        email: parsed.data.email.toLowerCase().trim(),
+      });
+    }
 
     // Always return success message to avoid email enumeration
     const generic = {

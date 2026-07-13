@@ -13,6 +13,7 @@
     "bcryptjs": "^3.0.3",
     "date-fns": "^4.4.0",
     "jose": "^6.2.3",
+    "lightweight-charts": "^4.2.2",
     "lucide-react": "^1.24.0",
     "mongodb-memory-server": "^11.2.0",
     "mongoose": "^9.7.4",

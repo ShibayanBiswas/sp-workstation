@@ -1,0 +1,225 @@
+import type { ChartTimeframe } from "@/lib/chart-timeframes";
+import { filterNseSessionBars } from "@/lib/chart-ist";
+
+export type OhlcBar = {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
+};
+
+export type OhlcResult = {
+  bars: OhlcBar[];
+  currency?: string;
+  exchange?: string;
+};
+
+export type YahooLiveQuote = {
+  price: number;
+  change: number;
+  changePercent: number;
+  previousClose: number;
+  marketTime?: number;
+};
+
+const YAHOO_HOSTS = [
+  "https://query1.finance.yahoo.com",
+  "https://query2.finance.yahoo.com",
+];
+
+const FETCH_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+  Accept: "application/json,text/plain,*/*",
+  "Accept-Language": "en-US,en;q=0.9",
+};
+
+type CacheEntry<T> = { at: number; value: T };
+const cache = new Map<string, CacheEntry<unknown>>();
+const CACHE_MS = 45_000;
+
+function getCached<T>(key: string): T | null {
+  const hit = cache.get(key);
+  if (!hit || Date.now() - hit.at > CACHE_MS) return null;
+  return hit.value as T;
+}
+
+function setCached<T>(key: string, value: T) {
+  cache.set(key, { at: Date.now(), value });
+}
+
+async function fetchYahooJson(path: string): Promise<unknown | null> {
+  for (const host of YAHOO_HOSTS) {
+    try {
+      const res = await fetch(`${host}${path}`, {
+        cache: "no-store",
+        headers: FETCH_HEADERS,
+      });
+      if (!res.ok) continue;
+      return await res.json();
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+function parseBar(
+  open: number | null | undefined,
+  high: number | null | undefined,
+  low: number | null | undefined,
+  close: number | null | undefined
+): Pick<OhlcBar, "open" | "high" | "low" | "close"> | null {
+  if (
+    open == null ||
+    high == null ||
+    low == null ||
+    close == null ||
+    Number.isNaN(open) ||
+    Number.isNaN(high) ||
+    Number.isNaN(low) ||
+    Number.isNaN(close)
+  ) {
+    return null;
+  }
+  return { open, high, low, close };
+}
+
+function dedupeAndSortBars(bars: OhlcBar[]): OhlcBar[] {
+  const byTime = new Map<number, OhlcBar>();
+  for (const bar of bars) {
+    byTime.set(bar.time, bar);
+  }
+  return [...byTime.values()].sort((a, b) => a.time - b.time);
+}
+
+function parseYahooPayload(
+  data: unknown,
+  intraday: boolean
+): OhlcResult | null {
+  const result = (data as { chart?: { result?: unknown[] } })?.chart
+    ?.result?.[0] as
+    | {
+        timestamp?: number[];
+        indicators?: { quote?: Array<Record<string, (number | null)[]>> };
+        meta?: { currency?: string; exchangeName?: string };
+      }
+    | undefined;
+
+  if (!result) return null;
+
+  const timestamps: number[] = result.timestamp ?? [];
+  const quote = result.indicators?.quote?.[0];
+  if (!quote || timestamps.length === 0) return null;
+
+  const opens: (number | null)[] = quote.open ?? [];
+  const highs: (number | null)[] = quote.high ?? [];
+  const lows: (number | null)[] = quote.low ?? [];
+  const closes: (number | null)[] = quote.close ?? [];
+  const volumes: (number | null)[] = quote.volume ?? [];
+
+  const bars: OhlcBar[] = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    const parsed = parseBar(opens[i], highs[i], lows[i], closes[i]);
+    if (!parsed) continue;
+    const vol = volumes[i];
+    bars.push({
+      time: timestamps[i],
+      ...parsed,
+      ...(vol != null && !Number.isNaN(vol) ? { volume: vol } : {}),
+    });
+  }
+
+  const sanitized = filterNseSessionBars(dedupeAndSortBars(bars), intraday);
+  if (sanitized.length === 0) return null;
+
+  return {
+    bars: sanitized,
+    currency: result.meta?.currency,
+    exchange: result.meta?.exchangeName,
+  };
+}
+
+/** Fast live quote from Yahoo meta — more reliable than parsing full OHLC. */
+export async function fetchYahooLiveQuote(
+  yahooSymbol: string
+): Promise<YahooLiveQuote | null> {
+  const cacheKey = `quote:${yahooSymbol}`;
+  const cached = getCached<YahooLiveQuote>(cacheKey);
+  if (cached) return cached;
+
+  const path = `/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d&includePrePost=false`;
+  const data = await fetchYahooJson(path);
+  if (!data) return null;
+
+  const meta = (data as { chart?: { result?: Array<{ meta?: Record<string, number> }> } })
+    ?.chart?.result?.[0]?.meta;
+  if (!meta) return null;
+
+  const price = meta.regularMarketPrice ?? meta.previousClose;
+  const previousClose = meta.chartPreviousClose ?? meta.previousClose ?? price;
+  if (price == null || Number.isNaN(price)) return null;
+
+  const change =
+    meta.regularMarketChange ?? (previousClose != null ? price - previousClose : 0);
+  const changePercent =
+    meta.regularMarketChangePercent ??
+    (previousClose ? (change / previousClose) * 100 : 0);
+
+  const quote: YahooLiveQuote = {
+    price,
+    change,
+    changePercent,
+    previousClose: previousClose ?? price,
+    marketTime: meta.regularMarketTime,
+  };
+  setCached(cacheKey, quote);
+  return quote;
+}
+
+export async function fetchYahooOhlc(
+  yahooSymbol: string,
+  timeframe: ChartTimeframe
+): Promise<OhlcResult | null> {
+  const cacheKey = `ohlc:${yahooSymbol}:${timeframe.id}`;
+  const cached = getCached<OhlcResult>(cacheKey);
+  if (cached) return cached;
+
+  const path = `/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=${timeframe.interval}&range=${timeframe.range}&includePrePost=false&events=div%2Csplits`;
+  const data = await fetchYahooJson(path);
+  if (!data) return null;
+
+  const parsed = parseYahooPayload(data, timeframe.intraday);
+  if (parsed) setCached(cacheKey, parsed);
+  return parsed;
+}
+
+/** Compact closes for sparklines — skips nulls, keeps order. */
+export function closesFromOhlc(bars: OhlcBar[], maxPoints = 24): number[] {
+  const closes = bars.map((b) => b.close).filter((v) => !Number.isNaN(v));
+  return closes.slice(-maxPoints);
+}
+
+/** Run async tasks with limited concurrency. */
+export async function mapPool<T, R>(
+  items: T[],
+  worker: (item: T) => Promise<R>,
+  concurrency = 4
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+
+  async function run() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await worker(items[i]);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, run)
+  );
+  return results;
+}

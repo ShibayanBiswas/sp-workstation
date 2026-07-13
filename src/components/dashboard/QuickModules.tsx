@@ -28,34 +28,32 @@ export function QuickModules() {
   const mod = MODULES[0];
 
   return (
-    <div className="glass-panel rounded-2xl p-4">
-      <div className="mb-4">
-        <p className="text-[11px] tracking-[0.18em] text-[var(--fg-subtle)]">
-          QUICK ACCESS
+    <section className="panel-stable rounded-2xl p-5 md:p-6">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="section-kicker">Desk modules</p>
+          <h3 className="section-title">Primary SP Dashboard</h3>
+        </div>
+        <p className="text-[11px] text-[var(--fg-subtle)]">
+          One-click access to structured products workflows
         </p>
-        <h3
-          className="text-lg"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          Primary SP Dashboard
-        </h3>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {mod.submodules.map((sub) => (
           <Link
             key={sub.id}
             href={sub.path}
-            className="group flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-muted)]/40 p-3 transition hover:border-[color-mix(in_srgb,var(--gold)_50%,var(--border))] hover:bg-[color-mix(in_srgb,var(--gold)_8%,var(--bg-muted))]"
+            className="module-tile group flex flex-col gap-3 rounded-xl p-4"
           >
-            <span className="text-[var(--gold-deep)] transition group-hover:text-[var(--gold)] dark:text-[var(--gold)]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--gold)_30%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]">
               {ICONS[sub.id] ?? <LayoutGrid size={18} />}
             </span>
-            <span className="text-xs font-medium leading-tight text-[var(--fg)]">
+            <span className="text-sm font-medium leading-tight text-[var(--fg)]">
               {sub.label}
             </span>
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

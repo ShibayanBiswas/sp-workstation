@@ -1,63 +1,55 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { INDIAN_MARKET_INDICES } from "@/data/indian-markets";
+import { useMarkets } from "@/components/dashboard/MarketsProvider";
+import { CandlestickChart } from "@/components/dashboard/CandlestickChart";
+import {
+  CHART_TIMEFRAMES,
+  type ChartTimeframeId,
+} from "@/lib/chart-timeframes";
+import {
+  getNseMarketStatus,
+  marketStatusLabel,
+} from "@/lib/market-hours";
 
 type ThemeMode = "light" | "dark";
 
-const CHARTS = [
-  { symbol: "NSE:NIFTY", title: "Nifty 50", id: "nifty" },
-  { symbol: "BSE:SENSEX", title: "BSE Sensex", id: "sensex" },
-  { symbol: "NSE:NIFTYBANK", title: "Bank Nifty", id: "banknifty" },
-] as const;
+const TV_FONT =
+  "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif";
 
-function TradingViewFrame({
-  symbol,
-  title,
-  theme,
-}: {
-  symbol: string;
-  title: string;
-  theme: ThemeMode;
-}) {
-  const src = `https://s.tradingview.com/widgetembed/?frameElementId=tv_${symbol.replace(
-    /[^a-zA-Z0-9]/g,
-    ""
-  )}&symbol=${encodeURIComponent(symbol)}&interval=D&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=${
-    theme === "dark" ? "0d0d0d" : "f7f5f0"
-  }&studies=[]&theme=${theme}&style=1&timezone=Asia%2FKolkata&withdateranges=1&hideideas=1&hidevolume=0&locale=en`;
-
-  return (
-    <div className="glass-panel overflow-hidden rounded-2xl">
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-        <div>
-          <p className="text-[11px] tracking-[0.18em] text-[var(--fg-subtle)]">
-            LIVE CHART
-          </p>
-          <h3
-            className="text-lg"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            {title}
-          </h3>
-        </div>
-        <span className="flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1 text-[10px] tracking-wider text-[var(--gold-deep)] dark:text-[var(--gold)]">
-          <span className="h-1.5 w-1.5 animate-pulse-live rounded-full bg-emerald-500" />
-          TradingView
-        </span>
-      </div>
-      <iframe
-        title={title}
-        src={src}
-        className="h-[360px] w-full border-0 md:h-[400px]"
-        loading="lazy"
-      />
-    </div>
-  );
+function marketBadgeClass(status: ReturnType<typeof getNseMarketStatus>) {
+  switch (status) {
+    case "open":
+      return "bg-[#089981]/15 text-[#089981] dark:bg-[#26a69a]/15 dark:text-[#26a69a]";
+    case "pre-open":
+      return "bg-amber-500/15 text-amber-600 dark:text-amber-400";
+    default:
+      return "bg-[var(--bg-muted)] text-[var(--fg-subtle)]";
+  }
 }
 
+function fmtPrice(n: number | null | undefined) {
+  if (n == null || Number.isNaN(n)) return null;
+  return n.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/** Row 3 — TradingView-style chart terminal. */
 export function LiveCharts() {
+  const { quotes, selectedIndexId, setSelectedIndexId } = useMarkets();
   const [theme, setTheme] = useState<ThemeMode>("light");
-  const [active, setActive] = useState<(typeof CHARTS)[number]["id"]>("nifty");
+  const [timeframe, setTimeframe] = useState<ChartTimeframeId>("1D");
+  const [mounted, setMounted] = useState(false);
+  const [marketStatus, setMarketStatus] = useState(getNseMarketStatus());
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setMounted(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     const sync = () => {
@@ -74,31 +66,143 @@ export function LiveCharts() {
     return () => obs.disconnect();
   }, []);
 
-  const chart = CHARTS.find((c) => c.id === active) ?? CHARTS[0];
+  useEffect(() => {
+    const tick = () => setMarketStatus(getNseMarketStatus());
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const active =
+    INDIAN_MARKET_INDICES.find((i) => i.id === selectedIndexId) ??
+    INDIAN_MARKET_INDICES[0];
+
+  const liveQuote = quotes.find((q) => q.id === selectedIndexId);
+  const livePrice = fmtPrice(liveQuote?.price);
+  const up = (liveQuote?.change ?? 0) >= 0;
+
+  const benchmarks = INDIAN_MARKET_INDICES.filter((i) => i.group === "benchmark");
+  const sectors = INDIAN_MARKET_INDICES.filter((i) => i.group === "sector");
+  const volatility = INDIAN_MARKET_INDICES.filter((i) => i.group === "volatility");
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        {CHARTS.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => setActive(c.id)}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
-              active === c.id
-                ? "gold-gradient border-transparent text-[#111]"
-                : "border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--bg-muted)]"
-            }`}
+    <section
+      id="live-chart"
+      className="overflow-hidden rounded-xl border border-[#2a2e39]/20 bg-[#131722] shadow-lg dark:border-[#2a2e39]"
+      style={{ fontFamily: TV_FONT }}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2a2e39] px-3 py-2.5 md:px-4">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
+          <div className="relative min-w-[180px]">
+            <label className="sr-only" htmlFor="index-select">
+              Select index
+            </label>
+            <select
+              id="index-select"
+              value={selectedIndexId}
+              onChange={(e) => setSelectedIndexId(e.target.value)}
+              className="w-full appearance-none rounded-md border border-[#2a2e39] bg-[#1e222d] py-2 pl-3 pr-9 text-[13px] font-semibold text-[#d1d4dc] outline-none focus:border-[#2962ff]"
+              style={{ fontFamily: TV_FONT }}
+            >
+              <optgroup label="Benchmarks">
+                {benchmarks.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Sectors">
+                {sectors.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Volatility">
+                {volatility.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            <ChevronDown
+              size={14}
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#787b86]"
+            />
+          </div>
+          {livePrice ? (
+            <div className="hidden items-baseline gap-2 sm:flex">
+              <span
+                className="tv-num text-[15px] font-semibold"
+                style={{ color: up ? "#26a69a" : "#ef5350" }}
+              >
+                {livePrice}
+              </span>
+              {liveQuote?.changePercent != null ? (
+                <span
+                  className="tv-num text-[12px] font-medium"
+                  style={{ color: up ? "#26a69a" : "#ef5350" }}
+                >
+                  {up ? "+" : ""}
+                  {liveQuote.changePercent.toFixed(2)}%
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span
+            className={`rounded px-2 py-0.5 text-[10px] font-bold tracking-wide ${marketBadgeClass(marketStatus)}`}
+            style={{ fontFamily: TV_FONT }}
           >
-            {c.title}
+            {marketStatusLabel(marketStatus)}
+          </span>
+          <span className="text-[10px] text-[#787b86]">IST · NSE</span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-0.5 overflow-x-auto border-b border-[#2a2e39] px-2 py-1 scrollbar-thin md:px-3">
+        {CHART_TIMEFRAMES.map((tf) => (
+          <button
+            key={tf.id}
+            type="button"
+            onClick={() => setTimeframe(tf.id)}
+            className={`shrink-0 rounded px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+              timeframe === tf.id
+                ? "bg-[#2962ff] text-white"
+                : "text-[#787b86] hover:bg-[#2a2e39] hover:text-[#d1d4dc]"
+            }`}
+            style={{ fontFamily: TV_FONT }}
+          >
+            {tf.label}
           </button>
         ))}
+        <span className="ml-auto hidden pr-2 text-[10px] text-[#787b86] md:inline">
+          Candles · Volume
+        </span>
       </div>
-      <TradingViewFrame
-        symbol={chart.symbol}
-        title={chart.title}
-        theme={theme}
-      />
-    </div>
+
+      {mounted ? (
+        <CandlestickChart
+          key={`${selectedIndexId}-${timeframe}-${theme}`}
+          indexId={selectedIndexId}
+          timeframe={timeframe}
+          theme={theme}
+          name={active.name}
+          fallbackPrice={liveQuote?.price}
+          fallbackChange={liveQuote?.change}
+          fallbackChangePercent={liveQuote?.changePercent}
+        />
+      ) : (
+        <div
+          className="flex h-[560px] items-center justify-center text-sm text-[#787b86]"
+          style={{ fontFamily: TV_FONT }}
+        >
+          Preparing chart…
+        </div>
+      )}
+    </section>
   );
 }

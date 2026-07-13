@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import {
   getNseMarketStatus,
   marketStatusLabel,
@@ -54,39 +54,32 @@ export function TerminalHeader() {
       weekday: "short",
       day: "numeric",
       month: "short",
-      year: "numeric",
     }) ?? "";
 
   return (
-    <div className="terminal-header flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-2.5">
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <Activity
-            size={14}
-            className="text-[var(--gold-deep)] dark:text-[var(--gold)]"
-          />
-          <span className="text-[10px] font-semibold tracking-[0.28em] text-[var(--gold-deep)] dark:text-[var(--gold)]">
-            SP TERMINAL
-          </span>
-        </div>
+    <div className="terminal-header panel-stable flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-2 md:px-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-[10px] font-semibold tracking-[0.32em] text-[var(--gold-deep)] dark:text-[var(--gold)]">
+          SP TERMINAL
+        </span>
         <span className="hidden h-4 w-px bg-[var(--border)] sm:block" />
-        <div className="flex items-center gap-2">
+        <span className="status-pill">
           <span
-            className={`h-2 w-2 rounded-full ${statusColor(status)} ${status === "open" ? "animate-pulse-live" : ""}`}
+            className={`h-1.5 w-1.5 rounded-full ${statusColor(status)} ${status === "open" ? "animate-pulse-live" : ""}`}
           />
-          <span className="text-xs font-medium text-[var(--fg-muted)]">
-            {marketStatusLabel(status)}
-          </span>
-        </div>
+          {marketStatusLabel(status)}
+        </span>
+        <span className="hidden text-[11px] text-[var(--fg-subtle)] lg:inline">
+          NSE · BSE · IST
+        </span>
       </div>
 
-      <div className="flex items-center gap-4 text-xs text-[var(--fg-subtle)]">
-        <span className="hidden md:inline">NSE · BSE · IST</span>
-        <div className="flex items-center gap-2 tabular-nums">
-          <Clock size={13} className="text-[var(--fg-subtle)]" />
-          <span className="font-medium text-[var(--fg)]">{timeStr}</span>
-          <span className="hidden sm:inline">{dateStr}</span>
-        </div>
+      <div className="flex items-center gap-2 text-[var(--fg-subtle)]">
+        <Clock size={14} />
+        <span className="fin-num text-sm font-medium text-[var(--fg)]">
+          {timeStr}
+        </span>
+        <span className="hidden text-xs sm:inline">{dateStr}</span>
       </div>
     </div>
   );

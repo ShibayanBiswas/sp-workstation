@@ -1,12 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Sparkles } from "lucide-react";
-import {
-  getNseMarketStatus,
-  marketStatusLabel,
-  type MarketStatus,
-} from "@/lib/market-hours";
+import { useMemo } from "react";
 
 function greetingForHour(hour: number) {
   if (hour < 12) return "Good morning";
@@ -14,33 +8,8 @@ function greetingForHour(hour: number) {
   return "Good evening";
 }
 
-function statusBadge(status: MarketStatus) {
-  switch (status) {
-    case "open":
-      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
-    case "pre-open":
-      return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400";
-    case "closed":
-    case "weekend":
-      return "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400";
-    default: {
-      const _exhaustive: never = status;
-      return _exhaustive;
-    }
-  }
-}
-
 export function Greeting({ name }: { name: string }) {
-  const [status, setStatus] = useState<MarketStatus>("closed");
-
-  useEffect(() => {
-    const tick = () => setStatus(getNseMarketStatus());
-    tick();
-    const id = setInterval(tick, 30_000);
-    return () => clearInterval(id);
-  }, []);
-
-  const { greet, dateLine, first, hour } = useMemo(() => {
+  const { greet, dateLine, weekday, first, tagline } = useMemo(() => {
     const now = new Date();
     const istHour = Number(
       now.toLocaleString("en-US", {
@@ -49,78 +18,71 @@ export function Greeting({ name }: { name: string }) {
         hour12: false,
       })
     );
+    const weekday = now.toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      weekday: "long",
+    });
+    const dateLine = now.toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
     return {
       greet: greetingForHour(istHour),
+      weekday,
+      dateLine,
       first: name.split(" ")[0] || name,
-      hour: istHour,
-      dateLine: now.toLocaleDateString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }),
+      tagline:
+        istHour >= 9 && istHour < 16
+          ? "Live Indian indices, institutional charts, and desk intelligence."
+          : "Overnight view — review markets and prepare the session ahead.",
     };
   }, [name]);
 
-  const tagline =
-    hour >= 9 && hour < 16
-      ? "Markets are active — your desk terminal is live with indices, charts, news, and SP modules."
-      : "Your overnight desk view — review markets, plan observations, and track rollover follow-ups.";
-
   return (
-    <div className="greeting-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6 md:p-8">
+    <section className="panel-stable relative overflow-hidden rounded-2xl px-6 py-6 md:px-9 md:py-7">
       <div
-        className="pointer-events-none absolute -right-8 -top-8 h-48 w-48 rounded-full opacity-60"
+        className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full opacity-60"
         style={{
           background:
-            "radial-gradient(circle, color-mix(in srgb, var(--gold) 25%, transparent), transparent 70%)",
+            "radial-gradient(circle, color-mix(in srgb, var(--gold) 22%, transparent), transparent 68%)",
         }}
       />
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage:
-            "linear-gradient(var(--gold) 1px, transparent 1px), linear-gradient(90deg, var(--gold) 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-        }}
-      />
-      <div className="relative flex flex-wrap items-start justify-between gap-4">
-        <div className="max-w-2xl">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <p className="text-[10px] font-semibold tracking-[0.28em] text-[var(--gold-deep)] dark:text-[var(--gold)]">
-              STRUCTURED PRODUCTS · ANAND RATHI WEALTH
-            </p>
-            <span
-              className={`rounded-full border px-2.5 py-0.5 text-[10px] font-medium tracking-wide ${statusBadge(status)}`}
-            >
-              {marketStatusLabel(status)}
-            </span>
-          </div>
-          <h1
-            className="text-3xl md:text-4xl lg:text-5xl"
+
+      <div className="absolute right-6 top-5 shrink-0 rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-4 py-2.5 md:right-9 md:top-6">
+        <p className="section-kicker">Session date</p>
+        <p
+          className="mt-0.5 text-base font-medium text-[var(--fg-muted)]"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          {weekday}
+        </p>
+        <p className="fin-num text-sm text-[var(--fg)]">{dateLine}</p>
+      </div>
+
+      <div className="relative max-w-3xl pr-0 pt-1 md:pr-[240px]">
+        <p className="section-kicker text-[var(--gold-deep)] dark:text-[var(--gold)]">
+          Structured Products · Anand Rathi Wealth
+        </p>
+        <h1 className="mt-2 text-[2rem] leading-[1.08] md:text-[2.65rem]">
+          <span
+            className="block text-[var(--fg-muted)]"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            {greet},{" "}
-            <span className="gold-text">{first}</span>
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed text-[var(--fg-muted)] md:text-base">
-            {dateLine}. {tagline}
-          </p>
-        </div>
-        <div className="hidden items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-muted)]/50 px-4 py-3 md:flex">
-          <Sparkles
-            size={18}
-            className="text-[var(--gold-deep)] dark:text-[var(--gold)]"
-          />
-          <div>
-            <p className="text-[10px] tracking-[0.14em] text-[var(--fg-subtle)]">
-              DESK STATUS
-            </p>
-            <p className="text-sm font-medium">Terminal Ready</p>
-          </div>
-        </div>
+            {greet},
+          </span>
+          <span
+            className="gold-text block"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {first}
+          </span>
+        </h1>
+        <p className="mt-3 max-w-2xl border-l-2 border-[color-mix(in_srgb,var(--gold)_45%,transparent)] pl-4 text-sm leading-relaxed text-[var(--fg-muted)] md:text-[15px]">
+          {tagline}
+        </p>
       </div>
-    </div>
+    </section>
   );
 }

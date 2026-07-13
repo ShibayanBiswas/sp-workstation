@@ -1,61 +1,76 @@
+"use client";
+
+import { useId } from "react";
+
 type Props = {
   data: number[];
-  positive?: boolean;
+  up: boolean;
   width?: number;
   height?: number;
+  className?: string;
+  showArea?: boolean;
+  strokeWidth?: number;
 };
 
 export function Sparkline({
   data,
-  positive = true,
+  up,
   width = 120,
   height = 36,
+  className = "",
+  showArea = true,
+  strokeWidth = 1.75,
 }: Props) {
-  if (!data || data.length < 2) {
-    return (
-      <svg width={width} height={height} className="opacity-30">
-        <line
-          x1="0"
-          y1={height / 2}
-          x2={width}
-          y2={height / 2}
-          stroke="currentColor"
-          strokeWidth="1"
-          strokeDasharray="4 4"
-        />
-      </svg>
-    );
-  }
-
-  const min = Math.min(...data);
-  const max = Math.max(...data);
+  const gradientId = useId().replace(/:/g, "");
+  const points =
+    data.length > 1
+      ? data
+      : data.length === 1
+        ? [data[0], data[0]]
+        : [1, 1];
+  const min = Math.min(...points);
+  const max = Math.max(...points);
   const range = max - min || 1;
   const pad = 2;
 
-  const points = data
-    .map((v, i) => {
-      const x = pad + (i / (data.length - 1)) * (width - pad * 2);
-      const y = pad + (1 - (v - min) / range) * (height - pad * 2);
-      return `${x},${y}`;
-    })
-    .join(" ");
+  const coords = points.map((v, i) => {
+    const x = pad + (i / (points.length - 1)) * (width - pad * 2);
+    const y = pad + (1 - (v - min) / range) * (height - pad * 2);
+    return { x, y };
+  });
 
-  const color = positive ? "var(--success)" : "var(--danger)";
+  const linePath = coords
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
+    .join(" ");
+  const areaPath = `${linePath} L${coords[coords.length - 1].x},${height - pad} L${coords[0].x},${height - pad} Z`;
+  const stroke = up ? "#089981" : "#f23645";
+  const polylinePoints = coords.map((p) => `${p.x},${p.y}`).join(" ");
 
   return (
-    <svg width={width} height={height} className="overflow-visible">
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      className={className}
+      role="img"
+      aria-hidden
+    >
+      {showArea ? (
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={stroke} stopOpacity="0.35" />
+            <stop offset="100%" stopColor={stroke} stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+      ) : null}
+      {showArea ? <path d={areaPath} fill={`url(#${gradientId})`} /> : null}
       <polyline
         fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
+        stroke={stroke}
+        strokeWidth={strokeWidth}
         strokeLinejoin="round"
-        points={points}
-      />
-      <polyline
-        fill={`color-mix(in srgb, ${color} 12%, transparent)`}
-        stroke="none"
-        points={`${pad},${height} ${points} ${width - pad},${height}`}
+        strokeLinecap="round"
+        points={polylinePoints}
       />
     </svg>
   );

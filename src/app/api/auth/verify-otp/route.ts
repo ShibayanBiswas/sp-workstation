@@ -42,12 +42,8 @@ export async function POST(request: Request) {
     }).sort({ createdAt: -1 });
 
     if (!record || record.code !== parsed.data.code) {
-      await clearAuthCookies();
       return NextResponse.json(
-        {
-          error: "Incorrect OTP. Please sign in again.",
-          redirect: "/login",
-        },
+        { error: "Incorrect OTP. Please try again." },
         { status: 401 }
       );
     }

@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
 import { User } from "@/lib/models/User";
 import { TEAM_MEMBERS } from "@/data/team";
+import { migrateLegacyEmails } from "@/lib/migrate-emails";
 
 function loadPasswordMap(): Record<string, string> {
   if (process.env.SEED_DEFAULT_PASSWORD_MAP) {
@@ -39,6 +40,7 @@ export async function seedTeamMembers(): Promise<{
   total: number;
 }> {
   await connectDB();
+  await migrateLegacyEmails();
   const passwords = loadPasswordMap();
   let created = 0;
   let updated = 0;

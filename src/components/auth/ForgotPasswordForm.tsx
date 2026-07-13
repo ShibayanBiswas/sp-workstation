@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { AuthShell } from "@/components/auth/AuthShell";
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
@@ -38,34 +38,28 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <div className="login-atmosphere flex min-h-screen items-center justify-center px-6 py-12 text-[#f7f5f0]">
-      <div className="w-full max-w-md rounded-2xl border border-[#d4b24c33] bg-[#111111]/92 p-8 backdrop-blur-xl animate-rise">
-        <div className="mb-6 flex justify-center">
-          <Image
-            src="/brand/arwl-logo.png"
-            alt="Anand Rathi Wealth"
-            width={200}
-            height={45}
-            className="h-10 w-auto brightness-110"
-          />
-        </div>
+    <AuthShell subtitle="PASSWORD RECOVERY">
+      <div className="auth-card w-full max-w-[460px] animate-rise">
+        <p className="section-kicker text-center text-[var(--gold-deep)] dark:text-[var(--gold)]">
+          Password recovery
+        </p>
         <h1
-          className="text-center text-3xl"
+          className="mt-2 text-center text-4xl text-[var(--fg)]"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Forgot password
         </h1>
-        <p className="mt-2 text-center text-sm text-[#9d9d9d]">
+        <p className="mt-3 text-center text-sm leading-relaxed text-[var(--fg-muted)]">
           We will email a secure link to set a new password.
         </p>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-5">
           <div>
-            <label className="mb-2 block text-xs tracking-[0.16em] text-[#c8c4bc]">
+            <label className="mb-2 block text-[11px] font-semibold tracking-[0.16em] text-[var(--fg-muted)]">
               REGISTERED EMAIL
             </label>
             <input
-              className="input-field !bg-[#1a1a1a] !text-[#f7f5f0] !border-[#ffffff14]"
+              className="input-field auth-input"
               type="email"
               required
               value={email}
@@ -74,32 +68,36 @@ export function ForgotPasswordForm() {
             />
           </div>
           {error ? (
-            <p className="text-sm text-red-300">{error}</p>
+            <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
           ) : null}
           {message ? (
-            <p className="rounded-lg border border-[#d4b24c33] bg-[#d4b24c12] px-3 py-2 text-sm text-[#e5cf94]">
+            <p className="rounded-lg border border-[color-mix(in_srgb,var(--gold)_30%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_10%,var(--bg-muted))] px-3 py-2 text-sm text-[var(--gold-deep)] dark:text-[var(--gold-soft)]">
               {message}
             </p>
           ) : null}
           {preview ? (
-            <p className="break-all text-xs text-[#9d9d9d]">
+            <p className="break-all text-xs text-[var(--fg-subtle)]">
               Dev reset link:{" "}
-              <a className="text-[#e5cf94] underline" href={preview}>
+              <a className="auth-link underline" href={preview}>
                 {preview}
               </a>
             </p>
           ) : null}
-          <button type="submit" className="btn-primary w-full" disabled={loading}>
+          <button
+            type="submit"
+            className="btn-primary auth-submit w-full"
+            disabled={loading}
+          >
             {loading ? "Sending…" : "Send reset link"}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm">
-          <Link href="/login" className="text-[#e5cf94] hover:underline">
+          <Link href="/login" className="auth-link">
             Back to sign in
           </Link>
         </p>
       </div>
-    </div>
+    </AuthShell>
   );
 }

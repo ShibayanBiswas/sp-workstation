@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
+import { AuthShell } from "@/components/auth/AuthShell";
 
 function ResetInner() {
   const router = useRouter();
@@ -44,42 +44,36 @@ function ResetInner() {
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-[#d4b24c33] bg-[#111111]/92 p-8 backdrop-blur-xl animate-rise">
-      <div className="mb-6 flex justify-center">
-        <Image
-          src="/brand/arwl-logo.png"
-          alt="Anand Rathi Wealth"
-          width={200}
-          height={45}
-          className="h-10 w-auto brightness-110"
-        />
-      </div>
+    <div className="auth-card w-full max-w-[460px] animate-rise">
+      <p className="section-kicker text-center text-[var(--gold-deep)] dark:text-[var(--gold)]">
+        New credentials
+      </p>
       <h1
-        className="text-center text-3xl"
+        className="mt-2 text-center text-4xl text-[var(--fg)]"
         style={{ fontFamily: "var(--font-display)" }}
       >
         Set new password
       </h1>
       {!token ? (
-        <p className="mt-4 text-center text-sm text-red-300">
+        <p className="mt-4 text-center text-sm text-red-600 dark:text-red-300">
           Missing reset token. Request a new link from{" "}
-          <Link href="/forgot-password" className="underline">
+          <Link href="/forgot-password" className="auth-link underline">
             forgot password
           </Link>
           .
         </p>
       ) : done ? (
-        <p className="mt-6 text-center text-sm text-[#e5cf94]">
+        <p className="mt-6 text-center text-sm text-[var(--gold-deep)] dark:text-[var(--gold-soft)]">
           Password updated. Redirecting to sign in…
         </p>
       ) : (
         <form onSubmit={onSubmit} className="mt-8 space-y-5">
           <div>
-            <label className="mb-2 block text-xs tracking-[0.16em] text-[#c8c4bc]">
+            <label className="mb-2 block text-[11px] font-semibold tracking-[0.16em] text-[var(--fg-muted)]">
               NEW PASSWORD
             </label>
             <input
-              className="input-field !bg-[#1a1a1a] !text-[#f7f5f0] !border-[#ffffff14]"
+              className="input-field auth-input"
               type="password"
               required
               minLength={8}
@@ -88,11 +82,11 @@ function ResetInner() {
             />
           </div>
           <div>
-            <label className="mb-2 block text-xs tracking-[0.16em] text-[#c8c4bc]">
+            <label className="mb-2 block text-[11px] font-semibold tracking-[0.16em] text-[var(--fg-muted)]">
               CONFIRM PASSWORD
             </label>
             <input
-              className="input-field !bg-[#1a1a1a] !text-[#f7f5f0] !border-[#ffffff14]"
+              className="input-field auth-input"
               type="password"
               required
               minLength={8}
@@ -100,8 +94,14 @@ function ResetInner() {
               onChange={(e) => setConfirm(e.target.value)}
             />
           </div>
-          {error ? <p className="text-sm text-red-300">{error}</p> : null}
-          <button type="submit" className="btn-primary w-full" disabled={loading}>
+          {error ? (
+            <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
+          ) : null}
+          <button
+            type="submit"
+            className="btn-primary auth-submit w-full"
+            disabled={loading}
+          >
             {loading ? "Updating…" : "Update password"}
           </button>
         </form>
@@ -112,10 +112,16 @@ function ResetInner() {
 
 export function ResetPasswordForm() {
   return (
-    <div className="login-atmosphere flex min-h-screen items-center justify-center px-6 py-12 text-[#f7f5f0]">
-      <Suspense fallback={<div className="text-[#e5cf94]">Loading…</div>}>
+    <AuthShell subtitle="RESET PASSWORD">
+      <Suspense
+        fallback={
+          <div className="text-[var(--gold-deep)] dark:text-[var(--gold)]">
+            Loading…
+          </div>
+        }
+      >
         <ResetInner />
       </Suspense>
-    </div>
+    </AuthShell>
   );
 }

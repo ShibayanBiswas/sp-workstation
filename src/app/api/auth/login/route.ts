@@ -11,6 +11,8 @@ import {
 } from "@/lib/auth";
 import { sendOtpEmail } from "@/lib/email";
 import { seedTeamMembers } from "@/lib/seed";
+import { resolveLoginEmail } from "@/lib/email-aliases";
+import { migrateLegacyEmails } from "@/lib/migrate-emails";
 
 const schema = z.object({
   email: z.string().email(),
@@ -29,6 +31,7 @@ export async function POST(request: Request) {
     }
 
     await connectDB();
+    await migrateLegacyEmails();
 
     // Auto-seed empty database so first deploy works
     const count = await User.countDocuments();
@@ -36,8 +39,11 @@ export async function POST(request: Request) {
       await seedTeamMembers();
     }
 
-    const email = parsed.data.email.toLowerCase().trim();
-    const user = await User.findOne({ email });
+    const inputEmail = parsed.data.email.toLowerCase().trim();
+    const canonical = resolveLoginEmail(inputEmail);
+    const user = await User.findOne({
+      email: { $in: [canonical, inputEmail] },
+    });
     if (!user) {
       return NextResponse.json(
         { error: "Invalid email or password." },
