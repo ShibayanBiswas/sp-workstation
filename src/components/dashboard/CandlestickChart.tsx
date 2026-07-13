@@ -344,7 +344,6 @@ export function CandlestickChart({
       bars: OhlcBar[],
       opts: { preserveRange?: boolean; prependCount?: number } = {}
     ) => {
-      const prevCount = barCountRef.current;
       const visibleRange = opts.preserveRange
         ? chart.timeScale().getVisibleLogicalRange()
         : null;
