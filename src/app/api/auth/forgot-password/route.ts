@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { User } from "@/lib/models/User";
-import { PasswordReset } from "@/lib/models/PasswordReset";
-import { generateResetToken } from "@/lib/auth";
+import { Otp } from "@/lib/models/Otp";
+import {
+  generateOtp,
+  createPendingToken,
+  setPendingCookie,
+} from "@/lib/auth";
 import { resolveLoginEmail } from "@/lib/email-aliases";
-import { sendPasswordResetEmail } from "@/lib/email";
 
 const schema = z.object({
   email: z.string().email(),
@@ -31,36 +34,40 @@ export async function POST(request: Request) {
       });
     }
 
-    // Always return success message to avoid email enumeration
     const generic = {
       ok: true,
       message:
-        "If this email is registered, a password reset link has been sent.",
+        "If this email is registered, a verification code has been generated.",
     };
 
     if (!user) {
       return NextResponse.json(generic);
     }
 
-    const token = generateResetToken();
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
-    await PasswordReset.deleteMany({ userId: user._id, consumed: false });
-    await PasswordReset.create({
+    const code = generateOtp();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await Otp.deleteMany({ userId: user._id, consumed: false });
+    await Otp.create({
       userId: user._id,
       email: user.email,
-      token,
+      code,
       expiresAt,
     });
 
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const resetUrl = `${appUrl}/reset-password?token=${token}`;
-    const mail = await sendPasswordResetEmail(user.email, user.name, resetUrl);
+    const pending = await createPendingToken({
+      userId: String(user._id),
+      email: user.email,
+      name: user.name,
+      purpose: "password_reset",
+    });
+    await setPendingCookie(pending);
 
     return NextResponse.json({
       ...generic,
-      resetPreview: mail.preview,
-      emailSent: mail.sent,
+      email: user.email,
+      otp: code,
+      redirect: "/change-password",
     });
   } catch (err) {
     console.error("Forgot password error:", err);

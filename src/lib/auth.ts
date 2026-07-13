@@ -22,11 +22,13 @@ export type SessionPayload = {
   role: string;
 };
 
+export type PendingPurpose = "login" | "password_reset";
+
 export type PendingPayload = {
   userId: string;
   email: string;
   name: string;
-  purpose: "login";
+  purpose: PendingPurpose;
 };
 
 export async function hashPassword(password: string): Promise<string> {

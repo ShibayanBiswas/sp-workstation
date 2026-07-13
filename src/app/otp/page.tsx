@@ -7,5 +7,6 @@ export default async function OtpPage() {
   if (session) redirect("/dashboard");
   const pending = await getPending();
   if (!pending) redirect("/login");
+  if (pending.purpose !== "login") redirect("/change-password");
   return <OtpForm />;
 }

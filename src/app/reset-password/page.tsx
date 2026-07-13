@@ -1,5 +1,6 @@
-import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
+import { redirect } from "next/navigation";
 
-export default function ResetPasswordPage() {
-  return <ResetPasswordForm />;
+/** Legacy route — password reset is now OTP-based at /change-password. */
+export default function ResetPasswordRedirect() {
+  redirect("/change-password");
 }

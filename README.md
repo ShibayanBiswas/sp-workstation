@@ -1,13 +1,13 @@
 # SP Workstation
 
 Internal Anand Rathi Wealth Structured Products team workstation. It provides
-password and email-OTP authentication, a live Indian markets home terminal,
-dark mode, and mapped access to the Primary SP Dashboard.
+local OTP authentication, a live Indian markets home terminal, dark mode, and
+mapped access to the Primary SP Dashboard.
 
 ## Main capabilities
 
-- Branded sign-in, email OTP verification, logout, and email password recovery
-- MongoDB-backed users, OTP records, and password-reset tokens
+- Branded sign-in, on-screen OTP verification, logout, and OTP-based password change
+- MongoDB-backed users and OTP records
 - Live tape, snapshot cards, and candlestick charts for 13 Indian indices
 - Primary SP Dashboard module and submodule navigation
 - Responsive light and dark themes
@@ -25,8 +25,7 @@ pwsh ./run.ps1 dev
 Open <http://127.0.0.1:3000>. Press `Ctrl+C` to stop the server.
 
 When `.env.local` is absent, the runner creates a development configuration
-with in-memory MongoDB and development OTP previews. This local database is
-erased whenever the process stops.
+with in-memory MongoDB. This local database is erased whenever the process stops.
 
 Without PowerShell:
 
@@ -61,12 +60,10 @@ pwsh ./run.ps1 seed
 ## Configuration
 
 Copy `.env.example` when creating an explicit configuration. Never commit
-`.env.local`, SMTP/Atlas credentials, JWT secrets, OTPs, reset links, or the
-local seed password file.
+`.env.local`, Atlas credentials, JWT secrets, or the local seed password file.
 
-Production requires persistent MongoDB, working SMTP, a stable random
-`JWT_SECRET`, the deployed `NEXT_PUBLIC_APP_URL`, and
-`EMAIL_DEV_MODE=false`.
+Production requires persistent MongoDB, a stable random `JWT_SECRET`, and the
+deployed `NEXT_PUBLIC_APP_URL`.
 
 ## Team changes
 

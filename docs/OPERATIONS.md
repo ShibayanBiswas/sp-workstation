@@ -55,22 +55,10 @@ The in-memory database was recreated. Confirm that
 pwsh ./run.ps1 seed
 ```
 
-### OTP does not arrive
+### OTP not shown on verification page
 
-- Verify SMTP host, port, user, password, and sender.
-- Gmail requires an App Password when two-step verification is enabled.
-- Inspect server logs for the Nodemailer error.
-- In local development only, set `EMAIL_DEV_MODE=true` and use the UI preview.
-
-### Reset link points to localhost in production
-
-Set:
-
-```dotenv
-NEXT_PUBLIC_APP_URL=https://YOUR-PRODUCTION-DOMAIN
-```
-
-Redeploy so newly generated emails use the production URL.
+Return to login and sign in again to regenerate the code. Codes expire after
+10 minutes.
 
 ### Primary SP Dashboard is blank
 

@@ -65,10 +65,9 @@ MONGODB_URI=memory
 JWT_SECRET=$jwtSecret
 NEXT_PUBLIC_APP_URL=http://${HostAddress}:${Port}
 NEXT_PUBLIC_SP_DASHBOARD_URL=https://sp-dashboard-eta.vercel.app
-EMAIL_DEV_MODE=true
 "@ | Set-Content -Path $environmentFile -Encoding utf8
 
-    Write-Step "Created .env.local with an ephemeral MongoDB and development OTP previews."
+    Write-Step "Created .env.local with an ephemeral MongoDB and generated JWT secret."
 }
 
 function Install-DependenciesIfMissing {

@@ -9,7 +9,6 @@ import {
   createPendingToken,
   setPendingCookie,
 } from "@/lib/auth";
-import { sendOtpEmail } from "@/lib/email";
 import { seedTeamMembers } from "@/lib/seed";
 import { resolveLoginEmail } from "@/lib/email-aliases";
 import { migrateLegacyEmails } from "@/lib/migrate-emails";
@@ -33,7 +32,6 @@ export async function POST(request: Request) {
     await connectDB();
     await migrateLegacyEmails();
 
-    // Auto-seed empty database so first deploy works
     const count = await User.countDocuments();
     if (count === 0) {
       await seedTeamMembers();
@@ -70,8 +68,6 @@ export async function POST(request: Request) {
       expiresAt,
     });
 
-    const mail = await sendOtpEmail(user.email, user.name, code);
-
     const pending = await createPendingToken({
       userId: String(user._id),
       email: user.email,
@@ -82,12 +78,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      message: mail.sent
-        ? "OTP sent to your registered email."
-        : "OTP generated. Check your email (or use the preview in development).",
+      message: "Enter the verification code shown on the next screen.",
       email: user.email,
-      otpPreview: mail.preview,
-      emailSent: mail.sent,
+      otp: code,
     });
   } catch (err) {
     console.error("Login error:", err);

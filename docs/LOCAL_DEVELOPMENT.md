@@ -43,7 +43,7 @@ If `.env.local` does not exist, `run.ps1 dev` creates a safe local file with:
 - an ephemeral in-memory MongoDB;
 - a generated JWT secret;
 - local application URL;
-- development OTP previews.
+- local OTP codes shown on the verification screen.
 
 It never overwrites an existing `.env.local`.
 
@@ -70,8 +70,6 @@ Listen on all interfaces for LAN testing:
 ```bash
 pwsh ./run.ps1 dev -HostAddress 0.0.0.0
 ```
-
-Do not expose development OTP mode to an untrusted network.
 
 ## Bash equivalents
 

@@ -13,7 +13,7 @@ markets home terminal, and access to the existing Primary SP Dashboard.
 - Tailwind CSS 4 plus global design tokens
 - MongoDB and Mongoose
 - `jose` for signed JWTs and `bcryptjs` for password hashing
-- Nodemailer for OTP and password-reset email
+- Local system-generated OTP (no email)
 - Yahoo Finance for live quotes and OHLC data
 - `lightweight-charts` (TradingView open-source) for candlestick charts
 
@@ -23,7 +23,6 @@ markets home terminal, and access to the existing Primary SP Dashboard.
 flowchart LR
     U[Team member browser] --> N[Next.js application]
     N --> M[(MongoDB Atlas)]
-    N --> S[SMTP server]
     N --> Y[Yahoo Finance API]
     U --> P[Primary SP Dashboard iframe]
 ```
@@ -43,9 +42,10 @@ src/
 │   │   └── markets/            # Live index quotes
 │   ├── dashboard/              # Protected pages and module host
 │   ├── login/                  # Password login
-│   ├── otp/                    # Email OTP verification
-│   ├── forgot-password/        # Reset request
-│   └── reset-password/         # New-password form
+│   ├── otp/                    # Local OTP verification
+│   ├── forgot-password/        # Password change request
+│   ├── change-password/        # OTP + new password
+│   └── reset-password/         # Redirects to change-password
 ├── components/
 │   ├── auth/                   # Authentication forms
 │   ├── dashboard/              # Tape, snapshot, chart, sidebar
@@ -62,7 +62,6 @@ src/
     ├── models/                 # Mongoose schemas
     ├── auth.ts                 # JWT, cookies, password helpers
     ├── db.ts                   # MongoDB connection lifecycle
-    ├── email.ts                # Transactional email
     └── seed.ts                 # Team user provisioning
 ```
 

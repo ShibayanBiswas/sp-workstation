@@ -30,27 +30,25 @@ as confidential company information.
 - Seed endpoint shares the JWT signing secret
 - OTP values are stored as plaintext for short-lived verification
 - External market feeds are not contractually guaranteed
-- Development mode can expose OTP/reset previews
+- OTP codes visible on screen during auth
 
 These are explicit limitations, not production guarantees.
 
 ## Required production configuration
 
 ```dotenv
-EMAIL_DEV_MODE=false
 MONGODB_URI=<persistent Atlas URI>
 JWT_SECRET=<random value of at least 32 bytes>
 NEXT_PUBLIC_APP_URL=https://<approved-domain>
 ```
 
-Also configure valid SMTP credentials and limit access to the approved team.
+OTP codes are displayed on screen. Deploy only on trusted internal networks.
 
 ## Secret handling
 
 Never commit:
 
 - `.env.local`
-- SMTP credentials
 - Atlas credentials
 - JWT secrets
 - `scripts/seed-passwords.local.json`
@@ -77,7 +75,7 @@ outside the team, screenshots, tickets, or chat.
 
 If credentials may be compromised:
 
-1. rotate Atlas, SMTP, Vercel, and JWT secrets;
+1. rotate Atlas, Vercel, and JWT secrets;
 2. invalidate sessions by changing `JWT_SECRET`;
 3. reset affected user passwords;
 4. review provider and application logs;

@@ -2,11 +2,16 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { User } from "@/lib/models/User";
-import { PasswordReset } from "@/lib/models/PasswordReset";
-import { hashPassword } from "@/lib/auth";
+import { Otp } from "@/lib/models/Otp";
+import {
+  hashPassword,
+  getPending,
+  clearAuthCookies,
+  clearPendingCookie,
+} from "@/lib/auth";
 
 const schema = z.object({
-  token: z.string().min(20),
+  code: z.string().length(6),
   password: z
     .string()
     .min(8)
@@ -17,6 +22,17 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const pending = await getPending();
+    if (!pending || pending.purpose !== "password_reset") {
+      return NextResponse.json(
+        {
+          error: "Session expired. Request a new verification code.",
+          redirect: "/login",
+        },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
@@ -31,37 +47,43 @@ export async function POST(request: Request) {
     }
 
     await connectDB();
-    const record = await PasswordReset.findOne({
-      token: parsed.data.token,
+    const record = await Otp.findOne({
+      userId: pending.userId,
       consumed: false,
       expiresAt: { $gt: new Date() },
-    });
+    }).sort({ createdAt: -1 });
 
-    if (!record) {
+    if (!record || record.code !== parsed.data.code) {
       return NextResponse.json(
-        { error: "Reset link is invalid or expired." },
-        { status: 400 }
+        { error: "Incorrect verification code. Please try again." },
+        { status: 401 }
       );
     }
 
-    const user = await User.findById(record.userId);
+    const user = await User.findById(pending.userId);
     if (!user) {
+      await clearAuthCookies();
       return NextResponse.json({ error: "User not found." }, { status: 404 });
     }
 
     user.passwordHash = await hashPassword(parsed.data.password);
     await user.save();
+
     record.consumed = true;
     await record.save();
 
+    await clearAuthCookies();
+    await clearPendingCookie();
+
     return NextResponse.json({
       ok: true,
-      message: "Password updated. You can sign in with your new password.",
+      message: "Password updated. Sign in with your new password.",
+      redirect: "/login",
     });
   } catch (err) {
-    console.error("Reset password error:", err);
+    console.error("Change password error:", err);
     return NextResponse.json(
-      { error: "Unable to reset password." },
+      { error: "Unable to update password." },
       { status: 500 }
     );
   }

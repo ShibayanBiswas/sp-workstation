@@ -450,29 +450,201 @@ a {
   background: var(--bg);
 }
 
+.auth-aurora {
+  opacity: 0.85;
+  background:
+    radial-gradient(ellipse 100% 60% at 50% -20%, color-mix(in srgb, var(--gold) 22%, transparent), transparent 58%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, color-mix(in srgb, var(--gold) 12%, transparent), transparent 55%),
+    radial-gradient(ellipse 40% 35% at 100% 80%, color-mix(in srgb, var(--gold) 8%, transparent), transparent 50%);
+}
+
+.auth-grid {
+  opacity: 0.04;
+  background-image:
+    linear-gradient(var(--gold) 1px, transparent 1px),
+    linear-gradient(90deg, var(--gold) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.dark .auth-grid {
+  opacity: 0.06;
+}
+
 .auth-card {
-  border-radius: 1.25rem;
-  border: 1px solid color-mix(in srgb, var(--gold) 22%, var(--border));
-  background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
-  backdrop-filter: blur(24px);
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.35rem;
+  border: 1px solid color-mix(in srgb, var(--gold) 24%, var(--border));
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+  backdrop-filter: blur(28px);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent),
-    0 32px 80px color-mix(in srgb, var(--ink) 8%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--gold) 6%, transparent);
+    inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent),
+    0 40px 100px color-mix(in srgb, var(--ink) 10%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--gold) 8%, transparent);
   padding: 2rem;
+}
+
+.auth-card-premium {
+  padding: 2.25rem;
+}
+
+.auth-card-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--gold) 20%,
+    var(--gold-soft) 50%,
+    var(--gold) 80%,
+    transparent
+  );
 }
 
 .dark .auth-card {
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--gold) 10%, transparent),
-    0 32px 90px rgba(0, 0, 0, 0.55),
-    0 0 0 1px color-mix(in srgb, var(--gold) 8%, transparent);
+    inset 0 1px 0 color-mix(in srgb, var(--gold) 14%, transparent),
+    0 40px 110px rgba(0, 0, 0, 0.6),
+    0 0 0 1px color-mix(in srgb, var(--gold) 10%, transparent);
 }
 
 @media (min-width: 768px) {
-  .auth-card {
-    padding: 2.5rem;
+  .auth-card,
+  .auth-card-premium {
+    padding: 2.75rem;
   }
+}
+
+.auth-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+}
+
+.dark .auth-eyebrow {
+  color: var(--gold);
+}
+
+.auth-title {
+  margin-top: 0.5rem;
+  font-family: var(--font-display);
+  font-size: 2.35rem;
+  line-height: 1.1;
+  color: var(--fg);
+}
+
+@media (min-width: 768px) {
+  .auth-title {
+    font-size: 2.65rem;
+  }
+}
+
+.auth-lead {
+  margin-top: 0.85rem;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--fg-muted);
+}
+
+.auth-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.auth-icon-badge {
+  display: flex;
+  height: 3rem;
+  width: 3rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--gold) 38%, var(--border));
+  background: color-mix(in srgb, var(--gold) 10%, var(--bg-muted));
+  color: var(--gold-deep);
+}
+
+.dark .auth-icon-badge {
+  color: var(--gold);
+}
+
+.auth-otp-display {
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--border));
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--gold) 14%, var(--bg-muted)),
+    color-mix(in srgb, var(--gold) 4%, var(--bg-elevated))
+  );
+  padding: 1.25rem 1rem;
+  text-align: center;
+}
+
+.auth-otp-code {
+  margin-top: 0.5rem;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: 0.42em;
+  padding-left: 0.42em;
+  color: var(--gold-deep);
+}
+
+.dark .auth-otp-code {
+  color: var(--gold-soft);
+}
+
+.auth-otp-input {
+  text-align: center !important;
+  font-size: 1.75rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.42em !important;
+  font-family: ui-monospace, "Cascadia Code", monospace !important;
+}
+
+.auth-error {
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, #ef4444 35%, transparent);
+  background: color-mix(in srgb, #ef4444 10%, transparent);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.875rem;
+  color: #b91c1c;
+}
+
+.dark .auth-error {
+  color: #fecaca;
+}
+
+.auth-success {
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--border));
+  background: color-mix(in srgb, var(--gold) 12%, var(--bg-muted));
+  padding: 0.85rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--gold-deep);
+}
+
+.dark .auth-success {
+  color: var(--gold-soft);
+}
+
+.auth-footnote {
+  margin-top: 2rem;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg-subtle);
 }
 
 .auth-input {
@@ -481,21 +653,27 @@ a {
   border-color: var(--border) !important;
 }
 
+.auth-input:focus {
+  border-color: color-mix(in srgb, var(--gold) 50%, var(--border)) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 15%, transparent) !important;
+}
+
 .auth-input::placeholder {
   color: var(--fg-subtle);
 }
 
 .auth-submit {
-  min-height: 3rem;
-  font-size: 0.9rem;
-  letter-spacing: 0.06em;
+  min-height: 3.1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .auth-link {
   color: var(--gold-deep);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .dark .auth-link {

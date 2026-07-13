@@ -7,8 +7,8 @@ All request and response bodies use JSON. Protected endpoints require a valid
 
 ### `POST /api/auth/login`
 
-Validates the password, generates an OTP, sends email, and creates the pending
-login cookie.
+Validates the password, generates an OTP, and creates the pending login cookie.
+The OTP is returned in the response body for display on `/otp`.
 
 Request:
 
@@ -19,8 +19,7 @@ Request:
 }
 ```
 
-Success: `200` with `ok`, masked workflow information, and development preview
-fields when enabled. Invalid credentials return `401`.
+Success: `200` with `ok`, `email`, and `otp` (6-digit code). Invalid credentials return `401`.
 
 ### `POST /api/auth/verify-otp`
 
@@ -54,18 +53,26 @@ Returns the current session identity. Unauthenticated requests return `401`.
 { "email": "user@rathi.com" }
 ```
 
-Returns the same generic success message for known and unknown accounts.
+For known accounts: generates OTP, sets `sp_pending` (`password_reset`), returns
+`otp` and `redirect: "/change-password"`. Unknown accounts get a generic message.
 
-### `POST /api/auth/reset-password`
+### `POST /api/auth/request-password-otp`
+
+Requires `sp_session`. Generates OTP for the logged-in user. Returns `otp` and
+`email`.
+
+### `POST /api/auth/change-password`
+
+Requires `sp_pending` with `password_reset` purpose.
 
 ```json
 {
-  "token": "token-from-reset-link",
+  "code": "123456",
   "password": "NewStrongPassword1"
 }
 ```
 
-Consumes a valid reset token and replaces the password hash.
+Validates OTP, updates password hash, clears all auth cookies.
 
 ### `POST /api/auth/seed`
 

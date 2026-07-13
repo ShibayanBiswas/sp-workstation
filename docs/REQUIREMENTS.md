@@ -42,9 +42,9 @@ Passwords: `scripts/seed-passwords.local.json` or `SEED_DEFAULT_PASSWORD_MAP`.
 |---|---|---|
 | MongoDB user storage | ✅ | Mongoose `User` model |
 | bcrypt password hashing | ✅ | `src/lib/auth.ts` |
-| Forgot password → email link | ✅ | `/forgot-password` → SMTP → `/reset-password` |
-| User can set new password | ✅ | `POST /api/auth/reset-password` |
-| Email OTP after password login | ✅ | `POST /api/auth/login` → `/otp` |
+| Forgot password → local OTP | ✅ | `/forgot-password` → `/change-password` |
+| User can set new password | ✅ | `POST /api/auth/change-password` |
+| Local OTP after password login | ✅ | `POST /api/auth/login` → `/otp` |
 | Correct OTP → dashboard | ✅ | `POST /api/auth/verify-otp` |
 | Wrong OTP → retry on OTP page | ✅ | Error shown; pending cookie kept |
 
