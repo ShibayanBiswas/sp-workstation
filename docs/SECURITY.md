@@ -29,7 +29,7 @@ as confidential company information.
 - No Content Security Policy
 - Seed endpoint shares the JWT signing secret
 - OTP values are stored as plaintext for short-lived verification
-- External market and news feeds are not contractually guaranteed
+- External market feeds are not contractually guaranteed
 - Development mode can expose OTP/reset previews
 
 These are explicit limitations, not production guarantees.
@@ -67,7 +67,7 @@ outside the team, screenshots, tickets, or chat.
 3. Disable or remove the seed endpoint after provisioning.
 4. Enforce admin/member authorization on privileged routes.
 5. Add structured authentication and administration audit events.
-6. Add a restrictive CSP covering required TradingView and iframe origins.
+6. Add a restrictive CSP covering required chart data and iframe origins.
 7. Hash OTP/reset tokens at rest.
 8. Add password breach checks and mandatory first-login password changes.
 9. Run dependency, SAST, and secret scans in CI.

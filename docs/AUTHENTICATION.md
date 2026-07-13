@@ -42,9 +42,9 @@ signature and expiration with `JWT_SECRET`.
 
 ### Failed OTP behavior
 
-An incorrect or expired OTP clears both authentication cookies and directs the
-user back to `/login`. The user must repeat password authentication to obtain a
-new OTP.
+An incorrect OTP returns `401` with an error message. The user can retry on
+the `/otp` page without signing in again, as long as the `sp_pending` cookie
+has not expired (10 minutes). An expired pending session redirects to `/login`.
 
 ## Password reset sequence
 

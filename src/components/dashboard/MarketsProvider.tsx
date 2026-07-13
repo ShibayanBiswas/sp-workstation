@@ -6,10 +6,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { INDIAN_MARKET_INDICES } from "@/data/indian-markets";
+import { INDIAN_MARKET_INDICES, sortByDisplayOrder } from "@/data/indian-markets";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 
 export type MarketQuote = {
@@ -29,6 +30,7 @@ type MarketsContextValue = {
   refresh: () => Promise<void>;
   selectedIndexId: string;
   setSelectedIndexId: (id: string) => void;
+  flashIds: Set<string>;
 };
 
 const MarketsContext = createContext<MarketsContextValue | null>(null);
@@ -66,6 +68,8 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [asOf, setAsOf] = useState("");
   const [loading, setLoading] = useState(true);
+  const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
+  const prevPrices = useRef<Map<string, number>>(new Map());
   const [selectedIndexId, setSelectedIndexId] = useState(
     INDIAN_MARKET_INDICES[0].id
   );
@@ -78,7 +82,19 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
       });
       if (!res.ok) return;
       const data = await res.json();
-      setQuotes(dedupeQuotes(data.quotes || []));
+      const next = dedupeQuotes(data.quotes || []);
+      const changed = new Set<string>();
+      for (const q of next) {
+        if (q.price == null) continue;
+        const prev = prevPrices.current.get(q.id);
+        if (prev != null && prev !== q.price) changed.add(q.id);
+        prevPrices.current.set(q.id, q.price);
+      }
+      if (changed.size > 0) {
+        setFlashIds(changed);
+        setTimeout(() => setFlashIds(new Set()), 700);
+      }
+      setQuotes(sortByDisplayOrder(next));
       setAsOf(data.asOf || "");
     } catch {
       /* ignore */
@@ -91,7 +107,7 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
     const frame = window.requestAnimationFrame(() => {
       void refresh();
     });
-    const id = setInterval(refresh, 60_000);
+    const id = setInterval(refresh, 30_000);
     return () => {
       window.cancelAnimationFrame(frame);
       clearInterval(id);
@@ -100,14 +116,15 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
-      quotes: dedupeQuotes(quotes),
+      quotes: sortByDisplayOrder(dedupeQuotes(quotes)),
       asOf,
       loading,
       refresh,
       selectedIndexId,
       setSelectedIndexId,
+      flashIds,
     }),
-    [quotes, asOf, loading, refresh, selectedIndexId]
+    [quotes, asOf, loading, refresh, selectedIndexId, flashIds]
   );
 
   return (
@@ -121,37 +138,31 @@ export function useMarkets() {
   return ctx;
 }
 
-/** Row 1 — auto-scrolling tape with sparklines (TradingView-style). */
+/** Row 1 — auto-scrolling live tape. */
 export function IndianMarketTape() {
-  const { quotes, loading } = useMarkets();
+  const { quotes, loading, flashIds } = useMarkets();
 
   const chips = quotes.map((q) => {
     const up = (q.change ?? 0) >= 0;
     const spark = q.sparkline?.length ? q.sparkline : [0, 0];
-    const priceColor = up ? "#089981" : "#f23645";
+    const flash = flashIds.has(q.id);
     return (
       <div
         key={`tape-${q.id}`}
-        className="tape-chip tape-chip-7 inline-flex shrink-0 items-center gap-3 rounded-md border border-[#2a2e39]/30 bg-[#131722] px-3 py-2.5 dark:border-[#2a2e39]"
-        style={{ fontFamily: "var(--font-tv)" }}
+        className={`tape-chip tape-chip-7 inline-flex shrink-0 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 ${flash ? "price-flash" : ""}`}
       >
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[11px] font-semibold text-[#d1d4dc]">
+          <p className="truncate text-[11px] font-semibold text-[var(--fg)]">
             {q.name}
           </p>
-          <p
-            className="tv-num text-[15px] font-semibold leading-tight"
-            style={{ color: q.price != null ? priceColor : "#787b86" }}
-          >
+          <p className="tv-num text-sm font-semibold text-[var(--fg)]">
             {fmt(q.price)}
           </p>
           <p
-            className="tv-num text-[11px] font-semibold"
-            style={{ color: priceColor }}
+            className={`tv-num text-[11px] font-semibold ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
           >
-            {q.changePercent != null
-              ? `${up ? "+" : ""}${fmt(q.changePercent)}%`
-              : "—"}
+            {up ? "▲" : "▼"} {up ? "+" : ""}
+            {fmt(q.changePercent)}%
           </p>
         </div>
         <Sparkline
@@ -167,20 +178,13 @@ export function IndianMarketTape() {
   });
 
   return (
-    <section className="overflow-hidden rounded-xl border border-[#2a2e39]/25 bg-[#131722] shadow-sm dark:border-[#2a2e39]">
-      <div className="flex items-center justify-between border-b border-[#2a2e39] px-4 py-2.5 md:px-5">
+    <section className="panel-stable overflow-hidden rounded-2xl">
+      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-2.5 md:px-5">
         <div>
-          <p className="text-[10px] font-semibold tracking-[0.2em] text-[#787b86]">
-            LIVE TAPE
-          </p>
-          <p
-            className="text-[15px] font-semibold text-[#d1d4dc]"
-            style={{ fontFamily: "var(--font-tv)" }}
-          >
-            Indian indices
-          </p>
+          <p className="section-kicker">Live tape</p>
+          <p className="section-title">Indian market indices</p>
         </div>
-        <p className="text-[10px] text-[#787b86]">IST · Auto-scroll</p>
+        <p className="text-[10px] text-[var(--fg-subtle)]">Auto-scroll · IST</p>
       </div>
       <div className="tape-viewport relative h-[88px] overflow-hidden">
         {loading && quotes.length === 0 ? (
@@ -203,27 +207,22 @@ export function IndianMarketTape() {
   );
 }
 
-/** Row 2 — snapshot cards (TradingView-style). */
+/** Row 2 — snapshot cards, horizontal scroll. */
 export function IndianMarketCards() {
-  const { quotes, loading, asOf, selectedIndexId, setSelectedIndexId } =
+  const { quotes, loading, asOf, selectedIndexId, setSelectedIndexId, flashIds } =
     useMarkets();
   const timeLabel = formatIstTime(asOf);
 
   return (
-    <section className="overflow-hidden rounded-xl border border-[#2a2e39]/25 bg-[#131722] shadow-sm dark:border-[#2a2e39]">
-      <div className="flex items-center justify-between border-b border-[#2a2e39] px-4 py-2.5 md:px-5">
+    <section className="panel-stable rounded-2xl">
+      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-2.5 md:px-5">
         <div>
-          <p className="text-[10px] font-semibold tracking-[0.2em] text-[#787b86]">
-            SNAPSHOT
-          </p>
-          <p
-            className="text-[15px] font-semibold text-[#d1d4dc]"
-            style={{ fontFamily: "var(--font-tv)" }}
-          >
-            Index levels
-          </p>
+          <p className="section-kicker">Snapshot</p>
+          <p className="section-title">Index performance</p>
         </div>
-        <p className="text-[10px] text-[#787b86]">{quotes.length} indices</p>
+        <p className="text-[10px] text-[var(--fg-subtle)]">
+          {quotes.length} indices
+        </p>
       </div>
       <div className="snapshot-viewport overflow-x-auto p-3 scrollbar-thin md:p-4">
         <div className="flex w-max min-w-full gap-2">
@@ -238,7 +237,7 @@ export function IndianMarketCards() {
                 const up = (q.change ?? 0) >= 0;
                 const active = q.id === selectedIndexId;
                 const spark = q.sparkline?.length ? q.sparkline : [0, 0];
-                const priceColor = up ? "#089981" : "#f23645";
+                const flash = flashIds.has(q.id);
                 return (
                   <button
                     key={`card-${q.id}`}
@@ -249,15 +248,14 @@ export function IndianMarketCards() {
                         .getElementById("live-chart")
                         ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
                     }}
-                    className={`snapshot-card-5 shrink-0 rounded-lg border p-4 text-left transition-colors ${
+                    className={`market-card snapshot-card-5 shrink-0 rounded-xl border p-4 text-left ${
                       active
-                        ? "border-[#2962ff] bg-[#1e222d]"
-                        : "border-[#2a2e39] bg-[#131722] hover:border-[#434651]"
-                    }`}
-                    style={{ fontFamily: "var(--font-tv)" }}
+                        ? "market-card-active border-[color-mix(in_srgb,var(--gold)_45%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_10%,var(--bg-muted))]"
+                        : "border-[var(--border)] bg-[var(--bg-elevated)]"
+                    } ${flash ? "price-flash" : ""}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-[10px] font-bold tracking-[0.12em] text-[#787b86]">
+                      <p className="text-[10px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                         {q.name.toUpperCase()}
                       </p>
                       <Sparkline
@@ -271,24 +269,21 @@ export function IndianMarketCards() {
                       />
                     </div>
                     <p
-                      className="tv-num mt-2 text-[1.75rem] font-semibold leading-none"
-                      style={{ color: q.price != null ? priceColor : "#787b86" }}
+                      className="tv-num mt-2 text-[1.65rem] font-semibold leading-none text-[var(--fg)]"
                     >
                       {fmt(q.price)}
                     </p>
                     <p
-                      className="tv-num mt-2 text-[12px] font-medium"
-                      style={{ color: priceColor }}
+                      className={`tv-num mt-2 text-xs font-medium ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
                     >
                       {q.change != null
                         ? `${up ? "+" : ""}${fmt(q.change)}`
                         : "—"}{" "}
-                      ({q.changePercent != null
-                        ? `${up ? "+" : ""}${fmt(q.changePercent)}%`
-                        : "—"})
+                      ({up ? "+" : ""}
+                      {fmt(q.changePercent)}%)
                     </p>
                     {timeLabel ? (
-                      <p className="mt-2 text-[10px] text-[#787b86]">
+                      <p className="mt-2 text-[10px] text-[var(--fg-subtle)]">
                         {timeLabel} IST
                       </p>
                     ) : null}

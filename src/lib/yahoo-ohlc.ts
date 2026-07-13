@@ -38,7 +38,7 @@ const FETCH_HEADERS = {
 
 type CacheEntry<T> = { at: number; value: T };
 const cache = new Map<string, CacheEntry<unknown>>();
-const CACHE_MS = 45_000;
+const CACHE_MS = 25_000;
 
 function getCached<T>(key: string): T | null {
   const hit = cache.get(key);

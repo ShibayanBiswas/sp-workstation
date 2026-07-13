@@ -1,16 +1,14 @@
 # SP Workstation
 
 Internal Anand Rathi Wealth Structured Products team workstation. It provides
-password and email-OTP authentication, an Indian markets home terminal,
-personal calendar/todos, dark mode, and mapped access to the Primary SP
-Dashboard.
+password and email-OTP authentication, a live Indian markets home terminal,
+dark mode, and mapped access to the Primary SP Dashboard.
 
 ## Main capabilities
 
-- Branded sign-in, email OTP, logout, and email password recovery
-- MongoDB-backed users, verification records, and user-owned todos
-- Nifty 50, Sensex, Bank Nifty, and India VIX snapshots
-- TradingView charts and Indian financial news feeds
+- Branded sign-in, email OTP verification, logout, and email password recovery
+- MongoDB-backed users, OTP records, and password-reset tokens
+- Live tape, snapshot cards, and candlestick charts for 13 Indian indices
 - Primary SP Dashboard module and submodule navigation
 - Responsive light and dark themes
 
@@ -46,7 +44,7 @@ npm run dev -- -H 127.0.0.1 -p 3000
 - [Database and team provisioning](docs/DATABASE.md)
 - [Security notes](docs/SECURITY.md)
 - [Operations and troubleshooting](docs/OPERATIONS.md)
-- [Vercel deployment](DEPLOY.md)
+- [Vercel deployment (from scratch)](DEPLOY.md)
 
 ## Command reference
 
@@ -75,3 +73,12 @@ Production requires persistent MongoDB, working SMTP, a stable random
 The roster is maintained in `src/data/team.ts`. Initial passwords are supplied
 through `scripts/seed-passwords.local.json` (Git-ignored) or the deployment
 variable `SEED_DEFAULT_PASSWORD_MAP`. Run the seed after adding a member.
+
+## Index display order
+
+Live tape and snapshot cards follow the order in `src/data/indian-markets.ts`:
+
+1. Main benchmarks (Nifty 50, Sensex, Bank Nifty, Midcap, Next 50)
+2. Sector indices
+3. India VIX
+4. USD/INR

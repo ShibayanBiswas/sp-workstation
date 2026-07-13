@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { INDIAN_MARKET_INDICES } from "@/data/indian-markets";
+import { INDIAN_MARKET_INDICES, indicesByGroup } from "@/data/indian-markets";
 import { useMarkets } from "@/components/dashboard/MarketsProvider";
 import { CandlestickChart } from "@/components/dashboard/CandlestickChart";
 import {
@@ -16,29 +16,18 @@ import {
 
 type ThemeMode = "light" | "dark";
 
-const TV_FONT =
-  "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif";
-
 function marketBadgeClass(status: ReturnType<typeof getNseMarketStatus>) {
   switch (status) {
     case "open":
-      return "bg-[#089981]/15 text-[#089981] dark:bg-[#26a69a]/15 dark:text-[#26a69a]";
+      return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400";
     case "pre-open":
-      return "bg-amber-500/15 text-amber-600 dark:text-amber-400";
+      return "bg-amber-500/15 text-amber-700 dark:text-amber-400";
     default:
       return "bg-[var(--bg-muted)] text-[var(--fg-subtle)]";
   }
 }
 
-function fmtPrice(n: number | null | undefined) {
-  if (n == null || Number.isNaN(n)) return null;
-  return n.toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-/** Row 3 — TradingView-style chart terminal. */
+/** Row 3 — live candlestick chart with timeframes. */
 export function LiveCharts() {
   const { quotes, selectedIndexId, setSelectedIndexId } = useMarkets();
   const [theme, setTheme] = useState<ThemeMode>("light");
@@ -78,115 +67,95 @@ export function LiveCharts() {
     INDIAN_MARKET_INDICES[0];
 
   const liveQuote = quotes.find((q) => q.id === selectedIndexId);
-  const livePrice = fmtPrice(liveQuote?.price);
-  const up = (liveQuote?.change ?? 0) >= 0;
 
-  const benchmarks = INDIAN_MARKET_INDICES.filter((i) => i.group === "benchmark");
-  const sectors = INDIAN_MARKET_INDICES.filter((i) => i.group === "sector");
-  const volatility = INDIAN_MARKET_INDICES.filter((i) => i.group === "volatility");
+  const benchmarks = indicesByGroup("benchmark");
+  const sectors = indicesByGroup("sector");
+  const volatility = indicesByGroup("volatility");
+  const fx = indicesByGroup("fx");
 
   return (
     <section
       id="live-chart"
-      className="overflow-hidden rounded-xl border border-[#2a2e39]/20 bg-[#131722] shadow-lg dark:border-[#2a2e39]"
-      style={{ fontFamily: TV_FONT }}
+      className="panel-stable overflow-hidden rounded-2xl"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2a2e39] px-3 py-2.5 md:px-4">
-        <div className="flex min-w-0 flex-wrap items-center gap-3">
-          <div className="relative min-w-[180px]">
-            <label className="sr-only" htmlFor="index-select">
-              Select index
-            </label>
-            <select
-              id="index-select"
-              value={selectedIndexId}
-              onChange={(e) => setSelectedIndexId(e.target.value)}
-              className="w-full appearance-none rounded-md border border-[#2a2e39] bg-[#1e222d] py-2 pl-3 pr-9 text-[13px] font-semibold text-[#d1d4dc] outline-none focus:border-[#2962ff]"
-              style={{ fontFamily: TV_FONT }}
-            >
-              <optgroup label="Benchmarks">
-                {benchmarks.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.name}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Sectors">
-                {sectors.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.name}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Volatility">
-                {volatility.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.name}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-            <ChevronDown
-              size={14}
-              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#787b86]"
-            />
-          </div>
-          {livePrice ? (
-            <div className="hidden items-baseline gap-2 sm:flex">
-              <span
-                className="tv-num text-[15px] font-semibold"
-                style={{ color: up ? "#26a69a" : "#ef5350" }}
-              >
-                {livePrice}
-              </span>
-              {liveQuote?.changePercent != null ? (
-                <span
-                  className="tv-num text-[12px] font-medium"
-                  style={{ color: up ? "#26a69a" : "#ef5350" }}
-                >
-                  {up ? "+" : ""}
-                  {liveQuote.changePercent.toFixed(2)}%
-                </span>
-              ) : null}
-            </div>
-          ) : null}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3 md:px-5">
+        <div>
+          <p className="section-kicker">Live chart</p>
+          <h3 className="section-title">{active.name}</h3>
         </div>
-
-        <div className="flex items-center gap-2">
-          <span
-            className={`rounded px-2 py-0.5 text-[10px] font-bold tracking-wide ${marketBadgeClass(marketStatus)}`}
-            style={{ fontFamily: TV_FONT }}
+        <div className="relative w-full min-w-[240px] sm:w-auto sm:min-w-[280px]">
+          <label className="sr-only" htmlFor="index-select">
+            Select index
+          </label>
+          <select
+            id="index-select"
+            value={selectedIndexId}
+            onChange={(e) => setSelectedIndexId(e.target.value)}
+            className="input-field w-full appearance-none py-2.5 pr-10 text-sm"
           >
-            {marketStatusLabel(marketStatus)}
-          </span>
-          <span className="text-[10px] text-[#787b86]">IST · NSE</span>
+            <optgroup label="Benchmarks">
+              {benchmarks.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Sectors">
+              {sectors.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Volatility">
+              {volatility.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="FX">
+              {fx.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+          <ChevronDown
+            size={16}
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--fg-subtle)]"
+          />
         </div>
       </div>
 
-      <div className="flex items-center gap-0.5 overflow-x-auto border-b border-[#2a2e39] px-2 py-1 scrollbar-thin md:px-3">
-        {CHART_TIMEFRAMES.map((tf) => (
-          <button
-            key={tf.id}
-            type="button"
-            onClick={() => setTimeframe(tf.id)}
-            className={`shrink-0 rounded px-3 py-1.5 text-[12px] font-semibold transition-colors ${
-              timeframe === tf.id
-                ? "bg-[#2962ff] text-white"
-                : "text-[#787b86] hover:bg-[#2a2e39] hover:text-[#d1d4dc]"
-            }`}
-            style={{ fontFamily: TV_FONT }}
-          >
-            {tf.label}
-          </button>
-        ))}
-        <span className="ml-auto hidden pr-2 text-[10px] text-[#787b86] md:inline">
-          Candles · Volume
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-2 md:px-5">
+        <div className="flex flex-wrap gap-1">
+          {CHART_TIMEFRAMES.map((tf) => (
+            <button
+              key={tf.id}
+              type="button"
+              onClick={() => setTimeframe(tf.id)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold tracking-wide transition-colors ${
+                timeframe === tf.id
+                  ? "bg-[color-mix(in_srgb,var(--gold)_20%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]"
+                  : "text-[var(--fg-muted)] hover:bg-[var(--bg-muted)]"
+              }`}
+            >
+              {tf.label}
+            </button>
+          ))}
+        </div>
+        <span
+          className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${marketBadgeClass(marketStatus)}`}
+        >
+          {marketStatusLabel(marketStatus)} · IST
         </span>
       </div>
 
       {mounted ? (
         <CandlestickChart
-          key={`${selectedIndexId}-${timeframe}-${theme}`}
+          key={`${selectedIndexId}-${timeframe}`}
           indexId={selectedIndexId}
           timeframe={timeframe}
           theme={theme}
@@ -196,10 +165,7 @@ export function LiveCharts() {
           fallbackChangePercent={liveQuote?.changePercent}
         />
       ) : (
-        <div
-          className="flex h-[560px] items-center justify-center text-sm text-[#787b86]"
-          style={{ fontFamily: TV_FONT }}
-        >
+        <div className="flex h-[540px] items-center justify-center text-sm text-[var(--fg-subtle)]">
           Preparing chart…
         </div>
       )}

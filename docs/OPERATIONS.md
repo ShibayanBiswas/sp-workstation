@@ -77,11 +77,12 @@ Redeploy so newly generated emails use the production URL.
 Use “Open in new tab.” The external dashboard may reject iframe embedding
 through CSP or `X-Frame-Options`. This cannot be overridden by the workstation.
 
-### Quotes or news are missing
+### Quotes or chart data missing
 
-Yahoo Finance and RSS feeds are unofficial/best-effort integrations. Provider
-rate limits, schema changes, or outages may cause partial data. The workstation
-must not be used as the sole source for trade execution or client reporting.
+Yahoo Finance is an unofficial best-effort integration. Provider rate limits,
+schema changes, or outages may cause partial data. The user must be logged in
+for `/api/markets` and `/api/chart`. Refresh the page or wait 30 seconds for
+auto-refresh. This data is informational and must not be used for trade execution.
 
 ## Production run
 
@@ -103,7 +104,7 @@ include:
 - MongoDB connection or in-memory fallback;
 - SMTP failures and local preview notices;
 - API route exceptions;
-- external market/news fetch failures.
+- external market fetch failures.
 
 Do not forward production logs containing OTPs, reset links, cookies, or
 environment variables.

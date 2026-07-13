@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getNseMarketStatus } from "@/lib/market-hours";
-import { INDIAN_MARKET_INDICES } from "@/data/indian-markets";
+import { INDIAN_MARKET_INDICES, sortByDisplayOrder } from "@/data/indian-markets";
 import {
   closesFromOhlc,
   fetchYahooLiveQuote,
@@ -60,25 +60,29 @@ export async function GET() {
   const results = await mapPool(INDIAN_MARKET_INDICES, yahooQuote, 4);
 
   const seen = new Set<string>();
-  const quotes = (results.filter(Boolean) as MarketQuote[]).filter((q) => {
-    if (seen.has(q.id)) return false;
-    seen.add(q.id);
-    return true;
-  });
+  const quotes = sortByDisplayOrder(
+    (results.filter(Boolean) as MarketQuote[]).filter((q) => {
+      if (seen.has(q.id)) return false;
+      seen.add(q.id);
+      return true;
+    })
+  );
 
   return NextResponse.json({
     quotes:
       quotes.length > 0
         ? quotes
-        : INDIAN_MARKET_INDICES.map((index) => ({
-            id: index.id,
-            name: index.name,
-            price: null,
-            change: null,
-            changePercent: null,
-            sparkline: [],
-            group: index.group,
-          })),
+        : sortByDisplayOrder(
+            INDIAN_MARKET_INDICES.map((index) => ({
+              id: index.id,
+              name: index.name,
+              price: null,
+              change: null,
+              changePercent: null,
+              sparkline: [],
+              group: index.group,
+            }))
+          ),
     marketStatus: getNseMarketStatus(),
     asOf: new Date().toISOString(),
   });

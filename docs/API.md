@@ -33,8 +33,8 @@ Requires `sp_pending`.
 ```
 
 Success: `200`, creates `sp_session`, clears `sp_pending`, and returns
-`redirect: "/dashboard"`. Invalid OTP returns `401`, clears auth cookies, and
-returns `redirect: "/login"`.
+`redirect: "/dashboard"`. Invalid OTP returns `401` with an error message; the
+user can retry while the pending cookie is valid.
 
 ### `POST /api/auth/logout`
 
@@ -81,47 +81,53 @@ The endpoint is intended for controlled provisioning, not routine browser use.
 
 ### `GET /api/markets`
 
-Returns best-effort index quotes:
+Returns live index quotes in display order (benchmarks → sectors → VIX → USD/INR):
 
 ```json
 {
   "quotes": [
     {
-      "symbol": "^NSEI",
+      "id": "nifty",
       "name": "Nifty 50",
-      "price": 24000,
-      "change": 100,
-      "changePercent": 0.42,
-      "source": "Yahoo Finance"
+      "price": 24158.75,
+      "change": -239.95,
+      "changePercent": -0.98,
+      "sparkline": [24000, 24100, 24158],
+      "group": "benchmark"
     }
   ],
-  "asOf": "2026-07-13T04:30:00.000Z"
+  "marketStatus": "open",
+  "asOf": "2026-07-13T06:40:00.000Z"
 }
 ```
 
-External providers can return delayed, partial, or unavailable information.
-This data is informational and must not be treated as an execution price.
+Quotes refresh every 30 seconds on the client. Yahoo Finance is best-effort;
+data may be delayed.
 
-## News
+## Charts
 
-### `GET /api/news`
+### `GET /api/chart?indexId=nifty&timeframe=1D`
 
-Returns up to 12 merged Indian-market headlines:
+Returns OHLC candle data for the selected index and timeframe.
+
+Query parameters:
+
+- `indexId` — key from `src/data/indian-markets.ts` (e.g. `nifty`, `sensex`)
+- `timeframe` — `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, or `5Y` (default `1D`)
 
 ```json
 {
-  "news": [
-    {
-      "title": "Headline",
-      "link": "https://provider.example/article",
-      "source": "Provider",
-      "publishedAt": "Mon, 13 Jul 2026 04:30:00 GMT",
-      "summary": "Short summary"
-    }
-  ],
-  "fetchedAt": "2026-07-13T04:31:00.000Z"
+  "indexId": "nifty",
+  "name": "Nifty 50",
+  "timeframe": "1D",
+  "bars": [{ "time": 1720867500, "open": 24100, "high": 24180, "low": 24090, "close": 24158.75 }],
+  "last": { "price": 24158.75, "change": -239.95, "changePercent": -0.98, "time": 1720867500 },
+  "asOf": "2026-07-13T06:40:00.000Z"
 }
 ```
+
+Intraday bars are filtered to NSE session hours (09:15–15:30 IST). Chart time
+axis labels are formatted in IST.
 
 ## Todos
 
