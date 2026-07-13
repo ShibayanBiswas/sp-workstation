@@ -1,0 +1,201 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #f7f5f0;
+  --bg-elevated: #ffffff;
+  --bg-muted: #f1eee6;
+  --fg: #111111;
+  --fg-muted: #555555;
+  --fg-subtle: #767676;
+  --border: rgba(0, 0, 0, 0.08);
+  --gold: #d4b24c;
+  --gold-soft: #e5cf94;
+  --gold-deep: #b8860b;
+  --ink: #0d0d0d;
+  --danger: #b42318;
+  --success: #0f7a3c;
+  --shadow: 0 24px 60px rgba(17, 17, 17, 0.08);
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+}
+
+.dark {
+  --bg: #070102;
+  --bg-elevated: #111111;
+  --bg-muted: #171212;
+  --fg: #f7f5f0;
+  --fg-muted: #c8c4bc;
+  --fg-subtle: #9d9d9d;
+  --border: rgba(229, 207, 148, 0.12);
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--gold) 35%, transparent);
+}
+
+.gold-gradient {
+  background: linear-gradient(135deg, #e5cf94 0%, #d4b24c 45%, #b8860b 100%);
+}
+
+.gold-text {
+  background: linear-gradient(135deg, #e5cf94 0%, #d4b24c 50%, #b8860b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glass-panel {
+  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.login-atmosphere {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(212, 178, 76, 0.18), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 80%, rgba(184, 134, 11, 0.12), transparent 50%),
+    linear-gradient(160deg, #0d0d0d 0%, #1a1410 40%, #0a0807 100%);
+}
+
+.dark .login-atmosphere {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(212, 178, 76, 0.14), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 80%, rgba(184, 134, 11, 0.1), transparent 50%),
+    linear-gradient(160deg, #050303 0%, #120e0c 40%, #070102 100%);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-rise {
+  animation: rise-in 0.7s ease-out both;
+}
+
+.animate-rise-delay-1 {
+  animation: rise-in 0.7s ease-out 0.12s both;
+}
+
+.animate-rise-delay-2 {
+  animation: rise-in 0.7s ease-out 0.24s both;
+}
+
+.animate-rise-delay-3 {
+  animation: rise-in 0.7s ease-out 0.36s both;
+}
+
+.input-field {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  color: var(--fg);
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-field:focus {
+  border-color: color-mix(in srgb, var(--gold) 70%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 22%, transparent);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: 10px;
+  padding: 0.9rem 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  color: #111;
+  background: linear-gradient(135deg, #e5cf94 0%, #d4b24c 50%, #b8860b 100%);
+  transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-ghost:hover {
+  background: var(--bg-muted);
+  border-color: color-mix(in srgb, var(--gold) 40%, var(--border));
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--gold) 40%, transparent);
+  border-radius: 999px;
+}
