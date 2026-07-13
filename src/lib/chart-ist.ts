@@ -23,9 +23,17 @@ export function isNseSessionMinute(unixSec: number): boolean {
   return total >= 9 * 60 + 15 && total <= 15 * 60 + 30;
 }
 
+/** Symbols that trade outside NSE cash hours (keep all intraday bars). */
+const NON_NSE_SESSION_SYMBOLS = new Set(["INR=X"]);
+
 /** Keep only bars inside Indian cash-market hours for intraday charts. */
-export function filterNseSessionBars(bars: OhlcBar[], intraday: boolean): OhlcBar[] {
+export function filterNseSessionBars(
+  bars: OhlcBar[],
+  intraday: boolean,
+  yahooSymbol?: string
+): OhlcBar[] {
   if (!intraday) return bars;
+  if (yahooSymbol && NON_NSE_SESSION_SYMBOLS.has(yahooSymbol)) return bars;
   const filtered = bars.filter((b) => isNseSessionMinute(b.time));
   return filtered.length > 0 ? filtered : bars;
 }

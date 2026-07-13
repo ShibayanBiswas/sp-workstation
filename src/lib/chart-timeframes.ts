@@ -14,6 +14,8 @@ export type ChartTimeframe = {
   /** Yahoo `range` for the initial historical fetch. */
   range: string;
   intraday: boolean;
+  /** Yahoo rejects some interval+range pairs — try these if the primary fails. */
+  fallbacks?: Array<{ interval: string; range: string }>;
   /** Bars visible when zoom/pan mode is enabled (TradingView-style window). */
   defaultVisibleBars: number;
   /** Seconds of extra history to request when scrolling left. */
@@ -26,6 +28,7 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     label: "1D",
     interval: "5m",
     range: "1mo",
+    fallbacks: [{ interval: "5m", range: "5d" }],
     intraday: true,
     defaultVisibleBars: 78,
     historyChunkSec: 30 * 24 * 3600,
@@ -33,8 +36,12 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
   {
     id: "1W",
     label: "1W",
-    interval: "15m",
-    range: "3mo",
+    interval: "30m",
+    range: "1mo",
+    fallbacks: [
+      { interval: "1h", range: "3mo" },
+      { interval: "15m", range: "5d" },
+    ],
     intraday: true,
     defaultVisibleBars: 130,
     historyChunkSec: 60 * 24 * 3600,

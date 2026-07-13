@@ -97,7 +97,8 @@ function dedupeAndSortBars(bars: OhlcBar[]): OhlcBar[] {
 
 function parseYahooPayload(
   data: unknown,
-  intraday: boolean
+  intraday: boolean,
+  yahooSymbol?: string
 ): OhlcResult | null {
   const result = (data as { chart?: { result?: unknown[] } })?.chart
     ?.result?.[0] as
@@ -132,7 +133,11 @@ function parseYahooPayload(
     });
   }
 
-  const sanitized = filterNseSessionBars(dedupeAndSortBars(bars), intraday);
+  const sanitized = filterNseSessionBars(
+    dedupeAndSortBars(bars),
+    intraday,
+    yahooSymbol
+  );
   if (sanitized.length === 0) return null;
 
   return {
@@ -181,14 +186,33 @@ export async function fetchYahooLiveQuote(
 
 function ohlcPath(
   yahooSymbol: string,
-  timeframe: ChartTimeframe,
+  interval: string,
+  range: string,
   period?: { from: number; to: number }
 ): string {
-  const base = `/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=${timeframe.interval}&includePrePost=false&events=div%2Csplits`;
+  const base = `/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=${interval}&includePrePost=false&events=div%2Csplits`;
   if (period) {
     return `${base}&period1=${period.from}&period2=${period.to}`;
   }
-  return `${base}&range=${timeframe.range}`;
+  return `${base}&range=${range}`;
+}
+
+function timeframeCandidates(timeframe: ChartTimeframe) {
+  return [
+    { interval: timeframe.interval, range: timeframe.range },
+    ...(timeframe.fallbacks ?? []),
+  ];
+}
+
+async function fetchOhlcCandidate(
+  yahooSymbol: string,
+  interval: string,
+  range: string,
+  intraday: boolean
+): Promise<OhlcResult | null> {
+  const data = await fetchYahooJson(ohlcPath(yahooSymbol, interval, range));
+  if (!data) return null;
+  return parseYahooPayload(data, intraday, yahooSymbol);
 }
 
 export async function fetchYahooOhlc(
@@ -199,12 +223,20 @@ export async function fetchYahooOhlc(
   const cached = getCached<OhlcResult>(cacheKey);
   if (cached) return cached;
 
-  const data = await fetchYahooJson(ohlcPath(yahooSymbol, timeframe));
-  if (!data) return null;
+  for (const candidate of timeframeCandidates(timeframe)) {
+    const parsed = await fetchOhlcCandidate(
+      yahooSymbol,
+      candidate.interval,
+      candidate.range,
+      timeframe.intraday
+    );
+    if (parsed?.bars.length) {
+      setCached(cacheKey, parsed);
+      return parsed;
+    }
+  }
 
-  const parsed = parseYahooPayload(data, timeframe.intraday);
-  if (parsed) setCached(cacheKey, parsed);
-  return parsed;
+  return null;
 }
 
 /** Fetch older candles before `beforeUnix` for scroll-back history. */
@@ -220,11 +252,29 @@ export async function fetchYahooOhlcBefore(
   if (cached) return cached;
 
   const data = await fetchYahooJson(
-    ohlcPath(yahooSymbol, timeframe, { from: period1, to: period2 })
+    ohlcPath(yahooSymbol, timeframe.interval, timeframe.range, {
+      from: period1,
+      to: period2,
+    })
   );
   if (!data) return null;
 
-  const parsed = parseYahooPayload(data, timeframe.intraday);
+  let parsed = parseYahooPayload(data, timeframe.intraday, yahooSymbol);
+
+  if (!parsed?.bars.length && timeframe.fallbacks?.length) {
+    for (const fb of timeframe.fallbacks) {
+      const fbData = await fetchYahooJson(
+        ohlcPath(yahooSymbol, fb.interval, fb.range, {
+          from: period1,
+          to: period2,
+        })
+      );
+      parsed = fbData
+        ? parseYahooPayload(fbData, timeframe.intraday, yahooSymbol)
+        : null;
+      if (parsed?.bars.length) break;
+    }
+  }
   if (parsed) setCached(cacheKey, parsed);
   return parsed;
 }
