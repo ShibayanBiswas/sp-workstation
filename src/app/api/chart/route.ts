@@ -58,9 +58,11 @@ export async function GET(req: Request) {
 
   const lastBar = ohlc.bars[ohlc.bars.length - 1];
   const earliest = ohlc.bars[0].time;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const MIN_HISTORY_UNIX = 946_684_800; // 2000-01-01 UTC
   const hasMore = isHistory
-    ? ohlc.bars.length > 1
-    : earliest > timeframe.historyChunkSec;
+    ? ohlc.bars.length > 0 && earliest > MIN_HISTORY_UNIX
+    : nowSec - earliest > 86_400;
 
   if (isHistory) {
     return NextResponse.json({
@@ -86,7 +88,10 @@ export async function GET(req: Request) {
     changePercent = live.changePercent;
   }
 
-  const last = { close: price, time: lastBar.time };
+  const last = {
+    close: price,
+    time: live?.marketTime ?? lastBar.time,
+  };
 
   return NextResponse.json({
     indexId: index.id,

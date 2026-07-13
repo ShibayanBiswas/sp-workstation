@@ -12,11 +12,14 @@ import {
 import { seedTeamMembers } from "@/lib/seed";
 import { resolveLoginEmail } from "@/lib/email-aliases";
 import { migrateLegacyEmails } from "@/lib/migrate-emails";
+import { TEAM_MEMBERS } from "@/data/team";
 
 const schema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
+
+const allowedEmails = new Set(TEAM_MEMBERS.map((member) => member.email));
 
 export async function POST(request: Request) {
   try {
@@ -24,8 +27,17 @@ export async function POST(request: Request) {
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Enter a valid email and password." },
+        { error: "Invalid email ID." },
         { status: 400 }
+      );
+    }
+
+    const inputEmail = parsed.data.email.toLowerCase().trim();
+    const canonical = resolveLoginEmail(inputEmail);
+    if (!allowedEmails.has(canonical)) {
+      return NextResponse.json(
+        { error: "Invalid email ID." },
+        { status: 401 }
       );
     }
 
@@ -37,14 +49,12 @@ export async function POST(request: Request) {
       await seedTeamMembers();
     }
 
-    const inputEmail = parsed.data.email.toLowerCase().trim();
-    const canonical = resolveLoginEmail(inputEmail);
     const user = await User.findOne({
       email: { $in: [canonical, inputEmail] },
     });
     if (!user) {
       return NextResponse.json(
-        { error: "Invalid email or password." },
+        { error: "Invalid email ID." },
         { status: 401 }
       );
     }
@@ -52,7 +62,7 @@ export async function POST(request: Request) {
     const ok = await verifyPassword(parsed.data.password, user.passwordHash);
     if (!ok) {
       return NextResponse.json(
-        { error: "Invalid email or password." },
+        { error: "Wrong password." },
         { status: 401 }
       );
     }

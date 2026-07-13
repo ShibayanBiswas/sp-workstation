@@ -9,10 +9,13 @@ import {
   setPendingCookie,
 } from "@/lib/auth";
 import { resolveLoginEmail } from "@/lib/email-aliases";
+import { TEAM_MEMBERS } from "@/data/team";
 
 const schema = z.object({
   email: z.string().email(),
 });
+
+const allowedEmails = new Set(TEAM_MEMBERS.map((member) => member.email));
 
 export async function POST(request: Request) {
   try {
@@ -20,13 +23,20 @@ export async function POST(request: Request) {
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Enter a valid email address." },
+        { error: "Invalid email ID." },
         { status: 400 }
       );
     }
 
-    await connectDB();
     const email = resolveLoginEmail(parsed.data.email);
+    if (!allowedEmails.has(email)) {
+      return NextResponse.json(
+        { error: "Invalid email ID." },
+        { status: 401 }
+      );
+    }
+
+    await connectDB();
     let user = await User.findOne({ email });
     if (!user) {
       user = await User.findOne({

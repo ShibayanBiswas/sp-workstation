@@ -4,6 +4,8 @@ import type { Time } from "lightweight-charts";
 
 const IST = "Asia/Kolkata";
 
+export type AxisLabelMode = "time" | "day" | "date";
+
 /** NSE cash session: 09:15 – 15:30 IST (inclusive). */
 export function isNseSessionMinute(unixSec: number): boolean {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -51,25 +53,6 @@ export function istDateString(unixSec: number): string {
   return `${y}-${m}-${d}`;
 }
 
-export function formatIstDateTime(unixSec: number, intraday: boolean): string {
-  if (intraday) {
-    return new Date(unixSec * 1000).toLocaleString("en-IN", {
-      timeZone: IST,
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
-  return new Date(unixSec * 1000).toLocaleDateString("en-IN", {
-    timeZone: IST,
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
 function istParts(unixSec: number) {
   return new Intl.DateTimeFormat("en-GB", {
     timeZone: IST,
@@ -87,12 +70,23 @@ function part(parts: Intl.DateTimeFormatPart[], type: string) {
 }
 
 /** Compact axis label — no locale quirks, no truncation from long suffixes. */
-export function formatIstAxisLabel(unixSec: number, intraday: boolean): string {
+export function formatIstAxisLabel(
+  unixSec: number,
+  mode: AxisLabelMode
+): string {
   const parts = istParts(unixSec);
-  if (intraday) {
+  if (mode === "time") {
     const hour = part(parts, "hour");
     const minute = part(parts, "minute");
     return `${hour}:${minute}`;
+  }
+  if (mode === "day") {
+    const weekday = new Date(unixSec * 1000).toLocaleDateString("en-IN", {
+      timeZone: IST,
+      weekday: "short",
+    });
+    const day = part(parts, "day");
+    return `${weekday} ${day}`;
   }
   const day = part(parts, "day");
   const month = new Date(unixSec * 1000).toLocaleDateString("en-IN", {
@@ -100,6 +94,50 @@ export function formatIstAxisLabel(unixSec: number, intraday: boolean): string {
     month: "short",
   });
   return `${day} ${month}`;
+}
+
+/** Creates a tick formatter that shows one label per IST calendar day (for 1W). */
+export function createDayAxisTickFormatter(mode: AxisLabelMode) {
+  let lastDayKey = "";
+  return (unixSec: number): string => {
+    if (mode !== "day") {
+      return formatIstAxisLabel(unixSec, mode);
+    }
+    const dayKey = istDateString(unixSec);
+    if (dayKey === lastDayKey) return "";
+    lastDayKey = dayKey;
+    return formatIstAxisLabel(unixSec, "day");
+  };
+}
+
+export function formatIstDateTime(unixSec: number, mode: AxisLabelMode): string {
+  if (mode === "time") {
+    return new Date(unixSec * 1000).toLocaleString("en-IN", {
+      timeZone: IST,
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+  if (mode === "day") {
+    return new Date(unixSec * 1000).toLocaleString("en-IN", {
+      timeZone: IST,
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+  return new Date(unixSec * 1000).toLocaleDateString("en-IN", {
+    timeZone: IST,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export function timeToUnix(time: Time): number {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { ArrowRight, Mail } from "lucide-react";
+import { AuthDisclaimerModal } from "@/components/auth/AuthDisclaimerModal";
 import { AuthShell } from "@/components/auth/AuthShell";
 
 export function ForgotPasswordForm() {
@@ -46,32 +47,63 @@ export function ForgotPasswordForm() {
 
   return (
     <AuthShell subtitle="PASSWORD" variant="recover">
-      <div className="auth-card auth-card-premium w-full max-w-[480px] animate-rise">
+      <div className="auth-card auth-card-large animate-rise">
         <div className="auth-card-accent" aria-hidden />
-        <div className="relative">
-          <div className="auth-icon-badge mb-5">
-            <Mail size={22} strokeWidth={1.75} />
-          </div>
-          <p className="auth-eyebrow">Password update</p>
-          <h1 className="auth-title">Change your password</h1>
-          <p className="auth-lead">
-            Enter your registered email. The system will generate a verification
-            code on the next screen — no email delivery.
-          </p>
 
-          <form onSubmit={onSubmit} className="mt-8 space-y-5">
-            <div>
-              <label className="auth-label">Registered email</label>
-              <input
-                className="input-field auth-input"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@rathi.com"
-              />
-            </div>
-            {error ? <p className="auth-error">{error}</p> : null}
+        <header className="auth-header">
+          <div className="min-w-0 flex-1">
+            <p className="auth-eyebrow">Password update</p>
+            <h1 className="auth-title">Change your password</h1>
+            <p className="auth-lead">
+              Enter your registered email address. The system will generate a
+              verification code on the next screen — no email delivery required.
+            </p>
+          </div>
+          <div className="auth-icon-badge">
+            <Mail size={24} strokeWidth={1.75} />
+          </div>
+        </header>
+
+        <div className="auth-divider" />
+
+        <div className="auth-security-strip">
+          <div>
+            <span className="auth-mini-label">Verification</span>
+            <strong>On-screen OTP</strong>
+          </div>
+          <div>
+            <span className="auth-mini-label">Eligibility</span>
+            <strong>Approved IDs only</strong>
+          </div>
+        </div>
+
+        <form onSubmit={onSubmit} className="auth-form">
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="forgot-email">
+              Registered email
+            </label>
+            <input
+              id="forgot-email"
+              className="input-field auth-input w-full"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@rathi.com"
+            />
+          </div>
+
+          {error ? <p className="auth-error">{error}</p> : null}
+
+          {error === "Invalid email ID." ? (
+            <AuthDisclaimerModal
+              title="Invalid email ID"
+              message="Password changes are available only for approved Anand Rathi Wealth Structured Products email IDs."
+              onClose={() => setError("")}
+            />
+          ) : null}
+
+          <div className="auth-actions">
             <button
               type="submit"
               className="btn-primary auth-submit w-full"
@@ -80,14 +112,14 @@ export function ForgotPasswordForm() {
               {loading ? "Generating code…" : "Generate verification code"}
               {!loading ? <ArrowRight size={16} /> : null}
             </button>
-          </form>
+          </div>
+        </form>
 
-          <p className="mt-6 text-center text-sm">
-            <Link href="/login" className="auth-link">
-              ← Back to sign in
-            </Link>
-          </p>
-        </div>
+        <footer className="auth-footer">
+          <Link href="/login" className="auth-link auth-back">
+            ← Back to sign in
+          </Link>
+        </footer>
       </div>
     </AuthShell>
   );

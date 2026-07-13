@@ -7,7 +7,6 @@ import { ArrowRight, LockKeyhole } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 
 type Props = {
-  /** When true, auto-request OTP for the logged-in user. */
   fromDashboard?: boolean;
 };
 
@@ -92,6 +91,7 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
       sessionStorage.removeItem("sp_otp_preview");
       sessionStorage.removeItem("sp_login_email");
       setDone(true);
+      setLoading(false);
       setTimeout(() => router.push(data.redirect || "/login"), 1800);
     } catch {
       setError("Network error");
@@ -101,85 +101,120 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
 
   return (
     <AuthShell subtitle="NEW PASSWORD" variant="recover">
-      <div className="auth-card auth-card-premium w-full max-w-[480px] animate-rise">
+      <div className="auth-card auth-card-large animate-rise">
         <div className="auth-card-accent" aria-hidden />
-        <div className="relative">
-          <div className="auth-icon-badge mb-5">
-            <LockKeyhole size={22} strokeWidth={1.75} />
+
+        <header className="auth-header">
+          <div className="min-w-0 flex-1">
+            <p className="auth-eyebrow">Secure update</p>
+            <h1 className="auth-title">Set new password</h1>
+            <p className="auth-lead">
+              {fromDashboard
+                ? "A verification code was generated for your active session. Enter it below with your new password."
+                : "Use the verification code generated for your account, then choose a new password."}
+            </p>
           </div>
-          <p className="auth-eyebrow">Secure update</p>
-          <h1 className="auth-title">Set new password</h1>
-          <p className="auth-lead">
-            {fromDashboard
-              ? "A verification code was generated for your session."
-              : "Use the code generated for your account."}
+          <div className="auth-icon-badge">
+            <LockKeyhole size={24} strokeWidth={1.75} />
+          </div>
+        </header>
+
+        <div className="auth-divider" />
+
+        {!requesting && !done ? (
+          <div className="auth-security-strip">
+            <div>
+              <span className="auth-mini-label">Password rule</span>
+              <strong>Upper, lower, number</strong>
+            </div>
+            <div>
+              <span className="auth-mini-label">Verification</span>
+              <strong>6-digit OTP</strong>
+            </div>
+          </div>
+        ) : null}
+
+        {requesting ? (
+          <p className="py-8 text-center text-base text-[var(--fg-muted)]">
+            Generating verification code…
           </p>
-
-          {requesting ? (
-            <p className="mt-6 text-center text-sm text-[var(--fg-muted)]">
-              Generating verification code…
-            </p>
-          ) : done ? (
-            <p className="auth-success mt-6">
-              Password updated. Redirecting to sign in…
-            </p>
-          ) : (
-            <>
-              {otp ? (
-                <div className="auth-otp-display mt-6">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--fg-subtle)]">
-                    Verification code
-                    {email ? ` · ${email}` : ""}
-                  </p>
-                  <p className="auth-otp-code">{otp}</p>
-                </div>
-              ) : (
-                <p className="auth-error mt-6">
-                  No code available.{" "}
-                  <Link href="/forgot-password" className="auth-link underline">
-                    Request one
-                  </Link>
-                  .
+        ) : done ? (
+          <p className="auth-success my-6">
+            Password updated. Redirecting to sign in…
+          </p>
+        ) : (
+          <>
+            {otp ? (
+              <div className="auth-otp-panel">
+                <p className="auth-otp-caption">
+                  Verification code{email ? ` · ${email}` : ""}
                 </p>
-              )}
+                <p className="auth-otp-code">{otp}</p>
+              </div>
+            ) : (
+              <p className="auth-error">
+                No code available.{" "}
+                <Link href="/forgot-password" className="auth-link underline">
+                  Request one
+                </Link>
+                .
+              </p>
+            )}
 
-              <form onSubmit={onSubmit} className="mt-8 space-y-5">
-                <div>
-                  <label className="auth-label">Enter code</label>
+            <form onSubmit={onSubmit} className="auth-form mt-8">
+              <div className="auth-field">
+                <label className="auth-label" htmlFor="change-code">
+                  Enter code
+                </label>
+                <input
+                  id="change-code"
+                  className="input-field auth-input auth-otp-input w-full !text-left !tracking-[0.28em]"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={code}
+                  onChange={(e) =>
+                    setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  required
+                />
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="auth-field">
+                  <label className="auth-label" htmlFor="new-password">
+                    New password
+                  </label>
                   <input
-                    className="input-field auth-input auth-otp-input !text-left !text-lg !tracking-[0.3em]"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={code}
-                    onChange={(e) =>
-                      setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                    }
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="auth-label">New password</label>
-                  <input
-                    className="input-field auth-input"
+                    id="new-password"
+                    className="input-field auth-input w-full"
                     type="password"
                     required
                     minLength={8}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Min. 8 characters"
                   />
                 </div>
-                <div>
-                  <label className="auth-label">Confirm password</label>
+                <div className="auth-field">
+                  <label className="auth-label" htmlFor="confirm-password">
+                    Confirm password
+                  </label>
                   <input
-                    className="input-field auth-input"
+                    id="confirm-password"
+                    className="input-field auth-input w-full"
                     type="password"
                     required
                     minLength={8}
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
+                    placeholder="Re-enter password"
                   />
                 </div>
-                {error ? <p className="auth-error">{error}</p> : null}
+              </div>
+
+              {error ? <p className="auth-error">{error}</p> : null}
+
+              <div className="auth-actions">
                 <button
                   type="submit"
                   className="btn-primary auth-submit w-full"
@@ -188,19 +223,19 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
                   {loading ? "Updating…" : "Update password"}
                   {!loading ? <ArrowRight size={16} /> : null}
                 </button>
-              </form>
-            </>
-          )}
+              </div>
+            </form>
+          </>
+        )}
 
-          <p className="mt-6 text-center text-sm">
-            <Link
-              href={fromDashboard ? "/dashboard" : "/login"}
-              className="auth-link"
-            >
-              ← {fromDashboard ? "Back to dashboard" : "Back to sign in"}
-            </Link>
-          </p>
-        </div>
+        <footer className="auth-footer">
+          <Link
+            href={fromDashboard ? "/dashboard" : "/login"}
+            className="auth-link auth-back"
+          >
+            ← {fromDashboard ? "Back to dashboard" : "Back to sign in"}
+          </Link>
+        </footer>
       </div>
     </AuthShell>
   );

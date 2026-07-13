@@ -34,8 +34,8 @@ export function AuthShell({
         </div>
       </header>
 
-      <main className="relative z-10 flex flex-1 items-center justify-center px-5 pb-14 md:px-12">
-        {children}
+      <main className="relative z-10 flex w-full flex-1 items-center justify-center px-5 py-10 md:px-10 md:py-14">
+        <div className="auth-card-wrap w-full">{children}</div>
       </main>
 
       <footer className="relative z-10 border-t border-[color-mix(in_srgb,var(--gold)_12%,var(--border))] px-6 py-6 text-center md:px-12">

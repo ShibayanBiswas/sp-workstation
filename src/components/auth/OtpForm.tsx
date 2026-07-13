@@ -43,6 +43,7 @@ export function OtpForm() {
       }
       sessionStorage.removeItem("sp_otp_preview");
       sessionStorage.removeItem("sp_login_email");
+      setLoading(false);
       router.push(data.redirect || "/dashboard");
     } catch {
       setError("Verification failed. Returning to login…");
@@ -53,55 +54,72 @@ export function OtpForm() {
 
   return (
     <AuthShell subtitle="VERIFICATION" variant="verify">
-      <div className="auth-card auth-card-premium w-full max-w-[480px] animate-rise">
+      <div className="auth-card auth-card-large animate-rise">
         <div className="auth-card-accent" aria-hidden />
-        <div className="relative text-center">
-          <div className="auth-icon-badge mx-auto mb-5 h-16 w-16">
-            <KeyRound size={28} strokeWidth={1.75} />
+
+        <header className="auth-header auth-header-centered">
+          <div className="auth-icon-badge auth-icon-badge-lg">
+            <KeyRound size={30} strokeWidth={1.75} />
           </div>
-          <p className="auth-eyebrow">Step 2 of 2</p>
+          <p className="auth-eyebrow mt-5">Step 2 of 2</p>
           <h1 className="auth-title">Verify access</h1>
-          <p className="auth-lead mx-auto max-w-sm">
+          <p className="auth-lead">
             Enter the 6-digit code generated for{" "}
             <span className="font-semibold text-[var(--gold-deep)] dark:text-[var(--gold-soft)]">
               {email || "your account"}
             </span>
           </p>
+        </header>
 
-          {otp ? (
-            <div className="auth-otp-display mt-6">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--fg-subtle)]">
-                Your verification code
-              </p>
-              <p className="auth-otp-code">{otp}</p>
-              <p className="mt-2 text-[11px] text-[var(--fg-subtle)]">
-                Valid for 10 minutes · IST
-              </p>
-            </div>
-          ) : (
-            <p className="auth-error mt-6">
-              Code unavailable. Return to sign in and try again.
+        <div className="auth-divider" />
+
+        <div className="auth-security-strip auth-security-strip-centered">
+          <div>
+            <span className="auth-mini-label">Generated locally</span>
+            <strong>No email delivery</strong>
+          </div>
+          <div>
+            <span className="auth-mini-label">Validity</span>
+            <strong>10 minutes</strong>
+          </div>
+        </div>
+
+        {otp ? (
+          <div className="auth-otp-panel">
+            <p className="auth-otp-caption">Your verification code</p>
+            <p className="auth-otp-code">{otp}</p>
+            <p className="mt-3 text-sm text-[var(--fg-subtle)]">
+              Valid for 10 minutes · IST
             </p>
-          )}
+          </div>
+        ) : (
+          <p className="auth-error">Code unavailable. Return to sign in and try again.</p>
+        )}
 
-          <form onSubmit={onSubmit} className="mt-8 space-y-5 text-left">
-            <div>
-              <label className="auth-label text-center">Enter code</label>
-              <input
-                className="input-field auth-input auth-otp-input"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                placeholder="000000"
-                value={code}
-                onChange={(e) =>
-                  setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                }
-                required
-                autoFocus
-              />
-            </div>
-            {error ? <p className="auth-error">{error}</p> : null}
+        <form onSubmit={onSubmit} className="auth-form mt-8">
+          <div className="auth-field">
+            <label className="auth-label text-center" htmlFor="otp-code">
+              Enter code
+            </label>
+            <input
+              id="otp-code"
+              className="input-field auth-input auth-otp-input w-full"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              placeholder="000000"
+              value={code}
+              onChange={(e) =>
+                setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              required
+              autoFocus
+            />
+          </div>
+
+          {error ? <p className="auth-error">{error}</p> : null}
+
+          <div className="auth-actions">
             <button
               type="submit"
               className="btn-primary auth-submit w-full"
@@ -110,14 +128,14 @@ export function OtpForm() {
               {loading ? "Verifying…" : "Enter workstation"}
               {!loading ? <ArrowRight size={16} /> : null}
             </button>
-          </form>
+          </div>
+        </form>
 
-          <p className="mt-6 text-sm">
-            <Link href="/login" className="auth-link">
-              ← Back to sign in
-            </Link>
-          </p>
-        </div>
+        <footer className="auth-footer">
+          <Link href="/login" className="auth-link auth-back">
+            ← Back to sign in
+          </Link>
+        </footer>
       </div>
     </AuthShell>
   );

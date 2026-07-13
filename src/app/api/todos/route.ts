@@ -42,8 +42,10 @@ export async function POST(request: Request) {
   return NextResponse.json({ todo });
 }
 
+const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid id");
+
 const patchSchema = z.object({
-  id: z.string(),
+  id: objectId,
   completed: z.boolean().optional(),
   title: z.string().min(1).max(200).optional(),
   priority: z.enum(["low", "medium", "high"]).optional(),
@@ -83,8 +85,8 @@ export async function DELETE(request: Request) {
   }
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
-  if (!id) {
-    return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  if (!id || !objectId.safeParse(id).success) {
+    return NextResponse.json({ error: "Missing or invalid id" }, { status: 400 });
   }
   await connectDB();
   await Todo.deleteOne({ _id: id, userId: session.userId });

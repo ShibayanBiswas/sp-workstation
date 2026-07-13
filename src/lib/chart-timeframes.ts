@@ -1,3 +1,5 @@
+import type { AxisLabelMode } from "@/lib/chart-ist";
+
 export type ChartTimeframeId =
   | "1D"
   | "1W"
@@ -14,6 +16,8 @@ export type ChartTimeframe = {
   /** Yahoo `range` for the initial historical fetch. */
   range: string;
   intraday: boolean;
+  /** X-axis and crosshair label style (independent of intraday bar filtering). */
+  axisLabelMode: AxisLabelMode;
   /** Yahoo rejects some interval+range pairs — try these if the primary fails. */
   fallbacks?: Array<{ interval: string; range: string }>;
   /** Bars visible when zoom/pan mode is enabled (TradingView-style window). */
@@ -27,9 +31,10 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     id: "1D",
     label: "1D",
     interval: "5m",
-    range: "1mo",
-    fallbacks: [{ interval: "5m", range: "5d" }],
+    range: "5d",
+    fallbacks: [{ interval: "5m", range: "1mo" }],
     intraday: true,
+    axisLabelMode: "time",
     defaultVisibleBars: 78,
     historyChunkSec: 30 * 24 * 3600,
   },
@@ -43,6 +48,7 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
       { interval: "15m", range: "5d" },
     ],
     intraday: true,
+    axisLabelMode: "day",
     defaultVisibleBars: 130,
     historyChunkSec: 60 * 24 * 3600,
   },
@@ -52,6 +58,7 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     interval: "1d",
     range: "6mo",
     intraday: false,
+    axisLabelMode: "date",
     defaultVisibleBars: 90,
     historyChunkSec: 180 * 24 * 3600,
   },
@@ -61,6 +68,7 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     interval: "1d",
     range: "2y",
     intraday: false,
+    axisLabelMode: "date",
     defaultVisibleBars: 120,
     historyChunkSec: 365 * 24 * 3600,
   },
@@ -70,6 +78,7 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     interval: "1d",
     range: "5y",
     intraday: false,
+    axisLabelMode: "date",
     defaultVisibleBars: 150,
     historyChunkSec: 365 * 24 * 3600,
   },
@@ -79,6 +88,7 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     interval: "1d",
     range: "5y",
     intraday: false,
+    axisLabelMode: "date",
     defaultVisibleBars: 200,
     historyChunkSec: 2 * 365 * 24 * 3600,
   },
@@ -88,6 +98,7 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     interval: "1wk",
     range: "max",
     intraday: false,
+    axisLabelMode: "date",
     defaultVisibleBars: 260,
     historyChunkSec: 5 * 365 * 24 * 3600,
   },

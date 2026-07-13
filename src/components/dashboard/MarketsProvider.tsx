@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { INDIAN_MARKET_INDICES, sortByDisplayOrder } from "@/data/indian-markets";
+import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 
 export type MarketQuote = {
@@ -70,11 +71,14 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
   const prevPrices = useRef<Map<string, number>>(new Map());
+  const inFlight = useRef(false);
   const [selectedIndexId, setSelectedIndexId] = useState(
     INDIAN_MARKET_INDICES[0].id
   );
 
   const refresh = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     try {
       const res = await fetch("/api/markets", {
         cache: "no-store",
@@ -99,6 +103,7 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     } finally {
+      inFlight.current = false;
       setLoading(false);
     }
   }, []);
@@ -107,7 +112,7 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
     const frame = window.requestAnimationFrame(() => {
       void refresh();
     });
-    const id = setInterval(refresh, 30_000);
+    const id = setInterval(refresh, LIVE_REFRESH_MS);
     return () => {
       window.cancelAnimationFrame(frame);
       clearInterval(id);

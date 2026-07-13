@@ -126,18 +126,32 @@ curl -X POST "https://YOUR-PROJECT.vercel.app/api/auth/seed" \
 
 ---
 
-## Step 7 — Production checklist
+## Step 7 — Live market data
+
+Prices, returns, sparklines, and the candlestick chart **refresh automatically every
+60 seconds** while the dashboard is open. Overlapping fetches are skipped so the
+UI stays responsive (no hang on slow Yahoo responses).
+
+- Tape + index cards: `MarketsProvider` polls `/api/markets` every minute.
+- Chart: `CandlestickChart` polls `/api/chart` every minute for the active symbol.
+- Interval constant: `src/lib/live-refresh.ts` → `LIVE_REFRESH_MS = 60_000`.
+
+No extra env vars or cron jobs are required.
+
+---
+
+## Step 8 — Production checklist
 
 - [ ] Login → OTP on screen → dashboard works
 - [ ] Change password flow works (login + dashboard paths)
-- [ ] Live tape and chart show prices when logged in
+- [ ] Live tape and chart show prices when logged in; values update within ~1 min
 - [ ] MongoDB Atlas shows users after seed
 - [ ] Primary SP Dashboard modules open
 - [ ] Optional: remove `SEED_DEFAULT_PASSWORD_MAP` after all users provisioned
 
 ---
 
-## Step 8 — Local development
+## Step 9 — Local development
 
 ```bash
 cp .env.example .env.local

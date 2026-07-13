@@ -18,12 +18,13 @@ import {
   type ChartTimeframeId,
 } from "@/lib/chart-timeframes";
 import {
-  formatIstAxisLabel,
+  createDayAxisTickFormatter,
   formatIstDateTime,
   formatIstHeaderTime,
   timeToUnix,
 } from "@/lib/chart-ist";
 import { buildChartSeries } from "@/lib/chart-series";
+import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
 import type { OhlcBar } from "@/lib/yahoo-ohlc";
 
 type ThemeMode = "light" | "dark";
@@ -42,7 +43,9 @@ type Props = {
 const TV_FONT =
   "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif";
 
-const REFRESH_MS = 30_000;
+function shouldShowRecentWindow(zoomEnabled: boolean, tf: ChartTimeframe) {
+  return zoomEnabled || tf.intraday;
+}
 
 function chartColors(theme: ThemeMode) {
   if (theme === "dark") {
@@ -218,7 +221,7 @@ export function CandlestickChart({
     chart.applyOptions(chartInteractionOptions(zoomEnabled));
     const count = barCountRef.current;
     if (count > 0) {
-      if (zoomEnabled) {
+      if (shouldShowRecentWindow(zoomEnabled, tfRef.current)) {
         showRecentWindow(chart, count, tfRef.current);
       } else {
         fitChartFullWidth(chart, container, count);
@@ -238,6 +241,8 @@ export function CandlestickChart({
     hasMoreRef.current = true;
     loadingHistoryRef.current = false;
     barCountRef.current = 0;
+
+    const axisTickFormatter = createDayAxisTickFormatter(tf.axisLabelMode);
 
     const chart = createChart(container, {
       layout: {
@@ -261,15 +266,15 @@ export function CandlestickChart({
         rightOffset: 0,
         fixLeftEdge: !zoomRef.current,
         fixRightEdge: !zoomRef.current,
-        tickMarkMaxCharacterLength: 10,
+        tickMarkMaxCharacterLength: tf.axisLabelMode === "day" ? 8 : 10,
         tickMarkFormatter: (time: Time) =>
-          formatIstAxisLabel(timeToUnix(time), tf.intraday),
+          axisTickFormatter(timeToUnix(time)),
       },
       localization: {
         locale: "en-IN",
         dateFormat: "dd MMM 'yy",
         timeFormatter: (time: Time) =>
-          `${formatIstDateTime(timeToUnix(time), tf.intraday)} IST`,
+          `${formatIstDateTime(timeToUnix(time), tf.axisLabelMode)} IST`,
       },
       crosshair: {
         mode: 1,
@@ -329,7 +334,7 @@ export function CandlestickChart({
       const item = (label: string, value: string) =>
         `<span style="color:${colors.muted}">${label}</span>&nbsp;<span style="color:${priceColor};font-weight:600">${value}</span>`;
       const timeLabel =
-        hoverUnix > 0 ? formatIstDateTime(hoverUnix, tf.intraday) : "";
+        hoverUnix > 0 ? formatIstDateTime(hoverUnix, tf.axisLabelMode) : "";
       el.innerHTML = `
         <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-family:${TV_FONT};font-size:12px">
           ${timeLabel ? `<span style="color:${colors.muted}">${timeLabel} IST</span>` : ""}
@@ -369,7 +374,7 @@ export function CandlestickChart({
         });
       } else if (opts.preserveRange && visibleRange) {
         chart.timeScale().setVisibleLogicalRange(visibleRange);
-      } else if (zoomRef.current) {
+      } else if (shouldShowRecentWindow(zoomRef.current, tf)) {
         showRecentWindow(chart, candles.length, tf);
       } else {
         fitChartFullWidth(chart, container, candles.length);
@@ -428,7 +433,11 @@ export function CandlestickChart({
 
     chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeChange);
 
+    let pollInFlight = false;
+
     const loadData = async (silent: boolean) => {
+      if (silent && pollInFlight) return;
+      if (silent) pollInFlight = true;
       if (!silent) {
         setLoading(true);
         setError("");
@@ -514,6 +523,7 @@ export function CandlestickChart({
       } catch {
         if (!silent && alive) setError("Failed to load chart data.");
       } finally {
+        if (silent) pollInFlight = false;
         if (!silent && alive) setLoading(false);
       }
     };
@@ -532,15 +542,18 @@ export function CandlestickChart({
       renderLegend(candle ?? lastCandle, hoverUnix);
       setHeader((h) => ({
         ...h,
-        hoverTime: formatIstDateTime(hoverUnix, tf.intraday),
+        hoverTime: formatIstDateTime(hoverUnix, tf.axisLabelMode),
       }));
     });
 
     void loadData(false);
-    const pollId = setInterval(() => void loadData(true), REFRESH_MS);
+    const pollId = setInterval(() => void loadData(true), LIVE_REFRESH_MS);
 
     const resizeObs = new ResizeObserver(() => {
-      if (!zoomRef.current && barCountRef.current > 0) {
+      if (
+        !shouldShowRecentWindow(zoomRef.current, tf) &&
+        barCountRef.current > 0
+      ) {
         fitChartFullWidth(chart, container, barCountRef.current);
       }
     });
@@ -587,7 +600,7 @@ export function CandlestickChart({
               ? `${header.hoverTime} IST`
               : header.asOf
                 ? `Last update · ${header.asOf} IST`
-                : "Live · refreshes every 30s · axis in IST"}
+                : "Live · refreshes every minute · axis in IST"}
           </p>
         </div>
         <button

@@ -10,7 +10,6 @@ import {
   Moon,
   Sun,
   BarChart3,
-  KeyRound,
 } from "lucide-react";
 import { MODULES } from "@/data/modules";
 import { useTheme } from "@/components/theme/ThemeProvider";
@@ -133,13 +132,6 @@ export function Sidebar({ userName, userEmail }: Props) {
           </div>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/change-password"
-            className="btn-ghost flex flex-1 items-center justify-center gap-2 text-sm"
-          >
-            <KeyRound size={16} />
-            Password
-          </Link>
           <button
             type="button"
             className="btn-ghost flex flex-1 items-center justify-center gap-2 text-sm"
