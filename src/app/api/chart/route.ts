@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { getTimeframe } from "@/lib/chart-timeframes";
-import { fetchYahooOhlc, fetchYahooLiveQuote } from "@/lib/yahoo-ohlc";
+import {
+  fetchYahooOhlc,
+  fetchYahooOhlcBefore,
+  fetchYahooLiveQuote,
+} from "@/lib/yahoo-ohlc";
 import { INDIAN_MARKET_INDICES, getIndexById } from "@/data/indian-markets";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +14,7 @@ export const dynamic = "force-dynamic";
 const querySchema = z.object({
   indexId: z.string().min(1),
   timeframe: z.string().optional().default("1D"),
+  before: z.coerce.number().int().positive().optional(),
 });
 
 export async function GET(req: Request) {
@@ -19,9 +24,11 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
+  const beforeRaw = searchParams.get("before");
   const parsed = querySchema.safeParse({
     indexId: searchParams.get("indexId"),
     timeframe: searchParams.get("timeframe") ?? "1D",
+    before: beforeRaw ? Number(beforeRaw) : undefined,
   });
 
   if (!parsed.success) {
@@ -33,16 +40,40 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unknown index" }, { status: 400 });
   }
   const timeframe = getTimeframe(parsed.data.timeframe);
-  const ohlc = await fetchYahooOhlc(index.yahoo, timeframe);
+  const isHistory = parsed.data.before != null;
+  const ohlc = isHistory
+    ? await fetchYahooOhlcBefore(index.yahoo, timeframe, parsed.data.before!)
+    : await fetchYahooOhlc(index.yahoo, timeframe);
 
-  if (!ohlc) {
+  if (!ohlc || ohlc.bars.length === 0) {
     return NextResponse.json(
-      { error: "Chart data unavailable", bars: [] },
-      { status: 503 }
+      {
+        error: isHistory ? "No older history" : "Chart data unavailable",
+        bars: [],
+        hasMore: false,
+      },
+      { status: isHistory ? 200 : 503 }
     );
   }
 
   const lastBar = ohlc.bars[ohlc.bars.length - 1];
+  const earliest = ohlc.bars[0].time;
+  const hasMore = isHistory
+    ? ohlc.bars.length > 1
+    : earliest > timeframe.historyChunkSec;
+
+  if (isHistory) {
+    return NextResponse.json({
+      indexId: index.id,
+      name: index.name,
+      timeframe: timeframe.id,
+      bars: ohlc.bars,
+      hasMore,
+      earliestTime: earliest,
+      asOf: new Date().toISOString(),
+    });
+  }
+
   const prevBar = ohlc.bars.length > 1 ? ohlc.bars[ohlc.bars.length - 2] : null;
   let price = lastBar.close;
   let change = prevBar ? price - prevBar.close : 0;
@@ -62,6 +93,8 @@ export async function GET(req: Request) {
     name: index.name,
     timeframe: timeframe.id,
     bars: ohlc.bars,
+    hasMore,
+    earliestTime: earliest,
     currency: ohlc.currency,
     exchange: ohlc.exchange,
     last: {

@@ -171,6 +171,11 @@ export function LiveCharts() {
         >
           {marketStatusLabel(marketStatus)} · IST
         </span>
+        {zoomEnabled ? (
+          <span className="text-[10px] text-[var(--fg-subtle)]">
+            Scroll left for history · wheel to zoom
+          </span>
+        ) : null}
       </div>
 
       {mounted ? (

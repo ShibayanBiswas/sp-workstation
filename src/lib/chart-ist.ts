@@ -62,20 +62,36 @@ export function formatIstDateTime(unixSec: number, intraday: boolean): string {
   });
 }
 
-export function formatIstAxisLabel(unixSec: number, intraday: boolean): string {
-  if (intraday) {
-    return new Date(unixSec * 1000).toLocaleTimeString("en-IN", {
-      timeZone: IST,
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
-  return new Date(unixSec * 1000).toLocaleDateString("en-IN", {
+function istParts(unixSec: number) {
+  return new Intl.DateTimeFormat("en-GB", {
     timeZone: IST,
+    year: "numeric",
+    month: "2-digit",
     day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(unixSec * 1000));
+}
+
+function part(parts: Intl.DateTimeFormatPart[], type: string) {
+  return parts.find((p) => p.type === type)?.value ?? "";
+}
+
+/** Compact axis label — no locale quirks, no truncation from long suffixes. */
+export function formatIstAxisLabel(unixSec: number, intraday: boolean): string {
+  const parts = istParts(unixSec);
+  if (intraday) {
+    const hour = part(parts, "hour");
+    const minute = part(parts, "minute");
+    return `${hour}:${minute}`;
+  }
+  const day = part(parts, "day");
+  const month = new Date(unixSec * 1000).toLocaleDateString("en-IN", {
+    timeZone: IST,
     month: "short",
   });
+  return `${day} ${month}`;
 }
 
 export function timeToUnix(time: Time): number {

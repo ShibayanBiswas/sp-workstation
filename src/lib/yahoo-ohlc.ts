@@ -179,6 +179,18 @@ export async function fetchYahooLiveQuote(
   return quote;
 }
 
+function ohlcPath(
+  yahooSymbol: string,
+  timeframe: ChartTimeframe,
+  period?: { from: number; to: number }
+): string {
+  const base = `/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=${timeframe.interval}&includePrePost=false&events=div%2Csplits`;
+  if (period) {
+    return `${base}&period1=${period.from}&period2=${period.to}`;
+  }
+  return `${base}&range=${timeframe.range}`;
+}
+
 export async function fetchYahooOhlc(
   yahooSymbol: string,
   timeframe: ChartTimeframe
@@ -187,13 +199,41 @@ export async function fetchYahooOhlc(
   const cached = getCached<OhlcResult>(cacheKey);
   if (cached) return cached;
 
-  const path = `/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=${timeframe.interval}&range=${timeframe.range}&includePrePost=false&events=div%2Csplits`;
-  const data = await fetchYahooJson(path);
+  const data = await fetchYahooJson(ohlcPath(yahooSymbol, timeframe));
   if (!data) return null;
 
   const parsed = parseYahooPayload(data, timeframe.intraday);
   if (parsed) setCached(cacheKey, parsed);
   return parsed;
+}
+
+/** Fetch older candles before `beforeUnix` for scroll-back history. */
+export async function fetchYahooOhlcBefore(
+  yahooSymbol: string,
+  timeframe: ChartTimeframe,
+  beforeUnix: number
+): Promise<OhlcResult | null> {
+  const period2 = Math.max(beforeUnix - 1, 0);
+  const period1 = Math.max(period2 - timeframe.historyChunkSec, 0);
+  const cacheKey = `ohlc:${yahooSymbol}:${timeframe.id}:before:${period1}:${period2}`;
+  const cached = getCached<OhlcResult>(cacheKey);
+  if (cached) return cached;
+
+  const data = await fetchYahooJson(
+    ohlcPath(yahooSymbol, timeframe, { from: period1, to: period2 })
+  );
+  if (!data) return null;
+
+  const parsed = parseYahooPayload(data, timeframe.intraday);
+  if (parsed) setCached(cacheKey, parsed);
+  return parsed;
+}
+
+export function mergeOhlcBars(existing: OhlcBar[], older: OhlcBar[]): OhlcBar[] {
+  const byTime = new Map<number, OhlcBar>();
+  for (const bar of older) byTime.set(bar.time, bar);
+  for (const bar of existing) byTime.set(bar.time, bar);
+  return [...byTime.values()].sort((a, b) => a.time - b.time);
 }
 
 /** Compact closes for sparklines — skips nulls, keeps order. */

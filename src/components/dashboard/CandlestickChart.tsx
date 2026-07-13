@@ -7,12 +7,14 @@ import {
   type CandlestickData,
   type IChartApi,
   type ISeriesApi,
+  type LogicalRange,
   type MouseEventParams,
   type Time,
 } from "lightweight-charts";
 import { Loader2, RefreshCw } from "lucide-react";
 import {
   getTimeframe,
+  type ChartTimeframe,
   type ChartTimeframeId,
 } from "@/lib/chart-timeframes";
 import {
@@ -83,27 +85,6 @@ function fmtPct(n: number) {
   return `${sign}${n.toFixed(2)}%`;
 }
 
-function fitChartFullWidth(
-  chart: IChartApi,
-  container: HTMLDivElement,
-  barCount: number,
-  locked: boolean
-) {
-  if (!locked) return;
-  const scaleWidth = 72;
-  const width = Math.max(container.clientWidth - scaleWidth, 200);
-  const spacing = Math.max(4, Math.min(14, width / Math.max(barCount, 1)));
-  chart.applyOptions({
-    timeScale: {
-      rightOffset: 0,
-      fixLeftEdge: true,
-      fixRightEdge: true,
-      barSpacing: spacing,
-    },
-  });
-  chart.timeScale().fitContent();
-}
-
 function chartInteractionOptions(zoomEnabled: boolean) {
   return {
     handleScroll: {
@@ -124,6 +105,52 @@ function chartInteractionOptions(zoomEnabled: boolean) {
   };
 }
 
+function fitChartFullWidth(
+  chart: IChartApi,
+  container: HTMLDivElement,
+  barCount: number
+) {
+  const scaleWidth = 72;
+  const width = Math.max(container.clientWidth - scaleWidth, 200);
+  const spacing = Math.max(4, Math.min(14, width / Math.max(barCount, 1)));
+  chart.applyOptions({
+    timeScale: {
+      rightOffset: 0,
+      fixLeftEdge: true,
+      fixRightEdge: true,
+      barSpacing: spacing,
+    },
+  });
+  chart.timeScale().fitContent();
+}
+
+function showRecentWindow(
+  chart: IChartApi,
+  barCount: number,
+  tf: ChartTimeframe
+) {
+  const visible = Math.min(tf.defaultVisibleBars, Math.max(barCount - 1, 1));
+  chart.applyOptions({
+    timeScale: {
+      fixLeftEdge: false,
+      fixRightEdge: false,
+      barSpacing: 8,
+      rightOffset: 8,
+    },
+  });
+  chart.timeScale().setVisibleLogicalRange({
+    from: Math.max(barCount - visible, 0),
+    to: barCount + 2,
+  });
+}
+
+function mergeBars(existing: OhlcBar[], incoming: OhlcBar[]): OhlcBar[] {
+  const byTime = new Map<number, OhlcBar>();
+  for (const bar of incoming) byTime.set(bar.time, bar);
+  for (const bar of existing) byTime.set(bar.time, bar);
+  return [...byTime.values()].sort((a, b) => a.time - b.time);
+}
+
 export function CandlestickChart({
   indexId,
   timeframe,
@@ -140,6 +167,10 @@ export function CandlestickChart({
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const zoomRef = useRef(zoomEnabled);
+  const tfRef = useRef(getTimeframe(timeframe));
+  const barsRef = useRef<OhlcBar[]>([]);
+  const hasMoreRef = useRef(true);
+  const loadingHistoryRef = useRef(false);
   const barCountRef = useRef(0);
   const prevPriceRef = useRef<number | null>(null);
 
@@ -185,8 +216,13 @@ export function CandlestickChart({
     if (!chart || !container) return;
 
     chart.applyOptions(chartInteractionOptions(zoomEnabled));
-    if (!zoomEnabled && barCountRef.current > 0) {
-      fitChartFullWidth(chart, container, barCountRef.current, true);
+    const count = barCountRef.current;
+    if (count > 0) {
+      if (zoomEnabled) {
+        showRecentWindow(chart, count, tfRef.current);
+      } else {
+        fitChartFullWidth(chart, container, count);
+      }
     }
   }, [zoomEnabled]);
 
@@ -196,7 +232,12 @@ export function CandlestickChart({
 
     let alive = true;
     const tf = getTimeframe(timeframe);
+    tfRef.current = tf;
     const colors = chartColors(theme);
+    barsRef.current = [];
+    hasMoreRef.current = true;
+    loadingHistoryRef.current = false;
+    barCountRef.current = 0;
 
     const chart = createChart(container, {
       layout: {
@@ -220,18 +261,15 @@ export function CandlestickChart({
         rightOffset: 0,
         fixLeftEdge: !zoomRef.current,
         fixRightEdge: !zoomRef.current,
-        tickMarkFormatter: (time: Time) => {
-          const label = formatIstAxisLabel(timeToUnix(time), tf.intraday);
-          return tf.intraday ? `${label} IST` : label;
-        },
+        tickMarkMaxCharacterLength: 10,
+        tickMarkFormatter: (time: Time) =>
+          formatIstAxisLabel(timeToUnix(time), tf.intraday),
       },
       localization: {
         locale: "en-IN",
         dateFormat: "dd MMM 'yy",
-        timeFormatter: (time: Time) => {
-          const label = formatIstAxisLabel(timeToUnix(time), tf.intraday);
-          return tf.intraday ? `${label} IST` : label;
-        },
+        timeFormatter: (time: Time) =>
+          `${formatIstDateTime(timeToUnix(time), tf.intraday)} IST`,
       },
       crosshair: {
         mode: 1,
@@ -302,6 +340,95 @@ export function CandlestickChart({
         </div>`;
     };
 
+    const applyBars = (
+      bars: OhlcBar[],
+      opts: { preserveRange?: boolean; prependCount?: number } = {}
+    ) => {
+      const prevCount = barCountRef.current;
+      const visibleRange = opts.preserveRange
+        ? chart.timeScale().getVisibleLogicalRange()
+        : null;
+
+      const { candles, volumes } = buildChartSeries(
+        bars,
+        tf.intraday,
+        colors.volumeUp,
+        colors.volumeDown
+      );
+
+      candleSeries.setData(candles);
+      volumeSeries.setData(volumes);
+      barsRef.current = bars;
+      barCountRef.current = candles.length;
+
+      if (candles.length === 0) return;
+
+      if (opts.prependCount && opts.prependCount > 0 && visibleRange) {
+        chart.timeScale().setVisibleLogicalRange({
+          from: visibleRange.from + opts.prependCount,
+          to: visibleRange.to + opts.prependCount,
+        });
+      } else if (opts.preserveRange && visibleRange) {
+        chart.timeScale().setVisibleLogicalRange(visibleRange);
+      } else if (zoomRef.current) {
+        showRecentWindow(chart, candles.length, tf);
+      } else {
+        fitChartFullWidth(chart, container, candles.length);
+      }
+
+      lastCandle = candles[candles.length - 1];
+      lastUnix = bars[bars.length - 1].time;
+      renderLegend(lastCandle, lastUnix);
+    };
+
+    const loadOlderHistory = async () => {
+      if (
+        !alive ||
+        !zoomRef.current ||
+        loadingHistoryRef.current ||
+        !hasMoreRef.current
+      ) {
+        return;
+      }
+      const earliest = barsRef.current[0]?.time;
+      if (!earliest) return;
+
+      loadingHistoryRef.current = true;
+      try {
+        const res = await fetch(
+          `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}&before=${earliest}`,
+          { cache: "no-store", credentials: "include" }
+        );
+        const data = await res.json();
+        if (!alive || !res.ok || !data.bars?.length) {
+          hasMoreRef.current = false;
+          return;
+        }
+
+        const older = data.bars as OhlcBar[];
+        const merged = mergeBars(barsRef.current, older);
+        const added = merged.length - barsRef.current.length;
+        if (added <= 0) {
+          hasMoreRef.current = Boolean(data.hasMore);
+          return;
+        }
+
+        hasMoreRef.current = Boolean(data.hasMore);
+        applyBars(merged, { preserveRange: true, prependCount: added });
+      } catch {
+        /* ignore — user can scroll again */
+      } finally {
+        loadingHistoryRef.current = false;
+      }
+    };
+
+    const onVisibleRangeChange = (range: LogicalRange | null) => {
+      if (!range || !zoomRef.current) return;
+      if (range.from < 30) void loadOlderHistory();
+    };
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeChange);
+
     const loadData = async (silent: boolean) => {
       if (!silent) {
         setLoading(true);
@@ -327,54 +454,64 @@ export function CandlestickChart({
           return;
         }
 
-        const bars = data.bars as OhlcBar[];
-        const { candles, volumes } = buildChartSeries(
-          bars,
-          tf.intraday,
-          colors.volumeUp,
-          colors.volumeDown
-        );
+        hasMoreRef.current = data.hasMore !== false;
+        const incoming = data.bars as OhlcBar[];
 
-        if (candles.length === 0) {
-          if (!silent) setError("No valid candles for this timeframe.");
-          return;
+        if (silent && barsRef.current.length > 0) {
+          const merged = mergeBars(barsRef.current, incoming);
+          const lastIncoming = incoming[incoming.length - 1];
+          const prevLast = barsRef.current[barsRef.current.length - 1];
+
+          if (
+            merged.length === barsRef.current.length &&
+            lastIncoming.time === prevLast.time
+          ) {
+            const { candles, volumes } = buildChartSeries(
+              [lastIncoming],
+              tf.intraday,
+              colors.volumeUp,
+              colors.volumeDown
+            );
+            if (candles[0]) candleSeries.update(candles[0]);
+            if (volumes[0]) volumeSeries.update(volumes[0]);
+            barsRef.current = merged;
+            lastCandle = candles[0] ?? lastCandle;
+            lastUnix = lastIncoming.time;
+          } else {
+            applyBars(merged, { preserveRange: true });
+          }
+        } else {
+          applyBars(incoming);
         }
-
-        candleSeries.setData(candles);
-        volumeSeries.setData(volumes);
-        barCountRef.current = candles.length;
-        fitChartFullWidth(chart, container, candles.length, !zoomRef.current);
-
-        lastCandle = candles[candles.length - 1];
-        lastUnix = bars[bars.length - 1].time;
-        renderLegend(lastCandle, lastUnix);
 
         const last = data.last;
-        const up = (last?.change ?? 0) >= 0;
-        const newPrice = last?.price as number | undefined;
+        if (last) {
+          const up = (last.change ?? 0) >= 0;
+          const newPrice = last.price as number | undefined;
 
-        if (
-          newPrice != null &&
-          prevPriceRef.current != null &&
-          prevPriceRef.current !== newPrice
-        ) {
-          setPriceFlash(true);
-          setTimeout(() => setPriceFlash(false), 700);
+          if (
+            newPrice != null &&
+            prevPriceRef.current != null &&
+            prevPriceRef.current !== newPrice
+          ) {
+            setPriceFlash(true);
+            setTimeout(() => setPriceFlash(false), 700);
+          }
+          if (newPrice != null) prevPriceRef.current = newPrice;
+
+          setHeader({
+            price: newPrice != null ? fmt(newPrice) : "—",
+            change:
+              last.change != null
+                ? `${up ? "+" : ""}${fmt(last.change)}`
+                : "—",
+            changePercent:
+              last.changePercent != null ? fmtPct(last.changePercent) : "—",
+            up,
+            asOf: last.time ? formatIstHeaderTime(last.time) : "",
+            hoverTime: "",
+          });
         }
-        if (newPrice != null) prevPriceRef.current = newPrice;
-
-        setHeader({
-          price: newPrice != null ? fmt(newPrice) : "—",
-          change:
-            last?.change != null
-              ? `${up ? "+" : ""}${fmt(last.change)}`
-              : "—",
-          changePercent:
-            last?.changePercent != null ? fmtPct(last.changePercent) : "—",
-          up,
-          asOf: last?.time ? formatIstHeaderTime(last.time) : "",
-          hoverTime: "",
-        });
       } catch {
         if (!silent && alive) setError("Failed to load chart data.");
       } finally {
@@ -404,9 +541,9 @@ export function CandlestickChart({
     const pollId = setInterval(() => void loadData(true), REFRESH_MS);
 
     const resizeObs = new ResizeObserver(() => {
-      const count = candleSeries.data().length;
-      barCountRef.current = count;
-      if (count > 0) fitChartFullWidth(chart, container, count, !zoomRef.current);
+      if (!zoomRef.current && barCountRef.current > 0) {
+        fitChartFullWidth(chart, container, barCountRef.current);
+      }
     });
     resizeObs.observe(container);
 
@@ -414,11 +551,13 @@ export function CandlestickChart({
       alive = false;
       clearInterval(pollId);
       resizeObs.disconnect();
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChange);
       chart.remove();
       chartRef.current = null;
       candleRef.current = null;
       volumeRef.current = null;
       prevPriceRef.current = null;
+      barsRef.current = [];
       barCountRef.current = 0;
     };
   }, [indexId, timeframe, theme, reloadKey]);
@@ -449,7 +588,7 @@ export function CandlestickChart({
               ? `${header.hoverTime} IST`
               : header.asOf
                 ? `Last update · ${header.asOf} IST`
-                : "Live · refreshes every 30s"}
+                : "Live · refreshes every 30s · axis in IST"}
           </p>
         </div>
         <button
