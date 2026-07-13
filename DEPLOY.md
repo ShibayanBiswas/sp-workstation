@@ -56,6 +56,7 @@ git push -u origin main
 | `SMTP_PASS` | your SMTP password |
 | `SMTP_FROM` | `SP Workstation <noreply@…>` |
 | `EMAIL_DEV_MODE` | `false` |
+| `SEED_DEFAULT_PASSWORD_MAP` | JSON from `scripts/seed-passwords.example.json` filled with real defaults |
 
 5. Click **Deploy**
 6. After deploy, seed users once:
@@ -65,7 +66,9 @@ curl -X POST https://YOUR-PROJECT.vercel.app/api/auth/seed \
   -H "x-seed-secret: YOUR_JWT_SECRET"
 ```
 
-7. Sign in with `shiabaynbiswas@rathi.com` / `Shibayan@123` → enter OTP from email → dashboard.
+7. Sign in with your team email → enter OTP from email → dashboard.
+
+> First login also auto-seeds if the users collection is empty **and** `SEED_DEFAULT_PASSWORD_MAP` (or local `scripts/seed-passwords.local.json`) is available.
 
 ## 5. Local development
 
