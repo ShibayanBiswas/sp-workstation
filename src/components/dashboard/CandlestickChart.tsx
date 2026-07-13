@@ -31,6 +31,7 @@ type Props = {
   timeframe: ChartTimeframeId;
   theme: ThemeMode;
   name: string;
+  zoomEnabled?: boolean;
   fallbackPrice?: number | null;
   fallbackChange?: number | null;
   fallbackChangePercent?: number | null;
@@ -85,8 +86,10 @@ function fmtPct(n: number) {
 function fitChartFullWidth(
   chart: IChartApi,
   container: HTMLDivElement,
-  barCount: number
+  barCount: number,
+  locked: boolean
 ) {
+  if (!locked) return;
   const scaleWidth = 72;
   const width = Math.max(container.clientWidth - scaleWidth, 200);
   const spacing = Math.max(4, Math.min(14, width / Math.max(barCount, 1)));
@@ -101,11 +104,32 @@ function fitChartFullWidth(
   chart.timeScale().fitContent();
 }
 
+function chartInteractionOptions(zoomEnabled: boolean) {
+  return {
+    handleScroll: {
+      mouseWheel: zoomEnabled,
+      pressedMouseMove: zoomEnabled,
+      horzTouchDrag: zoomEnabled,
+      vertTouchDrag: zoomEnabled,
+    },
+    handleScale: {
+      axisPressedMouseMove: zoomEnabled,
+      mouseWheel: zoomEnabled,
+      pinch: zoomEnabled,
+    },
+    timeScale: {
+      fixLeftEdge: !zoomEnabled,
+      fixRightEdge: !zoomEnabled,
+    },
+  };
+}
+
 export function CandlestickChart({
   indexId,
   timeframe,
   theme,
   name,
+  zoomEnabled = false,
   fallbackPrice,
   fallbackChange,
   fallbackChangePercent,
@@ -115,6 +139,8 @@ export function CandlestickChart({
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const zoomRef = useRef(zoomEnabled);
+  const barCountRef = useRef(0);
   const prevPriceRef = useRef<number | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -153,6 +179,18 @@ export function CandlestickChart({
         : "—";
 
   useEffect(() => {
+    zoomRef.current = zoomEnabled;
+    const chart = chartRef.current;
+    const container = containerRef.current;
+    if (!chart || !container) return;
+
+    chart.applyOptions(chartInteractionOptions(zoomEnabled));
+    if (!zoomEnabled && barCountRef.current > 0) {
+      fitChartFullWidth(chart, container, barCountRef.current, true);
+    }
+  }, [zoomEnabled]);
+
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
@@ -180,16 +218,20 @@ export function CandlestickChart({
         timeVisible: true,
         secondsVisible: false,
         rightOffset: 0,
-        fixLeftEdge: true,
-        fixRightEdge: true,
-        tickMarkFormatter: (time: Time) =>
-          formatIstAxisLabel(timeToUnix(time), tf.intraday),
+        fixLeftEdge: !zoomRef.current,
+        fixRightEdge: !zoomRef.current,
+        tickMarkFormatter: (time: Time) => {
+          const label = formatIstAxisLabel(timeToUnix(time), tf.intraday);
+          return tf.intraday ? `${label} IST` : label;
+        },
       },
       localization: {
         locale: "en-IN",
         dateFormat: "dd MMM 'yy",
-        timeFormatter: (time: Time) =>
-          formatIstAxisLabel(timeToUnix(time), tf.intraday),
+        timeFormatter: (time: Time) => {
+          const label = formatIstAxisLabel(timeToUnix(time), tf.intraday);
+          return tf.intraday ? `${label} IST` : label;
+        },
       },
       crosshair: {
         mode: 1,
@@ -206,17 +248,8 @@ export function CandlestickChart({
           labelBackgroundColor: colors.muted,
         },
       },
-      handleScroll: {
-        mouseWheel: false,
-        pressedMouseMove: false,
-        horzTouchDrag: false,
-        vertTouchDrag: false,
-      },
-      handleScale: {
-        axisPressedMouseMove: false,
-        mouseWheel: false,
-        pinch: false,
-      },
+      handleScroll: chartInteractionOptions(zoomRef.current).handleScroll,
+      handleScale: chartInteractionOptions(zoomRef.current).handleScale,
       autoSize: true,
     });
 
@@ -309,7 +342,8 @@ export function CandlestickChart({
 
         candleSeries.setData(candles);
         volumeSeries.setData(volumes);
-        fitChartFullWidth(chart, container, candles.length);
+        barCountRef.current = candles.length;
+        fitChartFullWidth(chart, container, candles.length, !zoomRef.current);
 
         lastCandle = candles[candles.length - 1];
         lastUnix = bars[bars.length - 1].time;
@@ -371,7 +405,8 @@ export function CandlestickChart({
 
     const resizeObs = new ResizeObserver(() => {
       const count = candleSeries.data().length;
-      if (count > 0) fitChartFullWidth(chart, container, count);
+      barCountRef.current = count;
+      if (count > 0) fitChartFullWidth(chart, container, count, !zoomRef.current);
     });
     resizeObs.observe(container);
 
@@ -384,6 +419,7 @@ export function CandlestickChart({
       candleRef.current = null;
       volumeRef.current = null;
       prevPriceRef.current = null;
+      barCountRef.current = 0;
     };
   }, [indexId, timeframe, theme, reloadKey]);
 

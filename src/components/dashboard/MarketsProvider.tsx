@@ -149,17 +149,17 @@ export function IndianMarketTape() {
     return (
       <div
         key={`tape-${q.id}`}
-        className={`tape-chip tape-chip-7 inline-flex shrink-0 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 ${flash ? "price-flash" : ""}`}
+        className={`tape-chip tape-chip-7 inline-flex shrink-0 items-stretch gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 ${flash ? "price-flash" : ""}`}
       >
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[11px] font-semibold text-[var(--fg)]">
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+          <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-[var(--fg)]">
             {q.name}
           </p>
-          <p className="tv-num text-sm font-semibold text-[var(--fg)]">
+          <p className="tv-num text-sm font-semibold leading-none text-[var(--fg)]">
             {fmt(q.price)}
           </p>
           <p
-            className={`tv-num text-[11px] font-semibold ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+            className={`tv-num text-[11px] font-semibold leading-tight ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
           >
             {up ? "▲" : "▼"} {up ? "+" : ""}
             {fmt(q.changePercent)}%
@@ -168,10 +168,10 @@ export function IndianMarketTape() {
         <Sparkline
           data={spark}
           up={up}
-          width={88}
-          height={44}
+          width={76}
+          height={52}
           showArea
-          className="shrink-0"
+          className="shrink-0 self-center"
         />
       </div>
     );
@@ -186,18 +186,18 @@ export function IndianMarketTape() {
         </div>
         <p className="text-[10px] text-[var(--fg-subtle)]">Auto-scroll · IST</p>
       </div>
-      <div className="tape-viewport relative h-[88px] overflow-hidden">
+      <div className="tape-viewport relative min-h-[104px] overflow-hidden py-1">
         {loading && quotes.length === 0 ? (
-          <div className="flex h-full items-center gap-2 px-3">
-            {Array.from({ length: 7 }).map((_, i) => (
+          <div className="flex h-[92px] items-center gap-2 px-3">
+            {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="tape-chip-7 h-16 flex-1 animate-pulse rounded-lg bg-[var(--bg-muted)]"
+                className="tape-chip-7 h-[92px] flex-1 animate-pulse rounded-lg bg-[var(--bg-muted)]"
               />
             ))}
           </div>
         ) : (
-          <div className="tape-track flex h-full items-center gap-2 px-3">
+          <div className="tape-track flex min-h-[92px] items-center gap-2 px-3">
             {chips}
             {chips}
           </div>
@@ -255,14 +255,14 @@ export function IndianMarketCards() {
                     } ${flash ? "price-flash" : ""}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-[10px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
+                      <p className="line-clamp-2 min-h-[2rem] text-[10px] font-bold leading-tight tracking-[0.1em] text-[var(--fg-subtle)]">
                         {q.name.toUpperCase()}
                       </p>
                       <Sparkline
                         data={spark}
                         up={up}
-                        width={72}
-                        height={32}
+                        width={80}
+                        height={36}
                         showArea={false}
                         strokeWidth={1.5}
                         className="shrink-0 opacity-90"

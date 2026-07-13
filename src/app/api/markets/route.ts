@@ -8,6 +8,7 @@ import {
   fetchYahooOhlc,
   mapPool,
 } from "@/lib/yahoo-ohlc";
+import { sparklineSeries } from "@/lib/sparkline";
 import { getTimeframe } from "@/lib/chart-timeframes";
 
 export const dynamic = "force-dynamic";
@@ -32,9 +33,9 @@ async function yahooQuote(
     let sparkline: number[] = [];
     const ohlc = await fetchYahooOhlc(index.yahoo, getTimeframe("1M"));
     if (ohlc?.bars.length) {
-      sparkline = closesFromOhlc(ohlc.bars, 24);
+      sparkline = sparklineSeries(closesFromOhlc(ohlc.bars, 24));
     } else {
-      sparkline = [live.previousClose, live.price];
+      sparkline = sparklineSeries([live.previousClose, live.price]);
     }
 
     return {

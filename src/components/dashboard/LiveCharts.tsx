@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Move } from "lucide-react";
 import { INDIAN_MARKET_INDICES, indicesByGroup } from "@/data/indian-markets";
 import { useMarkets } from "@/components/dashboard/MarketsProvider";
 import { CandlestickChart } from "@/components/dashboard/CandlestickChart";
@@ -32,6 +32,7 @@ export function LiveCharts() {
   const { quotes, selectedIndexId, setSelectedIndexId } = useMarkets();
   const [theme, setTheme] = useState<ThemeMode>("light");
   const [timeframe, setTimeframe] = useState<ChartTimeframeId>("1D");
+  const [zoomEnabled, setZoomEnabled] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [marketStatus, setMarketStatus] = useState(getNseMarketStatus());
 
@@ -130,21 +131,40 @@ export function LiveCharts() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-2 md:px-5">
-        <div className="flex flex-wrap gap-1">
-          {CHART_TIMEFRAMES.map((tf) => (
-            <button
-              key={tf.id}
-              type="button"
-              onClick={() => setTimeframe(tf.id)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold tracking-wide transition-colors ${
-                timeframe === tf.id
-                  ? "bg-[color-mix(in_srgb,var(--gold)_20%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]"
-                  : "text-[var(--fg-muted)] hover:bg-[var(--bg-muted)]"
-              }`}
-            >
-              {tf.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-1">
+            {CHART_TIMEFRAMES.map((tf) => (
+              <button
+                key={tf.id}
+                type="button"
+                onClick={() => setTimeframe(tf.id)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold tracking-wide transition-colors ${
+                  timeframe === tf.id
+                    ? "bg-[color-mix(in_srgb,var(--gold)_20%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]"
+                    : "text-[var(--fg-muted)] hover:bg-[var(--bg-muted)]"
+                }`}
+              >
+                {tf.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setZoomEnabled((z) => !z)}
+            title={
+              zoomEnabled
+                ? "Disable pan and zoom"
+                : "Enable pan, scroll, and zoom"
+            }
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              zoomEnabled
+                ? "border-[color-mix(in_srgb,var(--gold)_45%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_14%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]"
+                : "border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--bg-muted)]"
+            }`}
+          >
+            <Move size={14} />
+            Zoom {zoomEnabled ? "On" : "Off"}
+          </button>
         </div>
         <span
           className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${marketBadgeClass(marketStatus)}`}
@@ -160,6 +180,7 @@ export function LiveCharts() {
           timeframe={timeframe}
           theme={theme}
           name={active.name}
+          zoomEnabled={zoomEnabled}
           fallbackPrice={liveQuote?.price}
           fallbackChange={liveQuote?.change}
           fallbackChangePercent={liveQuote?.changePercent}

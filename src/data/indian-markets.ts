@@ -15,7 +15,7 @@ export const INDIAN_MARKET_INDICES: IndianIndex[] = [
   { id: "nifty", name: "Nifty 50", yahoo: "^NSEI", group: "benchmark" },
   { id: "sensex", name: "Sensex", yahoo: "^BSESN", group: "benchmark" },
   { id: "banknifty", name: "Bank Nifty", yahoo: "^NSEBANK", group: "benchmark" },
-  { id: "midcap", name: "Nifty Midcap 100", yahoo: "^CNXMID", group: "benchmark" },
+  { id: "midcap", name: "Nifty Midcap 100", yahoo: "NIFTY_MIDCAP_100.NS", group: "benchmark" },
   { id: "next50", name: "Nifty Next 50", yahoo: "^NSMIDCP", group: "benchmark" },
   { id: "niftyit", name: "Nifty IT", yahoo: "^CNXIT", group: "sector" },
   { id: "niftyauto", name: "Nifty Auto", yahoo: "^CNXAUTO", group: "sector" },
@@ -23,7 +23,7 @@ export const INDIAN_MARKET_INDICES: IndianIndex[] = [
   { id: "niftymetal", name: "Nifty Metal", yahoo: "^CNXMETAL", group: "sector" },
   { id: "niftypharma", name: "Nifty Pharma", yahoo: "^CNXPHARMA", group: "sector" },
   { id: "niftyenergy", name: "Nifty Energy", yahoo: "^CNXENERGY", group: "sector" },
-  { id: "niftyfin", name: "Nifty Fin Service", yahoo: "^CNXFIN", group: "sector" },
+  { id: "niftyfin", name: "Nifty Fin Service", yahoo: "NIFTY_FIN_SERVICE.NS", group: "sector" },
   { id: "vix", name: "India VIX", yahoo: "^INDIAVIX", group: "volatility" },
   { id: "usdinr", name: "USD/INR", yahoo: "INR=X", group: "fx" },
 ];
