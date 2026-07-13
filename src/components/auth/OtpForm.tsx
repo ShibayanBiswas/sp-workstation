@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { ArrowRight, KeyRound } from "lucide-react";
+import { AuthAccessStrip } from "@/components/auth/AuthAccessStrip";
 import { AuthShell } from "@/components/auth/AuthShell";
 
 export function OtpForm() {
@@ -73,16 +74,7 @@ export function OtpForm() {
 
         <div className="auth-divider" />
 
-        <div className="auth-security-strip auth-security-strip-centered">
-          <div>
-            <span className="auth-mini-label">Generated locally</span>
-            <strong>No email delivery</strong>
-          </div>
-          <div>
-            <span className="auth-mini-label">Validity</span>
-            <strong>10 minutes</strong>
-          </div>
-        </div>
+        <AuthAccessStrip variant="verify" />
 
         {otp ? (
           <div className="auth-otp-panel">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { ArrowRight, Mail } from "lucide-react";
 import { AuthDisclaimerModal } from "@/components/auth/AuthDisclaimerModal";
+import { AuthAccessStrip } from "@/components/auth/AuthAccessStrip";
 import { AuthShell } from "@/components/auth/AuthShell";
 
 export function ForgotPasswordForm() {
@@ -66,16 +67,7 @@ export function ForgotPasswordForm() {
 
         <div className="auth-divider" />
 
-        <div className="auth-security-strip">
-          <div>
-            <span className="auth-mini-label">Verification</span>
-            <strong>On-screen OTP</strong>
-          </div>
-          <div>
-            <span className="auth-mini-label">Eligibility</span>
-            <strong>Approved IDs only</strong>
-          </div>
-        </div>
+        <AuthAccessStrip variant="password" />
 
         <form onSubmit={onSubmit} className="auth-form">
           <div className="auth-field">

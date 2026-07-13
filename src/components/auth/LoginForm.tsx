@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { AuthDisclaimerModal } from "@/components/auth/AuthDisclaimerModal";
+import { AuthAccessStrip } from "@/components/auth/AuthAccessStrip";
 import { AuthShell } from "@/components/auth/AuthShell";
 
 export function LoginForm() {
@@ -68,20 +69,7 @@ export function LoginForm() {
 
         <div className="auth-divider" />
 
-        <div className="auth-security-strip">
-          <div>
-            <span className="auth-mini-label">Access mode</span>
-            <strong>Credentials + local OTP</strong>
-          </div>
-          <div>
-            <span className="auth-mini-label">Scope</span>
-            <strong>Structured Products only</strong>
-          </div>
-          <div>
-            <span className="auth-mini-label">Session</span>
-            <strong>12-hour secure token</strong>
-          </div>
-        </div>
+        <AuthAccessStrip variant="login" />
 
         <form onSubmit={onSubmit} className="auth-form">
           <div className="auth-field">

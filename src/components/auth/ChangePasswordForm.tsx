@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { ArrowRight, LockKeyhole } from "lucide-react";
+import { AuthAccessStrip } from "@/components/auth/AuthAccessStrip";
 import { AuthShell } from "@/components/auth/AuthShell";
 
 type Props = {
@@ -122,16 +123,7 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
         <div className="auth-divider" />
 
         {!requesting && !done ? (
-          <div className="auth-security-strip">
-            <div>
-              <span className="auth-mini-label">Password rule</span>
-              <strong>Upper, lower, number</strong>
-            </div>
-            <div>
-              <span className="auth-mini-label">Verification</span>
-              <strong>6-digit OTP</strong>
-            </div>
-          </div>
+          <AuthAccessStrip variant="password" />
         ) : null}
 
         {requesting ? (
