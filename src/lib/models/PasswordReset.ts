@@ -10,7 +10,7 @@ const PasswordResetSchema = new Schema(
     },
     email: { type: String, required: true, lowercase: true },
     token: { type: String, required: true, unique: true },
-    expiresAt: { type: Date, required: true, index: true },
+    expiresAt: { type: Date, required: true },
     consumed: { type: Boolean, default: false },
   },
   { timestamps: true }

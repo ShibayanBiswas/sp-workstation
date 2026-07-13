@@ -25,15 +25,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem("sp-theme") as Theme | null;
-    const preferred =
-      stored ||
-      (window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light");
-    setThemeState(preferred);
-    document.documentElement.classList.toggle("dark", preferred === "dark");
-    setReady(true);
+    const frame = window.requestAnimationFrame(() => {
+      const stored = window.localStorage.getItem("sp-theme") as Theme | null;
+      const preferred =
+        stored ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light");
+      setThemeState(preferred);
+      document.documentElement.classList.toggle("dark", preferred === "dark");
+      setReady(true);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   const setTheme = useCallback((t: Theme) => {

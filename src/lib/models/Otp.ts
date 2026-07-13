@@ -10,7 +10,7 @@ const OtpSchema = new Schema(
     },
     email: { type: String, required: true, lowercase: true },
     code: { type: String, required: true },
-    expiresAt: { type: Date, required: true, index: true },
+    expiresAt: { type: Date, required: true },
     consumed: { type: Boolean, default: false },
   },
   { timestamps: true }

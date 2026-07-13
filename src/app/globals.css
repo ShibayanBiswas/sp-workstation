@@ -199,3 +199,44 @@ a {
   background: color-mix(in srgb, var(--gold) 40%, transparent);
   border-radius: 999px;
 }
+
+/* Terminal dashboard */
+.terminal-shell {
+  background:
+    radial-gradient(ellipse 100% 60% at 50% -10%, color-mix(in srgb, var(--gold) 6%, transparent), transparent 50%),
+    var(--bg);
+}
+
+.terminal-header {
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--gold) 8%, transparent);
+}
+
+.greeting-hero {
+  box-shadow: var(--shadow);
+}
+
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.92); }
+}
+
+.animate-pulse-live {
+  animation: pulse-live 2s ease-in-out infinite;
+}
+
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-track {
+  animation: ticker-scroll 40s linear infinite;
+}
+
+.ticker-wrap:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+.market-card {
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--fg) 4%, transparent);
+}

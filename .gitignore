@@ -39,6 +39,9 @@ yarn-error.log*
 # local seed credentials (never commit)
 scripts/seed-passwords.local.json
 
+# local developer tools
+.tools/
+
 
 # vercel
 .vercel

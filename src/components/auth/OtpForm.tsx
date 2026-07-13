@@ -14,8 +14,12 @@ export function OtpForm() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setEmail(sessionStorage.getItem("sp_login_email") || "");
-    setPreview(sessionStorage.getItem("sp_otp_preview") || "");
+    const frame = window.requestAnimationFrame(() => {
+      setEmail(sessionStorage.getItem("sp_login_email") || "");
+      setPreview(sessionStorage.getItem("sp_otp_preview") || "");
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   async function onSubmit(e: FormEvent) {

@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 
 type ThemeMode = "light" | "dark";
 
+const CHARTS = [
+  { symbol: "NSE:NIFTY", title: "Nifty 50", id: "nifty" },
+  { symbol: "BSE:SENSEX", title: "BSE Sensex", id: "sensex" },
+  { symbol: "NSE:NIFTYBANK", title: "Bank Nifty", id: "banknifty" },
+] as const;
+
 function TradingViewFrame({
   symbol,
   title,
@@ -34,14 +40,15 @@ function TradingViewFrame({
             {title}
           </h3>
         </div>
-        <span className="rounded-full border border-[var(--border)] px-2.5 py-1 text-[10px] tracking-wider text-[var(--gold-deep)] dark:text-[var(--gold)]">
+        <span className="flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1 text-[10px] tracking-wider text-[var(--gold-deep)] dark:text-[var(--gold)]">
+          <span className="h-1.5 w-1.5 animate-pulse-live rounded-full bg-emerald-500" />
           TradingView
         </span>
       </div>
       <iframe
         title={title}
         src={src}
-        className="h-[340px] w-full border-0"
+        className="h-[360px] w-full border-0 md:h-[400px]"
         loading="lazy"
       />
     </div>
@@ -50,6 +57,7 @@ function TradingViewFrame({
 
 export function LiveCharts() {
   const [theme, setTheme] = useState<ThemeMode>("light");
+  const [active, setActive] = useState<(typeof CHARTS)[number]["id"]>("nifty");
 
   useEffect(() => {
     const sync = () => {
@@ -66,16 +74,29 @@ export function LiveCharts() {
     return () => obs.disconnect();
   }, []);
 
+  const chart = CHARTS.find((c) => c.id === active) ?? CHARTS[0];
+
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {CHARTS.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => setActive(c.id)}
+            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+              active === c.id
+                ? "gold-gradient border-transparent text-[#111]"
+                : "border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--bg-muted)]"
+            }`}
+          >
+            {c.title}
+          </button>
+        ))}
+      </div>
       <TradingViewFrame
-        symbol="NSE:NIFTY"
-        title="Nifty 50"
-        theme={theme}
-      />
-      <TradingViewFrame
-        symbol="BSE:SENSEX"
-        title="BSE Sensex"
+        symbol={chart.symbol}
+        title={chart.title}
         theme={theme}
       />
     </div>

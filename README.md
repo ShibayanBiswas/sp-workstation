@@ -1,50 +1,77 @@
-# SP Workstation — Anand Rathi Wealth (Structured Products)
+# SP Workstation
 
-Internal workstation for the Structured Products team: secure login with email OTP, Indian markets terminal, and Primary SP Dashboard modules.
+Internal Anand Rathi Wealth Structured Products team workstation. It provides
+password and email-OTP authentication, an Indian markets home terminal,
+personal calendar/todos, dark mode, and mapped access to the Primary SP
+Dashboard.
 
-## Features
+## Main capabilities
 
-- Branded login (Anand Rathi theme), forgot-password email link, email OTP (2FA)
-- Home terminal: greetings, Nifty/Sensex/Bank Nifty/India VIX, TradingView charts, market news RSS, calendar, todos
-- Left navigation with **Primary SP Dashboard** main + submodules mapped to https://sp-dashboard-eta.vercel.app/
-- Dark / light mode
-- MongoDB user database (seeded team roster)
+- Branded sign-in, email OTP, logout, and email password recovery
+- MongoDB-backed users, verification records, and user-owned todos
+- Nifty 50, Sensex, Bank Nifty, and India VIX snapshots
+- TradingView charts and Indian financial news feeds
+- Primary SP Dashboard module and submodule navigation
+- Responsive light and dark themes
 
-## Quick start
+## Ubuntu quick start with PowerShell
 
-1. Copy env file and fill values:
-
-```bash
-cp .env.example .env.local
-```
-
-2. Set `MONGODB_URI` (MongoDB Atlas) and `JWT_SECRET`.
-
-3. Install & run:
+Requirements: Node.js 20.9+, npm, and PowerShell 7 (`pwsh`).
 
 ```bash
-npm install
-npm run dev
+cd "/home/shibayanbiswas/Desktop/SP Workstation"
+pwsh ./run.ps1 install
+pwsh ./run.ps1 dev
 ```
 
-4. Open http://localhost:3000 — sign in with your team email (e.g. `shiabaynbiswas@rathi.com` / `Shibayan@123`).
+Open <http://127.0.0.1:3000>. Press `Ctrl+C` to stop the server.
 
-5. Seed users (also auto-runs on first login if DB is empty):
+When `.env.local` is absent, the runner creates a development configuration
+with in-memory MongoDB and development OTP previews. This local database is
+erased whenever the process stops.
+
+Without PowerShell:
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/seed -H "x-seed-secret: $JWT_SECRET"
+npm ci
+npm run dev -- -H 127.0.0.1 -p 3000
 ```
 
-## Email (OTP + password reset)
+## Documentation
 
-Configure SMTP in `.env.local`. With `EMAIL_DEV_MODE=true`, OTP and reset links are also shown in the UI / API for local testing when mail is not configured.
+- [Architecture](docs/ARCHITECTURE.md)
+- [Local development and `run.ps1`](docs/LOCAL_DEVELOPMENT.md)
+- [Authentication and password recovery](docs/AUTHENTICATION.md)
+- [API reference](docs/API.md)
+- [Database and team provisioning](docs/DATABASE.md)
+- [Security notes](docs/SECURITY.md)
+- [Operations and troubleshooting](docs/OPERATIONS.md)
+- [Vercel deployment](DEPLOY.md)
 
-## Deploy on Vercel
+## Command reference
 
-See the end of this README / chat instructions from the agent for a full Vercel + Atlas walkthrough.
+```text
+pwsh ./run.ps1 help
+pwsh ./run.ps1 install
+pwsh ./run.ps1 dev
+pwsh ./run.ps1 lint
+pwsh ./run.ps1 build
+pwsh ./run.ps1 start
+pwsh ./run.ps1 seed
+```
 
-## Team roster
+## Configuration
 
-Managed in `src/data/team.ts`. Default passwords for first-time seed live in
-`scripts/seed-passwords.local.json` (gitignored) — copy from
-`scripts/seed-passwords.example.json`. Ask to add new members when they join; re-run seed.
+Copy `.env.example` when creating an explicit configuration. Never commit
+`.env.local`, SMTP/Atlas credentials, JWT secrets, OTPs, reset links, or the
+local seed password file.
+
+Production requires persistent MongoDB, working SMTP, a stable random
+`JWT_SECRET`, the deployed `NEXT_PUBLIC_APP_URL`, and
+`EMAIL_DEV_MODE=false`.
+
+## Team changes
+
+The roster is maintained in `src/data/team.ts`. Initial passwords are supplied
+through `scripts/seed-passwords.local.json` (Git-ignored) or the deployment
+variable `SEED_DEFAULT_PASSWORD_MAP`. Run the seed after adding a member.
