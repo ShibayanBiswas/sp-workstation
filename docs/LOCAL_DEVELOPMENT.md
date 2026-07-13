@@ -57,6 +57,7 @@ pwsh ./run.ps1 lint
 pwsh ./run.ps1 build
 pwsh ./run.ps1 start
 pwsh ./run.ps1 seed
+npm run smoke
 ```
 
 Use a different port:

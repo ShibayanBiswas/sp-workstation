@@ -161,7 +161,7 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
               </p>
             )}
 
-            <form onSubmit={onSubmit} className="auth-form mt-8">
+            <form onSubmit={onSubmit} className="auth-form mt-6">
               <div className="auth-field">
                 <label className="auth-label" htmlFor="change-code">
                   Enter code

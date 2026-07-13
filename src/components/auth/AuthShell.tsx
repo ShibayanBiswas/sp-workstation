@@ -19,7 +19,7 @@ export function AuthShell({
     <div
       className={`auth-shell auth-shell-${variant} relative flex min-h-screen flex-col overflow-hidden bg-[var(--bg)] text-[var(--fg)]`}
     >
-      <div className="auth-aurora pointer-events-none absolute inset-0" aria-hidden />
+      <div className="auth-aurora auth-aurora-animate pointer-events-none absolute inset-0" aria-hidden />
       <div className="auth-grid pointer-events-none absolute inset-0" aria-hidden />
 
       <header className="relative z-10 flex items-center justify-between px-6 py-6 md:px-12">

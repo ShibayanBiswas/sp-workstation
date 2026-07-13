@@ -11,6 +11,26 @@ curl -I http://127.0.0.1:3000/login
 A redirect or successful HTML response confirms that Next.js is accepting
 requests. Authenticated API checks require browser cookies.
 
+## Smoke test
+
+After seeding users, run the automated API smoke test:
+
+```bash
+pwsh ./run.ps1 dev          # in one terminal
+SMOKE_PASSWORD='your-password' node scripts/smoke-test.mjs
+```
+
+The script verifies:
+
+- Login page and OTP page load
+- Invalid email ID rejection
+- Wrong password rejection (when `SMOKE_PASSWORD` is set)
+- Login → OTP → session
+- Markets API (13 indices, Nifty price present)
+- Chart API price alignment with markets feed
+- Forgot-password OTP generation
+- Logout
+
 ## Common startup failures
 
 ### `pwsh: command not found`
@@ -60,6 +80,11 @@ pwsh ./run.ps1 seed
 Return to login and sign in again to regenerate the code. Codes expire after
 10 minutes.
 
+### Invalid email ID / Wrong password popups
+
+Expected behaviour for non-roster emails and incorrect passwords. Verify the
+email exists in `src/data/team.ts` and the password matches the seeded value.
+
 ### Primary SP Dashboard is blank
 
 Use “Open in new tab.” The external dashboard may reject iframe embedding
@@ -69,8 +94,9 @@ through CSP or `X-Frame-Options`. This cannot be overridden by the workstation.
 
 Yahoo Finance is an unofficial best-effort integration. Provider rate limits,
 schema changes, or outages may cause partial data. The user must be logged in
-for `/api/markets` and `/api/chart`. Refresh the page or wait 30 seconds for
-auto-refresh. This data is informational and must not be used for trade execution.
+for `/api/markets` and `/api/chart`. The dashboard auto-refreshes every **60
+seconds**; look for the green **Live · synced** pill in the terminal header.
+This data is informational and must not be used for trade execution.
 
 ## Production run
 
@@ -90,12 +116,10 @@ Next.js writes application output to the process terminal. Important messages
 include:
 
 - MongoDB connection or in-memory fallback;
-- SMTP failures and local preview notices;
 - API route exceptions;
 - external market fetch failures.
 
-Do not forward production logs containing OTPs, reset links, cookies, or
-environment variables.
+Do not forward production logs containing OTPs, cookies, or environment variables.
 
 ## Backup and recovery
 

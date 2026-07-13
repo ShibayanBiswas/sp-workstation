@@ -58,8 +58,10 @@ src/
     ├── chart-ist.ts            # IST time formatting, NSE session filter
     ├── chart-series.ts         # Candlestick + volume series builder
     ├── chart-timeframes.ts     # 1D–5Y timeframe definitions
+    ├── live-refresh.ts         # 60s polling constant
+    ├── market-quote.ts         # Unified price/return formatting
     ├── yahoo-ohlc.ts           # Yahoo quote/OHLC fetch with cache
-    ├── models/                 # Mongoose schemas
+    ├── models/                 # Mongoose schemas (User, Otp, Todo)
     ├── auth.ts                 # JWT, cookies, password helpers
     ├── db.ts                   # MongoDB connection lifecycle
     └── seed.ts                 # Team user provisioning
@@ -71,6 +73,10 @@ src/
 2. **Snapshot** — horizontal cards for all 13 indices
 3. **Live chart** — candlestick chart with timeframe selector (default 1D)
 
+A **Live sync indicator** (green pill) shows last sync time and countdown to
+the next 60-second refresh. Tape, snapshot cards, and chart header share the
+same normalized quote from `/api/markets`.
+
 Index display order: main benchmarks → sectors → India VIX → USD/INR.
 
 ## Rendering model
@@ -79,7 +85,8 @@ Index display order: main benchmarks → sectors → India VIX → USD/INR.
 - `/dashboard/layout.tsx` verifies the session on the server before rendering.
 - Dashboard widgets fetch protected APIs with session cookies.
 - The Primary SP Dashboard loads in an iframe via `src/data/modules.ts`.
-- Chart time axis uses IST (Asia/Kolkata). Zoom/scroll on the chart is disabled.
+- Chart time axis uses IST (Asia/Kolkata). Zoom is **off** by default; users
+  can toggle pan/zoom from the chart toolbar.
 
 There is no global Next.js middleware. Protected page enforcement lives in
 the dashboard server layout; each protected API checks `getSession()`.

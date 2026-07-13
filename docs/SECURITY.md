@@ -12,8 +12,8 @@ as confidential company information.
 - signed, expiring JWTs in HTTP-only cookies
 - `Secure` cookies in production and `SameSite=Lax`
 - mandatory OTP after password verification
-- one-time, expiring OTP and password-reset records
-- generic forgot-password response to reduce user enumeration
+- one-time, expiring OTP records
+- roster-only login (invalid email vs wrong password messages)
 - Zod validation on authentication and todo mutations
 - per-user todo ownership checks
 - environment and local seed files excluded from Git

@@ -19,7 +19,13 @@ Request:
 }
 ```
 
-Success: `200` with `ok`, `email`, and `otp` (6-digit code). Invalid credentials return `401`.
+Responses:
+
+| Status | `error` | Meaning |
+|--------|---------|---------|
+| `401` | `Invalid email ID.` | Email not in `src/data/team.ts` roster |
+| `401` | `Wrong password.` | Roster email with incorrect password |
+| `200` | — | Success: `ok`, `email`, `otp` (6-digit code) |
 
 ### `POST /api/auth/verify-otp`
 
@@ -53,13 +59,15 @@ Returns the current session identity. Unauthenticated requests return `401`.
 { "email": "user@rathi.com" }
 ```
 
-For known accounts: generates OTP, sets `sp_pending` (`password_reset`), returns
-`otp` and `redirect: "/change-password"`. Unknown accounts get a generic message.
+| Status | Behaviour |
+|--------|-----------|
+| `401` | `Invalid email ID.` — email not in roster |
+| `200` | Known account: OTP generated, `sp_pending` set, returns `otp` and `redirect: "/change-password"` |
 
 ### `POST /api/auth/request-password-otp`
 
 Requires `sp_session`. Generates OTP for the logged-in user. Returns `otp` and
-`email`.
+`email`. Used when visiting `/change-password` while authenticated.
 
 ### `POST /api/auth/change-password`
 
@@ -100,7 +108,8 @@ Returns live index quotes in display order (benchmarks → sectors → VIX → U
       "change": -239.95,
       "changePercent": -0.98,
       "sparkline": [24000, 24100, 24158],
-      "group": "benchmark"
+      "group": "benchmark",
+      "marketTime": 1720866600
     }
   ],
   "marketStatus": "open",
@@ -108,8 +117,9 @@ Returns live index quotes in display order (benchmarks → sectors → VIX → U
 }
 ```
 
-Quotes refresh every 30 seconds on the client. Yahoo Finance is best-effort;
-data may be delayed.
+Quotes are normalized in `src/lib/market-quote.ts` (change and return computed
+from price vs previous close). The client polls every **60 seconds** via
+`MarketsProvider`. Yahoo Finance is best-effort; data may be delayed.
 
 ## Charts
 
@@ -119,62 +129,33 @@ Returns OHLC candle data for the selected index and timeframe.
 
 Query parameters:
 
-- `indexId` — key from `src/data/indian-markets.ts` (e.g. `nifty`, `sensex`)
-- `timeframe` — `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, or `5Y` (default `1D`)
+- `indexId` — one of the IDs in `src/data/indian-markets.ts`
+- `timeframe` — `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, or `5Y`
+- `before` — optional Unix timestamp for scroll-back history
 
-```json
-{
-  "indexId": "nifty",
-  "name": "Nifty 50",
-  "timeframe": "1D",
-  "bars": [{ "time": 1720867500, "open": 24100, "high": 24180, "low": 24090, "close": 24158.75 }],
-  "last": { "price": 24158.75, "change": -239.95, "changePercent": -0.98, "time": 1720867500 },
-  "asOf": "2026-07-13T06:40:00.000Z"
-}
-```
+Response includes `bars`, `last` (price, change, changePercent, time), and
+`asOf`. Chart header prices for the selected index are synced from the same
+markets feed when the dashboard is open.
 
-Intraday bars are filtered to NSE session hours (09:15–15:30 IST). Chart time
-axis labels are formatted in IST.
+The chart client polls every **60 seconds** (`LIVE_REFRESH_MS` in
+`src/lib/live-refresh.ts`).
 
 ## Todos
 
-Todo records are always scoped to the authenticated user.
-
 ### `GET /api/todos`
 
-Lists incomplete items first, then newest items.
+Returns todos for the authenticated user.
 
 ### `POST /api/todos`
 
-```json
-{
-  "title": "Review rollover candidates",
-  "priority": "high",
-  "dueDate": "2026-07-14"
-}
-```
-
-`priority` may be `low`, `medium`, or `high`.
+Creates a todo.
 
 ### `PATCH /api/todos`
 
-```json
-{
-  "id": "mongodb-object-id",
-  "completed": true
-}
-```
+Updates a todo by MongoDB ObjectId.
 
-The request may update `completed`, `title`, or `priority`.
+### `DELETE /api/todos?id=<objectId>`
 
-### `DELETE /api/todos?id=<mongodb-object-id>`
+Deletes a todo.
 
-Deletes the matching record only when it belongs to the current user.
-
-## Common status codes
-
-- `200`: request succeeded
-- `400`: invalid input or expired reset token
-- `401`: authentication required or credentials invalid
-- `404`: user-owned object not found
-- `500`: database, email, or unexpected server failure
+> Todos API exists but has no UI yet.

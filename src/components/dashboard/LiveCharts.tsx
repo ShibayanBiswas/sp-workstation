@@ -5,10 +5,12 @@ import { ChevronDown, Move } from "lucide-react";
 import { INDIAN_MARKET_INDICES, indicesByGroup } from "@/data/indian-markets";
 import { useMarkets } from "@/components/dashboard/MarketsProvider";
 import { CandlestickChart } from "@/components/dashboard/CandlestickChart";
+import { LiveSyncIndicator } from "@/components/dashboard/LiveSyncIndicator";
 import {
   CHART_TIMEFRAMES,
   type ChartTimeframeId,
 } from "@/lib/chart-timeframes";
+import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
 import {
   getNseMarketStatus,
   marketStatusLabel,
@@ -29,7 +31,13 @@ function marketBadgeClass(status: ReturnType<typeof getNseMarketStatus>) {
 
 /** Row 3 — live candlestick chart with timeframes. */
 export function LiveCharts() {
-  const { quotes, selectedIndexId, setSelectedIndexId } = useMarkets();
+  const {
+    quoteFor,
+    selectedIndexId,
+    setSelectedIndexId,
+    asOf,
+    syncing,
+  } = useMarkets();
   const [theme, setTheme] = useState<ThemeMode>("light");
   const [timeframe, setTimeframe] = useState<ChartTimeframeId>("1D");
   const [zoomEnabled, setZoomEnabled] = useState(false);
@@ -59,7 +67,7 @@ export function LiveCharts() {
   useEffect(() => {
     const tick = () => setMarketStatus(getNseMarketStatus());
     tick();
-    const id = setInterval(tick, 60_000);
+    const id = setInterval(tick, LIVE_REFRESH_MS);
     return () => clearInterval(id);
   }, []);
 
@@ -67,7 +75,7 @@ export function LiveCharts() {
     INDIAN_MARKET_INDICES.find((i) => i.id === selectedIndexId) ??
     INDIAN_MARKET_INDICES[0];
 
-  const liveQuote = quotes.find((q) => q.id === selectedIndexId);
+  const liveQuote = quoteFor(selectedIndexId);
 
   const benchmarks = indicesByGroup("benchmark");
   const sectors = indicesByGroup("sector");
@@ -77,7 +85,7 @@ export function LiveCharts() {
   return (
     <section
       id="live-chart"
-      className="panel-stable overflow-hidden rounded-2xl"
+      className="panel-stable panel-luxe overflow-hidden rounded-2xl"
     >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3 md:px-5">
         <div>
@@ -92,7 +100,7 @@ export function LiveCharts() {
             id="index-select"
             value={selectedIndexId}
             onChange={(e) => setSelectedIndexId(e.target.value)}
-            className="input-field w-full appearance-none py-2.5 pr-10 text-sm"
+            className="input-field w-full appearance-none py-2.5 pr-10 text-sm transition-all duration-300 focus:scale-[1.01]"
           >
             <optgroup label="Benchmarks">
               {benchmarks.map((i) => (
@@ -138,10 +146,10 @@ export function LiveCharts() {
                 key={tf.id}
                 type="button"
                 onClick={() => setTimeframe(tf.id)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold tracking-wide transition-colors ${
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold tracking-wide transition-all duration-300 ${
                   timeframe === tf.id
-                    ? "bg-[color-mix(in_srgb,var(--gold)_20%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]"
-                    : "text-[var(--fg-muted)] hover:bg-[var(--bg-muted)]"
+                    ? "bg-[color-mix(in_srgb,var(--gold)_20%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)] scale-[1.02]"
+                    : "text-[var(--fg-muted)] hover:bg-[var(--bg-muted)] hover:scale-[1.02]"
                 }`}
               >
                 {tf.label}
@@ -156,7 +164,7 @@ export function LiveCharts() {
                 ? "Disable pan and zoom"
                 : "Enable pan, scroll, and zoom"
             }
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all duration-300 ${
               zoomEnabled
                 ? "border-[color-mix(in_srgb,var(--gold)_45%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_14%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]"
                 : "border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--bg-muted)]"
@@ -166,11 +174,14 @@ export function LiveCharts() {
             Zoom {zoomEnabled ? "On" : "Off"}
           </button>
         </div>
-        <span
-          className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${marketBadgeClass(marketStatus)}`}
-        >
-          {marketStatusLabel(marketStatus)} · IST
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <LiveSyncIndicator syncing={syncing} lastSyncedAt={asOf} compact />
+          <span
+            className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${marketBadgeClass(marketStatus)}`}
+          >
+            {marketStatusLabel(marketStatus)} · IST
+          </span>
+        </div>
         {zoomEnabled ? (
           <span className="text-[10px] text-[var(--fg-subtle)]">
             Scroll left for history · wheel to zoom
@@ -189,10 +200,21 @@ export function LiveCharts() {
           fallbackPrice={liveQuote?.price}
           fallbackChange={liveQuote?.change}
           fallbackChangePercent={liveQuote?.changePercent}
+          syncedQuote={
+            liveQuote
+              ? {
+                  price: liveQuote.price,
+                  change: liveQuote.change,
+                  changePercent: liveQuote.changePercent,
+                  marketTime: liveQuote.marketTime,
+                }
+              : null
+          }
+          syncedAsOf={asOf}
         />
       ) : (
         <div className="flex h-[540px] items-center justify-center text-sm text-[var(--fg-subtle)]">
-          Preparing chart…
+          <span className="animate-pulse-live">Preparing chart…</span>
         </div>
       )}
     </section>

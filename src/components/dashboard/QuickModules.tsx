@@ -28,7 +28,7 @@ export function QuickModules() {
   const mod = MODULES[0];
 
   return (
-    <section className="panel-stable rounded-2xl p-5 md:p-6">
+    <section className="panel-stable panel-luxe rounded-2xl p-5 md:p-6">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="section-kicker">Desk modules</p>
@@ -39,11 +39,12 @@ export function QuickModules() {
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {mod.submodules.map((sub) => (
+        {mod.submodules.map((sub, index) => (
           <Link
             key={sub.id}
             href={sub.path}
-            className="module-tile group flex flex-col gap-3 rounded-xl p-4"
+            style={{ animationDelay: `${index * 80}ms` }}
+            className="module-tile module-tile-animate group flex flex-col gap-3 rounded-xl p-4"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--gold)_30%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]">
               {ICONS[sub.id] ?? <LayoutGrid size={18} />}

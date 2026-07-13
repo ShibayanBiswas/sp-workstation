@@ -1,8 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
-import { connectDB } from "@/lib/db";
-import { User, type UserDocument } from "@/lib/models/User";
 
 const COOKIE_NAME = "sp_session";
 const PENDING_COOKIE = "sp_pending";
@@ -116,14 +114,6 @@ export async function getPending(): Promise<PendingPayload | null> {
   const token = jar.get(PENDING_COOKIE)?.value;
   if (!token) return null;
   return verifyToken<PendingPayload>(token);
-}
-
-export async function getCurrentUser(): Promise<UserDocument | null> {
-  const session = await getSession();
-  if (!session) return null;
-  await connectDB();
-  const user = await User.findById(session.userId).lean();
-  return user as UserDocument | null;
 }
 
 export function generateOtp(): string {

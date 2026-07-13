@@ -21,13 +21,14 @@ export type MarketQuote = {
   changePercent: number | null;
   sparkline: number[];
   group: string;
+  marketTime?: number;
 };
 
 async function yahooQuote(
   index: (typeof INDIAN_MARKET_INDICES)[number]
 ): Promise<MarketQuote | null> {
   try {
-    const live = await fetchYahooLiveQuote(index.yahoo);
+    const live = await fetchYahooLiveQuote(index.yahoo, { fresh: true });
     if (!live) return null;
 
     let sparkline: number[] = [];
@@ -46,6 +47,7 @@ async function yahooQuote(
       changePercent: live.changePercent,
       sparkline,
       group: index.group,
+      marketTime: live.marketTime,
     };
   } catch {
     return null;

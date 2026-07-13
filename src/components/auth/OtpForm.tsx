@@ -88,7 +88,7 @@ export function OtpForm() {
           <div className="auth-otp-panel">
             <p className="auth-otp-caption">Your verification code</p>
             <p className="auth-otp-code">{otp}</p>
-            <p className="mt-3 text-sm text-[var(--fg-subtle)]">
+            <p className="mt-2 text-xs text-[var(--fg-subtle)]">
               Valid for 10 minutes · IST
             </p>
           </div>
@@ -96,7 +96,7 @@ export function OtpForm() {
           <p className="auth-error">Code unavailable. Return to sign in and try again.</p>
         )}
 
-        <form onSubmit={onSubmit} className="auth-form mt-8">
+        <form onSubmit={onSubmit} className="auth-form mt-6">
           <div className="auth-field">
             <label className="auth-label text-center" htmlFor="otp-code">
               Enter code

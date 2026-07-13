@@ -302,20 +302,6 @@ a {
   }
 }
 
-.login-atmosphere {
-  background:
-    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(212, 178, 76, 0.18), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 80%, rgba(184, 134, 11, 0.12), transparent 50%),
-    linear-gradient(160deg, #0d0d0d 0%, #1a1410 40%, #0a0807 100%);
-}
-
-.dark .login-atmosphere {
-  background:
-    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(212, 178, 76, 0.14), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 80%, rgba(184, 134, 11, 0.1), transparent 50%),
-    linear-gradient(160deg, #050303 0%, #120e0c 40%, #070102 100%);
-}
-
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -350,6 +336,164 @@ a {
 
 .animate-rise-delay-3 {
   animation: rise-in 0.7s ease-out 0.36s both;
+}
+
+@keyframes ambient-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.82; }
+  50% { transform: translate3d(2%, 1.5%, 0) scale(1.03); opacity: 0.95; }
+  100% { transform: translate3d(-1%, -1%, 0) scale(1.01); opacity: 0.88; }
+}
+
+@keyframes gold-shimmer-text {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes chip-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes orb-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-8px, 10px, 0); }
+}
+
+@keyframes sync-ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 35%, transparent); }
+  70% { box-shadow: 0 0 0 8px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.gold-text-shimmer {
+  background-size: 200% auto;
+  animation: gold-shimmer-text 5s linear infinite;
+}
+
+.panel-luxe {
+  position: relative;
+  overflow: hidden;
+}
+
+.panel-luxe::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  background: linear-gradient(
+    120deg,
+    transparent 20%,
+    color-mix(in srgb, var(--gold) 10%, transparent) 45%,
+    transparent 70%
+  );
+}
+
+.panel-luxe:hover::after {
+  opacity: 1;
+  animation: shimmer 2.8s ease-in-out infinite;
+}
+
+.tape-chip-animate,
+.market-card-animate,
+.module-tile-animate {
+  animation: chip-enter 0.65s ease-out both;
+}
+
+.greeting-orb {
+  animation: orb-float 9s ease-in-out infinite;
+}
+
+.auth-aurora-animate {
+  animation: ambient-drift 20s ease-in-out infinite alternate;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-muted) 20%,
+    color-mix(in srgb, var(--gold) 12%, var(--bg-muted)) 50%,
+    var(--bg-muted) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.35s ease-in-out infinite;
+}
+
+.live-sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gold) 22%, var(--border));
+  background: color-mix(in srgb, var(--bg-muted) 75%, transparent);
+  padding: 0.3rem 0.7rem;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+  transition: border-color 0.25s ease, background-color 0.25s ease;
+}
+
+.live-sync-pill-compact {
+  padding: 0.25rem 0.6rem;
+}
+
+.live-sync-pill-syncing {
+  border-color: color-mix(in srgb, var(--gold) 40%, var(--border));
+}
+
+.live-sync-dot {
+  height: 0.45rem;
+  width: 0.45rem;
+  border-radius: 999px;
+  background: #10b981;
+  animation: sync-ring 2s ease-out infinite;
+}
+
+.live-sync-dot-syncing {
+  background: var(--gold);
+  animation: pulse-live 1s ease-in-out infinite;
+}
+
+.live-sync-text {
+  white-space: nowrap;
+}
+
+.live-sync-countdown {
+  color: var(--fg-subtle);
+  font-weight: 500;
+}
+
+.tape-chip {
+  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+}
+
+.tape-chip:hover {
+  transform: translateY(-2px) scale(1.01);
+  border-color: color-mix(in srgb, var(--gold) 35%, var(--border));
+  box-shadow: 0 10px 28px var(--panel-glow);
+}
+
+.terminal-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 80% 50% at 50% 0%,
+    color-mix(in srgb, var(--gold) 8%, transparent),
+    transparent 60%
+  );
+  animation: ambient-drift 24s ease-in-out infinite alternate;
+  z-index: 0;
 }
 
 .input-field {
@@ -494,6 +638,16 @@ a {
     inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
     0 48px 120px color-mix(in srgb, var(--ink) 12%, transparent),
     0 0 0 1px color-mix(in srgb, var(--gold) 10%, transparent);
+  transition: transform 0.45s ease, box-shadow 0.45s ease, border-color 0.45s ease;
+}
+
+.auth-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--gold) 38%, var(--border));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent),
+    0 56px 130px color-mix(in srgb, var(--ink) 14%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--gold) 16%, transparent);
 }
 
 .auth-card::before {
@@ -725,31 +879,34 @@ a {
 }
 
 .auth-otp-panel {
-  margin-top: 2rem;
-  border-radius: 1.15rem;
+  margin-top: 1.5rem;
+  max-width: 22rem;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 0.95rem;
   border: 1px solid color-mix(in srgb, var(--gold) 38%, var(--border));
   background: linear-gradient(
     165deg,
     color-mix(in srgb, var(--gold) 16%, var(--bg-muted)),
     color-mix(in srgb, var(--gold) 5%, var(--bg-elevated))
   );
-  padding: 1.75rem 1.5rem;
+  padding: 1rem 1.15rem;
   text-align: center;
 }
 
 .auth-otp-code {
-  margin-top: 0.75rem;
+  margin-top: 0.45rem;
   font-family: ui-monospace, "Cascadia Code", monospace;
-  font-size: 2.5rem;
+  font-size: 1.65rem;
   font-weight: 700;
-  letter-spacing: 0.38em;
-  padding-left: 0.38em;
+  letter-spacing: 0.32em;
+  padding-left: 0.32em;
   color: var(--gold-deep);
 }
 
 @media (min-width: 768px) {
   .auth-otp-code {
-    font-size: 2.85rem;
+    font-size: 1.85rem;
   }
 }
 
@@ -766,11 +923,14 @@ a {
 }
 
 .auth-otp-input {
-  min-height: 3.5rem !important;
+  max-width: 16rem;
+  margin-left: auto;
+  margin-right: auto;
+  min-height: 2.85rem !important;
   text-align: center !important;
-  font-size: 1.85rem !important;
+  font-size: 1.35rem !important;
   font-weight: 600 !important;
-  letter-spacing: 0.38em !important;
+  letter-spacing: 0.32em !important;
   font-family: ui-monospace, "Cascadia Code", monospace !important;
 }
 

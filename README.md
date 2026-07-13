@@ -6,11 +6,13 @@ mapped access to the Primary SP Dashboard.
 
 ## Main capabilities
 
-- Branded sign-in, on-screen OTP verification, logout, and OTP-based password change
+- Branded sign-in with on-screen OTP verification, logout, and OTP-based password change
+- Distinct login errors: **Invalid email ID** (non-roster) and **Wrong password** (valid email)
 - MongoDB-backed users and OTP records
 - Live tape, snapshot cards, and candlestick charts for 13 Indian indices
+- **Unified live sync** — prices and returns refresh every 60 seconds across tape, cards, and chart
 - Primary SP Dashboard module and submodule navigation
-- Responsive light and dark themes
+- Responsive light and dark themes with polished motion
 
 ## Ubuntu quick start with PowerShell
 
@@ -55,6 +57,7 @@ pwsh ./run.ps1 lint
 pwsh ./run.ps1 build
 pwsh ./run.ps1 start
 pwsh ./run.ps1 seed
+node scripts/smoke-test.mjs   # optional API smoke test (set SMOKE_PASSWORD)
 ```
 
 ## Configuration

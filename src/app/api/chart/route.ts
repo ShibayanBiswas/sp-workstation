@@ -81,7 +81,7 @@ export async function GET(req: Request) {
   let change = prevBar ? price - prevBar.close : 0;
   let changePercent = prevBar?.close ? (change / prevBar.close) * 100 : 0;
 
-  const live = await fetchYahooLiveQuote(index.yahoo);
+  const live = await fetchYahooLiveQuote(index.yahoo, { fresh: true });
   if (live) {
     price = live.price;
     change = live.change;

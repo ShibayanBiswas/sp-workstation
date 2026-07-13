@@ -61,8 +61,10 @@ Passwords: `scripts/seed-passwords.local.json` or `SEED_DEFAULT_PASSWORD_MAP`.
 | IST time axis | ✅ | `src/lib/chart-ist.ts` |
 | Index order | ✅ | Benchmarks → sectors → VIX → USD/INR |
 | No raw Yahoo tickers in UI | ✅ | Names only (e.g. "Nifty 50") |
-| 30s live refresh | ✅ | Markets + chart polling |
-| Zoom disabled on chart | ✅ | `handleScroll` / `handleScale` off |
+| 30s live refresh | ✅ | **60s** unified refresh (`LIVE_REFRESH_MS`) |
+| Live sync indicator | ✅ | `LiveSyncIndicator` in header, tape, cards, chart |
+| Zoom toggle on chart | ✅ | Off by default; optional pan/zoom |
+| Login error popups | ✅ | Invalid email ID / Wrong password |
 
 ### Indices covered
 
@@ -105,6 +107,7 @@ FMCG, Metal, Pharma, Energy, Fin Service), India VIX, USD/INR.
 | Requirement | Status | Implementation |
 |---|---|---|
 | PowerShell runner | ✅ | `run.ps1` — `dev`, `build`, `seed`, etc. |
+| API smoke test | ✅ | `scripts/smoke-test.mjs` |
 
 ## Removed from home (by design)
 

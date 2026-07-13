@@ -12,7 +12,14 @@ import {
 } from "react";
 import { INDIAN_MARKET_INDICES, sortByDisplayOrder } from "@/data/indian-markets";
 import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
+import {
+  formatMarketChange,
+  formatMarketChangePercent,
+  formatMarketPrice,
+  formatIstSyncTime,
+} from "@/lib/market-quote";
 import { Sparkline } from "@/components/dashboard/Sparkline";
+import { LiveSyncIndicator } from "@/components/dashboard/LiveSyncIndicator";
 
 export type MarketQuote = {
   id: string;
@@ -22,16 +29,19 @@ export type MarketQuote = {
   changePercent: number | null;
   sparkline: number[];
   group: string;
+  marketTime?: number;
 };
 
 type MarketsContextValue = {
   quotes: MarketQuote[];
   asOf: string;
   loading: boolean;
+  syncing: boolean;
   refresh: () => Promise<void>;
   selectedIndexId: string;
   setSelectedIndexId: (id: string) => void;
   flashIds: Set<string>;
+  quoteFor: (id: string) => MarketQuote | undefined;
 };
 
 const MarketsContext = createContext<MarketsContextValue | null>(null);
@@ -45,30 +55,11 @@ function dedupeQuotes(quotes: MarketQuote[]): MarketQuote[] {
   });
 }
 
-function fmt(n: number | null, digits = 2) {
-  if (n == null || Number.isNaN(n)) return "—";
-  return n.toLocaleString("en-IN", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  });
-}
-
-function formatIstTime(iso: string) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
 export function MarketsProvider({ children }: { children: ReactNode }) {
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [asOf, setAsOf] = useState("");
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
   const prevPrices = useRef<Map<string, number>>(new Map());
   const inFlight = useRef(false);
@@ -79,6 +70,7 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
+    setSyncing(true);
     try {
       const res = await fetch("/api/markets", {
         cache: "no-store",
@@ -99,11 +91,12 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
         setTimeout(() => setFlashIds(new Set()), 700);
       }
       setQuotes(sortByDisplayOrder(next));
-      setAsOf(data.asOf || "");
+      setAsOf(data.asOf || new Date().toISOString());
     } catch {
       /* ignore */
     } finally {
       inFlight.current = false;
+      setSyncing(false);
       setLoading(false);
     }
   }, []);
@@ -119,17 +112,24 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
     };
   }, [refresh]);
 
+  const quoteFor = useCallback(
+    (id: string) => quotes.find((q) => q.id === id),
+    [quotes]
+  );
+
   const value = useMemo(
     () => ({
       quotes: sortByDisplayOrder(dedupeQuotes(quotes)),
       asOf,
       loading,
+      syncing,
       refresh,
       selectedIndexId,
       setSelectedIndexId,
       flashIds,
+      quoteFor,
     }),
-    [quotes, asOf, loading, refresh, selectedIndexId, flashIds]
+    [quotes, asOf, loading, syncing, refresh, selectedIndexId, flashIds, quoteFor]
   );
 
   return (
@@ -145,29 +145,29 @@ export function useMarkets() {
 
 /** Row 1 — auto-scrolling live tape. */
 export function IndianMarketTape() {
-  const { quotes, loading, flashIds } = useMarkets();
+  const { quotes, loading, flashIds, syncing, asOf } = useMarkets();
 
-  const chips = quotes.map((q) => {
+  const chips = quotes.map((q, index) => {
     const up = (q.change ?? 0) >= 0;
     const spark = q.sparkline?.length ? q.sparkline : [0, 0];
     const flash = flashIds.has(q.id);
     return (
       <div
         key={`tape-${q.id}`}
-        className={`tape-chip tape-chip-7 inline-flex shrink-0 items-stretch gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 ${flash ? "price-flash" : ""}`}
+        style={{ animationDelay: `${index * 60}ms` }}
+        className={`tape-chip tape-chip-7 tape-chip-animate inline-flex shrink-0 items-stretch gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 ${flash ? "price-flash" : ""}`}
       >
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
           <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-[var(--fg)]">
             {q.name}
           </p>
           <p className="tv-num text-sm font-semibold leading-none text-[var(--fg)]">
-            {fmt(q.price)}
+            {formatMarketPrice(q.price, q.id)}
           </p>
           <p
             className={`tv-num text-[11px] font-semibold leading-tight ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
           >
-            {up ? "▲" : "▼"} {up ? "+" : ""}
-            {fmt(q.changePercent)}%
+            {up ? "▲" : "▼"} {formatMarketChangePercent(q.changePercent)}
           </p>
         </div>
         <Sparkline
@@ -183,13 +183,13 @@ export function IndianMarketTape() {
   });
 
   return (
-    <section className="panel-stable overflow-hidden rounded-2xl">
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-2.5 md:px-5">
+    <section className="panel-stable panel-luxe overflow-hidden rounded-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-2.5 md:px-5">
         <div>
           <p className="section-kicker">Live tape</p>
           <p className="section-title">Indian market indices</p>
         </div>
-        <p className="text-[10px] text-[var(--fg-subtle)]">Auto-scroll · IST</p>
+        <LiveSyncIndicator syncing={syncing} lastSyncedAt={asOf} compact />
       </div>
       <div className="tape-viewport relative min-h-[104px] overflow-hidden py-1">
         {loading && quotes.length === 0 ? (
@@ -197,7 +197,7 @@ export function IndianMarketTape() {
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="tape-chip-7 h-[92px] flex-1 animate-pulse rounded-lg bg-[var(--bg-muted)]"
+                className="tape-chip-7 h-[92px] flex-1 animate-shimmer rounded-lg bg-[var(--bg-muted)]"
               />
             ))}
           </div>
@@ -214,20 +214,23 @@ export function IndianMarketTape() {
 
 /** Row 2 — snapshot cards, horizontal scroll. */
 export function IndianMarketCards() {
-  const { quotes, loading, asOf, selectedIndexId, setSelectedIndexId, flashIds } =
+  const { quotes, loading, asOf, selectedIndexId, setSelectedIndexId, flashIds, syncing } =
     useMarkets();
-  const timeLabel = formatIstTime(asOf);
+  const timeLabel = formatIstSyncTime(asOf);
 
   return (
-    <section className="panel-stable rounded-2xl">
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-2.5 md:px-5">
+    <section className="panel-stable panel-luxe rounded-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-2.5 md:px-5">
         <div>
           <p className="section-kicker">Snapshot</p>
           <p className="section-title">Index performance</p>
         </div>
-        <p className="text-[10px] text-[var(--fg-subtle)]">
-          {quotes.length} indices
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[10px] text-[var(--fg-subtle)]">
+            {quotes.length} indices
+          </p>
+          <LiveSyncIndicator syncing={syncing} lastSyncedAt={asOf} compact />
+        </div>
       </div>
       <div className="snapshot-viewport overflow-x-auto p-3 scrollbar-thin md:p-4">
         <div className="flex w-max min-w-full gap-2">
@@ -235,10 +238,10 @@ export function IndianMarketCards() {
             ? Array.from({ length: 5 }).map((_, i) => (
                 <div
                   key={i}
-                  className="snapshot-card-5 h-[168px] animate-pulse rounded-xl bg-[var(--bg-muted)]"
+                  className="snapshot-card-5 h-[168px] animate-shimmer rounded-xl bg-[var(--bg-muted)]"
                 />
               ))
-            : quotes.map((q) => {
+            : quotes.map((q, index) => {
                 const up = (q.change ?? 0) >= 0;
                 const active = q.id === selectedIndexId;
                 const spark = q.sparkline?.length ? q.sparkline : [0, 0];
@@ -247,13 +250,14 @@ export function IndianMarketCards() {
                   <button
                     key={`card-${q.id}`}
                     type="button"
+                    style={{ animationDelay: `${index * 70}ms` }}
                     onClick={() => {
                       setSelectedIndexId(q.id);
                       document
                         .getElementById("live-chart")
                         ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
                     }}
-                    className={`market-card snapshot-card-5 shrink-0 rounded-xl border p-4 text-left ${
+                    className={`market-card market-card-animate snapshot-card-5 shrink-0 rounded-xl border p-4 text-left ${
                       active
                         ? "market-card-active border-[color-mix(in_srgb,var(--gold)_45%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_10%,var(--bg-muted))]"
                         : "border-[var(--border)] bg-[var(--bg-elevated)]"
@@ -273,19 +277,14 @@ export function IndianMarketCards() {
                         className="shrink-0 opacity-90"
                       />
                     </div>
-                    <p
-                      className="tv-num mt-2 text-[1.65rem] font-semibold leading-none text-[var(--fg)]"
-                    >
-                      {fmt(q.price)}
+                    <p className="tv-num mt-2 text-[1.65rem] font-semibold leading-none text-[var(--fg)]">
+                      {formatMarketPrice(q.price, q.id)}
                     </p>
                     <p
                       className={`tv-num mt-2 text-xs font-medium ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
                     >
-                      {q.change != null
-                        ? `${up ? "+" : ""}${fmt(q.change)}`
-                        : "—"}{" "}
-                      ({up ? "+" : ""}
-                      {fmt(q.changePercent)}%)
+                      {formatMarketChange(q.change, q.id)} (
+                      {formatMarketChangePercent(q.changePercent)})
                     </p>
                     {timeLabel ? (
                       <p className="mt-2 text-[10px] text-[var(--fg-subtle)]">

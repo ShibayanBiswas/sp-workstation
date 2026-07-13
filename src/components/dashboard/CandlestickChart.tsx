@@ -25,9 +25,22 @@ import {
 } from "@/lib/chart-ist";
 import { buildChartSeries } from "@/lib/chart-series";
 import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
+import {
+  formatMarketChange,
+  formatMarketChangePercent,
+  formatMarketPrice,
+  formatIstSyncTime,
+} from "@/lib/market-quote";
 import type { OhlcBar } from "@/lib/yahoo-ohlc";
 
 type ThemeMode = "light" | "dark";
+
+type SyncedQuote = {
+  price: number | null;
+  change: number | null;
+  changePercent: number | null;
+  marketTime?: number;
+};
 
 type Props = {
   indexId: string;
@@ -38,6 +51,8 @@ type Props = {
   fallbackPrice?: number | null;
   fallbackChange?: number | null;
   fallbackChangePercent?: number | null;
+  syncedQuote?: SyncedQuote | null;
+  syncedAsOf?: string;
 };
 
 const TV_FONT =
@@ -163,6 +178,8 @@ export function CandlestickChart({
   fallbackPrice,
   fallbackChange,
   fallbackChangePercent,
+  syncedQuote,
+  syncedAsOf,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const legendRef = useRef<HTMLDivElement>(null);
@@ -192,25 +209,48 @@ export function CandlestickChart({
   });
 
   const displayPrice =
-    header.price !== "—"
-      ? header.price
-      : fallbackPrice != null
-        ? fmt(fallbackPrice)
-        : "—";
+    syncedQuote?.price != null
+      ? formatMarketPrice(syncedQuote.price, indexId)
+      : header.price !== "—"
+        ? header.price
+        : fallbackPrice != null
+          ? formatMarketPrice(fallbackPrice, indexId)
+          : "—";
   const displayUp =
-    header.price !== "—" ? header.up : (fallbackChange ?? 0) >= 0;
+    syncedQuote?.change != null
+      ? syncedQuote.change >= 0
+      : header.price !== "—"
+        ? header.up
+        : (fallbackChange ?? 0) >= 0;
   const displayChange =
-    header.change !== "—"
-      ? header.change
-      : fallbackChange != null
-        ? `${displayUp ? "+" : ""}${fmt(fallbackChange)}`
-        : "—";
+    syncedQuote?.change != null
+      ? formatMarketChange(syncedQuote.change, indexId)
+      : header.change !== "—"
+        ? header.change
+        : fallbackChange != null
+          ? formatMarketChange(fallbackChange, indexId)
+          : "—";
   const displayChangePct =
-    header.changePercent !== "—"
-      ? header.changePercent
-      : fallbackChangePercent != null
-        ? fmtPct(fallbackChangePercent)
-        : "—";
+    syncedQuote?.changePercent != null
+      ? formatMarketChangePercent(syncedQuote.changePercent)
+      : header.changePercent !== "—"
+        ? header.changePercent
+        : fallbackChangePercent != null
+          ? formatMarketChangePercent(fallbackChangePercent)
+          : "—";
+
+  useEffect(() => {
+    if (syncedQuote?.price == null) return;
+    const newPrice = syncedQuote.price;
+    if (
+      prevPriceRef.current != null &&
+      prevPriceRef.current !== newPrice
+    ) {
+      setPriceFlash(true);
+      setTimeout(() => setPriceFlash(false), 700);
+    }
+    prevPriceRef.current = newPrice;
+  }, [syncedQuote]);
 
   useEffect(() => {
     zoomRef.current = zoomEnabled;
@@ -598,9 +638,13 @@ export function CandlestickChart({
           <p className="tv-num mt-1 text-[11px] text-[var(--fg-subtle)]">
             {header.hoverTime
               ? `${header.hoverTime} IST`
-              : header.asOf
-                ? `Last update · ${header.asOf} IST`
-                : "Live · refreshes every minute · axis in IST"}
+              : syncedQuote?.marketTime
+                ? `Synced · ${formatIstHeaderTime(syncedQuote.marketTime)} IST`
+                : syncedAsOf
+                  ? `Synced · ${formatIstSyncTime(syncedAsOf)} IST · every minute`
+                  : header.asOf
+                    ? `Last update · ${header.asOf} IST`
+                    : "Live · refreshes every minute · axis in IST"}
           </p>
         </div>
         <button

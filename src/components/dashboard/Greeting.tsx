@@ -41,9 +41,9 @@ export function Greeting({ name }: { name: string }) {
   }, [name]);
 
   return (
-    <section className="panel-stable relative overflow-hidden rounded-2xl px-6 py-6 md:px-9 md:py-7">
+    <section className="panel-stable panel-luxe relative overflow-hidden rounded-2xl px-6 py-6 md:px-9 md:py-7">
       <div
-        className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full opacity-60"
+        className="greeting-orb pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full opacity-60"
         style={{
           background:
             "radial-gradient(circle, color-mix(in srgb, var(--gold) 22%, transparent), transparent 68%)",
@@ -73,7 +73,7 @@ export function Greeting({ name }: { name: string }) {
             {greet},
           </span>
           <span
-            className="gold-text block"
+            className="gold-text gold-text-shimmer block"
             style={{ fontFamily: "var(--font-display)" }}
           >
             {first}

@@ -108,7 +108,9 @@ curl -X POST "https://YOUR-PROJECT.vercel.app/api/auth/seed" \
 ### Sign in (every session)
 
 1. Open `https://YOUR-PROJECT.vercel.app/login`.
-2. Enter team email + password → **Continue**.
+2. Enter approved email + password → **Continue**.
+   - Non-roster email → **Invalid email ID** popup
+   - Wrong password → **Wrong password** popup
 3. On `/otp`, the **6-digit code is displayed on screen** (valid 10 minutes).
 4. Enter the code → redirected to `/dashboard` (12-hour session).
 
@@ -118,9 +120,9 @@ curl -X POST "https://YOUR-PROJECT.vercel.app/api/auth/seed" \
 2. Enter registered email → system generates a code on `/change-password`.
 3. Enter code + new password → sign in again with new password.
 
-### Change password (from dashboard)
+### Change password (logged in)
 
-1. Sidebar → **Password**.
+1. While signed in, open `/change-password` directly.
 2. System generates a code on screen.
 3. Enter code + new password → session ends → sign in with new password.
 
@@ -170,7 +172,7 @@ Open <http://127.0.0.1:3000>. OTP codes always appear on the verification screen
 |-------|-----|
 | Cannot sign in | Re-run seed; verify email in `team.ts` matches login |
 | OTP page empty | Return to login and sign in again to regenerate code |
-| Chart shows no data | Must be logged in; wait 30s and refresh |
+| Chart shows no data | Must be logged in; wait ~60s for auto-refresh |
 | Users lost after restart (local) | Expected with `MONGODB_URI=memory`; use Atlas |
 
 See [Operations](docs/OPERATIONS.md) and [Security](docs/SECURITY.md).

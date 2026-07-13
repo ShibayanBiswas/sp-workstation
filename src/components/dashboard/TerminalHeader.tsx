@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
+import { useMarkets } from "@/components/dashboard/MarketsProvider";
+import { LiveSyncIndicator } from "@/components/dashboard/LiveSyncIndicator";
 import {
   getNseMarketStatus,
   marketStatusLabel,
@@ -25,6 +27,7 @@ function statusColor(status: MarketStatus) {
 }
 
 export function TerminalHeader() {
+  const { syncing, asOf } = useMarkets();
   const [now, setNow] = useState<Date | null>(null);
   const [status, setStatus] = useState<MarketStatus>("closed");
 
@@ -57,7 +60,7 @@ export function TerminalHeader() {
     }) ?? "";
 
   return (
-    <div className="terminal-header panel-stable flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-2 md:px-5">
+    <div className="terminal-header panel-stable panel-luxe flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-2 md:px-5">
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-[10px] font-semibold tracking-[0.32em] text-[var(--gold-deep)] dark:text-[var(--gold)]">
           SP TERMINAL
@@ -74,12 +77,15 @@ export function TerminalHeader() {
         </span>
       </div>
 
-      <div className="flex items-center gap-2 text-[var(--fg-subtle)]">
+      <div className="flex flex-wrap items-center gap-3">
+        <LiveSyncIndicator syncing={syncing} lastSyncedAt={asOf} compact />
         <Clock size={14} />
         <span className="fin-num text-sm font-medium text-[var(--fg)]">
           {timeStr}
         </span>
-        <span className="hidden text-xs sm:inline">{dateStr}</span>
+        <span className="hidden text-xs text-[var(--fg-subtle)] sm:inline">
+          {dateStr}
+        </span>
       </div>
     </div>
   );

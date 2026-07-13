@@ -1,5 +1,7 @@
 import type { ChartTimeframe } from "@/lib/chart-timeframes";
 import { filterNseSessionBars } from "@/lib/chart-ist";
+import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
+import { normalizeLiveQuote } from "@/lib/market-quote";
 
 export type OhlcBar = {
   time: number;
@@ -38,7 +40,8 @@ const FETCH_HEADERS = {
 
 type CacheEntry<T> = { at: number; value: T };
 const cache = new Map<string, CacheEntry<unknown>>();
-const CACHE_MS = 25_000;
+/** Align server cache with client poll cadence so each minute gets fresh quotes. */
+const CACHE_MS = LIVE_REFRESH_MS - 5_000;
 
 function getCached<T>(key: string): T | null {
   const hit = cache.get(key);
@@ -149,11 +152,14 @@ function parseYahooPayload(
 
 /** Fast live quote from Yahoo meta — more reliable than parsing full OHLC. */
 export async function fetchYahooLiveQuote(
-  yahooSymbol: string
+  yahooSymbol: string,
+  opts?: { fresh?: boolean }
 ): Promise<YahooLiveQuote | null> {
   const cacheKey = `quote:${yahooSymbol}`;
-  const cached = getCached<YahooLiveQuote>(cacheKey);
-  if (cached) return cached;
+  if (!opts?.fresh) {
+    const cached = getCached<YahooLiveQuote>(cacheKey);
+    if (cached) return cached;
+  }
 
   const path = `/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d&includePrePost=false`;
   const data = await fetchYahooJson(path);
@@ -167,18 +173,14 @@ export async function fetchYahooLiveQuote(
   const previousClose = meta.chartPreviousClose ?? meta.previousClose ?? price;
   if (price == null || Number.isNaN(price)) return null;
 
-  const change =
-    meta.regularMarketChange ?? (previousClose != null ? price - previousClose : 0);
-  const changePercent =
-    meta.regularMarketChangePercent ??
-    (previousClose ? (change / previousClose) * 100 : 0);
-
-  const quote: YahooLiveQuote = {
+  const normalized = normalizeLiveQuote({
     price,
-    change,
-    changePercent,
     previousClose: previousClose ?? price,
     marketTime: meta.regularMarketTime,
+  });
+
+  const quote: YahooLiveQuote = {
+    ...normalized,
   };
   setCached(cacheKey, quote);
   return quote;
@@ -277,13 +279,6 @@ export async function fetchYahooOhlcBefore(
   }
   if (parsed) setCached(cacheKey, parsed);
   return parsed;
-}
-
-export function mergeOhlcBars(existing: OhlcBar[], older: OhlcBar[]): OhlcBar[] {
-  const byTime = new Map<number, OhlcBar>();
-  for (const bar of older) byTime.set(bar.time, bar);
-  for (const bar of existing) byTime.set(bar.time, bar);
-  return [...byTime.values()].sort((a, b) => a.time - b.time);
 }
 
 /** Compact closes for sparklines — skips nulls, keeps order. */

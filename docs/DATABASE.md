@@ -42,15 +42,6 @@ but all data is lost when the Node.js process exits.
 - `consumed`: replay-prevention flag
 - timestamps
 
-### PasswordReset
-
-- `userId`: User reference
-- `email`: reset identity
-- `token`: unique random token
-- `expiresAt`: TTL expiration
-- `consumed`: replay-prevention flag
-- timestamps
-
 ### Todo
 
 - `userId`: User reference and ownership boundary
@@ -61,7 +52,7 @@ but all data is lost when the Node.js process exits.
 - timestamps
 
 MongoDB TTL cleanup is asynchronous; application queries still explicitly
-check expiration before accepting OTP or reset records.
+check expiration before accepting OTP records.
 
 ## Local team seed
 
