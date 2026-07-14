@@ -19,7 +19,9 @@ const schema = z.object({
   password: z.string().min(1),
 });
 
-const allowedEmails = new Set(TEAM_MEMBERS.map((member) => member.email));
+const allowedEmails = new Set(
+  TEAM_MEMBERS.map((member) => member.email.toLowerCase())
+);
 
 export async function POST(request: Request) {
   try {
@@ -49,9 +51,19 @@ export async function POST(request: Request) {
       await seedTeamMembers();
     }
 
-    const user = await User.findOne({
+    let user = await User.findOne({
       email: { $in: [canonical, inputEmail] },
     });
+
+    // If roster email is valid but missing in DB (common on first Vercel deploy),
+    // seed missing team members once, then retry the lookup.
+    if (!user) {
+      await seedTeamMembers();
+      user = await User.findOne({
+        email: { $in: [canonical, inputEmail] },
+      });
+    }
+
     if (!user) {
       return NextResponse.json(
         { error: "Invalid email ID." },

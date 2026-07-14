@@ -16,9 +16,20 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const noticeTitle = error.toLowerCase().includes("password")
-    ? "Wrong password"
-    : "Invalid email ID";
+  const noticeTitle = (() => {
+    const e = error.toLowerCase();
+    if (e.includes("password")) return "Wrong password";
+    if (
+      e.includes("mongo") ||
+      e.includes("whitelist") ||
+      e.includes("connect") ||
+      e.includes("ip")
+    ) {
+      return "Database connection failed";
+    }
+    if (e.includes("invalid email")) return "Invalid email ID";
+    return "Sign-in failed";
+  })();
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -122,7 +133,13 @@ export function LoginForm() {
               message={
                 error.toLowerCase().includes("password")
                   ? "The email ID is valid, but the password does not match our records. Please re-enter your password or use Change password."
-                  : "This workstation accepts only approved Anand Rathi Wealth Structured Products email IDs."
+                  : error.toLowerCase().includes("mongo") ||
+                      error.toLowerCase().includes("whitelist") ||
+                      error.toLowerCase().includes("connect")
+                    ? "The app cannot reach MongoDB Atlas. In Atlas → Network Access, allow 0.0.0.0/0 (or Vercel IPs), wait 1–2 minutes, then try again."
+                    : error.toLowerCase().includes("invalid email")
+                      ? "This workstation accepts only approved Anand Rathi Wealth Structured Products email IDs."
+                      : error
               }
               onClose={() => setError("")}
             />
