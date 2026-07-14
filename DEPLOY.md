@@ -10,7 +10,7 @@ steps in order. Do not skip ahead.
 - Sign-in → on-screen OTP → dashboard
 - Code safely stored on GitHub
 
-**Repository:** <https://github.com/ShibayanBiswas/sp-workstation> (private)
+**Repository:** <https://github.com/ShibayanBiswas/sp-workstation> (public)
 
 ---
 
@@ -24,6 +24,21 @@ steps in order. Do not skip ahead.
 
 **You do not need email / SMTP.** OTP codes appear **on screen** after login.
 
+### Sharing Cluster0 with another project
+
+You can reuse the same Atlas **cluster** (e.g. Cluster0 in Mumbai). The URI must
+include a **dedicated database name**:
+
+```text
+mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/sp-workstation?retryWrites=true&w=majority
+```
+
+That creates/uses only the `sp-workstation` database. Other databases on the
+same cluster (other apps) are left alone. Never point this app at another
+project’s database name.
+
+URL-encode special characters in the password (`@` → `%40`).
+
 Approx. time: **30–45 minutes** the first time.
 
 ---
@@ -34,8 +49,8 @@ Install / create accounts for:
 
 1. [Node.js 20+](https://nodejs.org/) (for local testing)
 2. [Git](https://git-scm.com/)
-3. [GitHub account](https://github.com) with access to this private repo
-4. [MongoDB Atlas account](https://www.mongodb.com/cloud/atlas) (free)
+3. [GitHub account](https://github.com) with access to this repo
+4. [MongoDB Atlas account](https://www.mongodb.com/cloud/atlas) (free — can share an existing cluster)
 5. [Vercel account](https://vercel.com) (sign in with GitHub is easiest)
 
 ---

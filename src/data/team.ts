@@ -13,7 +13,7 @@ export type TeamMemberSeed = {
  */
 export const TEAM_MEMBERS: TeamMemberSeed[] = [
   {
-    name: "Kaplpesh Koradia",
+    name: "Kalpesh Koradia",
     email: "kalpeshkoradia@rathi.com",
     role: "member",
   },
