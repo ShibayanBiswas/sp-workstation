@@ -10,11 +10,5 @@ export default async function PrimarySpModulePage({ params }: Props) {
   const sub = findSubmoduleBySegments(path);
   const src = resolveSpUrl(sub.spPath);
 
-  return (
-    <SpModuleFrame
-      title={sub.label}
-      description={sub.description}
-      src={src}
-    />
-  );
+  return <SpModuleFrame src={src} />;
 }
