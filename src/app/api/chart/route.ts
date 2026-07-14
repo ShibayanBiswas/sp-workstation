@@ -79,9 +79,14 @@ export async function GET(req: Request) {
 
   const live = await fetchYahooLiveQuote(index.yahoo, { fresh: true });
   const price = live?.price ?? lastBar.close;
-  const period = computeTimeframeReturn(ohlc.bars, timeframe.id, price);
-  const change = period?.change ?? 0;
-  const changePercent = period?.changePercent ?? 0;
+  const period = computeTimeframeReturn(
+    ohlc.bars,
+    timeframe.id,
+    price,
+    live?.previousClose
+  );
+  const change = period?.change ?? live?.change ?? 0;
+  const changePercent = period?.changePercent ?? live?.changePercent ?? 0;
 
   return NextResponse.json({
     indexId: index.id,
@@ -96,7 +101,9 @@ export async function GET(req: Request) {
       price,
       change,
       changePercent,
-      reference: period?.reference ?? null,
+      reference: period?.reference ?? live?.previousClose ?? null,
+      basis: period?.basis ?? "prev_close",
+      previousClose: live?.previousClose ?? null,
       time: live?.marketTime ?? lastBar.time,
     },
     asOf: new Date().toISOString(),

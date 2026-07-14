@@ -25,7 +25,11 @@ import {
 } from "@/lib/chart-ist";
 import { buildChartSeries } from "@/lib/chart-series";
 import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
-import { computeTimeframeReturn } from "@/lib/chart-period-return";
+import {
+  computeTimeframeReturn,
+  returnBasisLabel,
+  type ReturnBasis,
+} from "@/lib/chart-period-return";
 import {
   formatMarketChange,
   formatMarketChangePercent,
@@ -37,8 +41,11 @@ import type { OhlcBar } from "@/lib/yahoo-ohlc";
 type ThemeMode = "light" | "dark";
 
 type SyncedQuote = {
-  /** Live last price only — change/% come from the chart timeframe. */
   price: number | null;
+  /** Day change vs previous close from /api/markets (Snapshot / tape). */
+  change?: number | null;
+  changePercent?: number | null;
+  previousClose?: number | null;
   marketTime?: number;
 };
 
@@ -205,6 +212,7 @@ export function CandlestickChart({
     hoverTime: "",
   });
   const [periodReference, setPeriodReference] = useState<number | null>(null);
+  const [returnBasis, setReturnBasis] = useState<ReturnBasis | null>(null);
 
   const displayPrice =
     syncedQuote?.price != null
@@ -215,15 +223,26 @@ export function CandlestickChart({
           ? formatMarketPrice(fallbackPrice, indexId)
           : "—";
 
-  // Live tape price + period open reference → timeframe return stays correct between polls.
+  // 1D: use Snapshot/tape day change (vs prev close) so both panels always match.
+  // 1W+: recompute from period open reference between chart polls.
   const livePeriod =
-    syncedQuote?.price != null && periodReference != null && periodReference !== 0
+    timeframe === "1D" &&
+    syncedQuote?.price != null &&
+    syncedQuote.change != null &&
+    syncedQuote.changePercent != null
       ? {
-          change: syncedQuote.price - periodReference,
-          changePercent:
-            ((syncedQuote.price - periodReference) / periodReference) * 100,
+          change: syncedQuote.change,
+          changePercent: syncedQuote.changePercent,
         }
-      : null;
+      : syncedQuote?.price != null &&
+          periodReference != null &&
+          periodReference !== 0
+        ? {
+            change: syncedQuote.price - periodReference,
+            changePercent:
+              ((syncedQuote.price - periodReference) / periodReference) * 100,
+          }
+        : null;
 
   const displayUp = livePeriod
     ? livePeriod.change >= 0
@@ -234,6 +253,10 @@ export function CandlestickChart({
   const displayChangePct = livePeriod
     ? formatMarketChangePercent(livePeriod.changePercent)
     : header.changePercent;
+  const basisHint =
+    timeframe === "1D"
+      ? returnBasisLabel("prev_close")
+      : returnBasisLabel(returnBasis);
 
   useEffect(() => {
     if (syncedQuote?.price == null) return;
@@ -273,6 +296,7 @@ export function CandlestickChart({
     const tf = getTimeframe(timeframe);
     tfRef.current = tf;
     setPeriodReference(null);
+    setReturnBasis(null);
     const colors = chartColors(theme);
     barsRef.current = [];
     hasMoreRef.current = true;
@@ -546,9 +570,20 @@ export function CandlestickChart({
             const computed = computeTimeframeReturn(
               barsRef.current,
               tf.id,
-              price
+              price,
+              typeof last.previousClose === "number" ? last.previousClose : null
             );
-            if (computed) reference = computed.reference;
+            if (computed) {
+              reference = computed.reference;
+              setReturnBasis(computed.basis);
+            }
+          } else if (
+            last.basis === "prev_close" ||
+            last.basis === "week_open" ||
+            last.basis === "month_open" ||
+            last.basis === "lookback_open"
+          ) {
+            setReturnBasis(last.basis);
           }
 
           if (reference != null) setPeriodReference(reference);
@@ -663,6 +698,11 @@ export function CandlestickChart({
             >
               {displayChange} ({displayChangePct})
             </span>
+            {basisHint ? (
+              <span className="text-[10px] font-medium tracking-wide text-[var(--fg-subtle)]">
+                {basisHint}
+              </span>
+            ) : null}
           </div>
           <p className="tv-num mt-1 text-[11px] text-[var(--fg-subtle)]">
             {header.hoverTime

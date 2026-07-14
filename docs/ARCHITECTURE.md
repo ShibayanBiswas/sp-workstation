@@ -76,8 +76,9 @@ src/
 A **Live sync indicator** (green pill) shows last sync time and countdown to
 the next 60-second refresh. Tape and snapshot cards use **day change vs previous
 close** from `/api/markets`. The **chart header** price stays synced to the same
-last price, but its change / % are **timeframe period returns** from
-`/api/chart` (session open for 1D, week open for 1W, month open for 1M, etc.).
+last price. On **1D**, change/% match Snapshot (vs previous close). On 1W / 1M /
+… the chart shows period returns (vs week / month / lookback open), labeled in
+the header.
 
 Index display order: main benchmarks → sectors → India VIX → USD/INR.
 

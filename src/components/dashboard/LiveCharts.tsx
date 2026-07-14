@@ -202,6 +202,8 @@ export function LiveCharts() {
             liveQuote
               ? {
                   price: liveQuote.price,
+                  change: liveQuote.change,
+                  changePercent: liveQuote.changePercent,
                   marketTime: liveQuote.marketTime,
                 }
               : null
