@@ -26,14 +26,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      const stored = window.localStorage.getItem("sp-theme") as Theme | null;
-      const preferred =
-        stored ||
-        (window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light");
+      const stored = window.localStorage.getItem("sp-theme");
+      // Default is always light unless the user explicitly chose dark before.
+      const preferred: Theme =
+        stored === "dark" || stored === "light" ? stored : "light";
       setThemeState(preferred);
       document.documentElement.classList.toggle("dark", preferred === "dark");
+      document.documentElement.style.colorScheme = preferred;
       setReady(true);
     });
 
@@ -44,6 +43,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setThemeState(t);
     window.localStorage.setItem("sp-theme", t);
     document.documentElement.classList.toggle("dark", t === "dark");
+    document.documentElement.style.colorScheme = t;
   }, []);
 
   const toggleTheme = useCallback(() => {
