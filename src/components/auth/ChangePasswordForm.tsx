@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { ArrowRight, LockKeyhole } from "lucide-react";
 import { AuthAccessStrip } from "@/components/auth/AuthAccessStrip";
+import { AuthOtpDisplay } from "@/components/auth/AuthOtpDisplay";
 import { AuthShell } from "@/components/auth/AuthShell";
 
 type Props = {
@@ -107,12 +108,14 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
 
         <header className="auth-header">
           <div className="min-w-0 flex-1">
-            <p className="auth-eyebrow">Secure update</p>
+            <p className="auth-eyebrow">Structured Products Desk</p>
             <h1 className="auth-title">Set new password</h1>
             <p className="auth-lead">
               {fromDashboard
                 ? "A verification code was generated for your active session. Enter it below with your new password."
-                : "Use the verification code generated for your account, then choose a new password."}
+                : email
+                  ? `Use the verification code for ${email}, then choose a new password.`
+                  : "Use the verification code generated for your account, then choose a new password."}
             </p>
           </div>
           <div className="auth-icon-badge">
@@ -122,27 +125,18 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
 
         <div className="auth-divider" />
 
-        {!requesting && !done ? (
-          <AuthAccessStrip variant="password" />
-        ) : null}
+        {!requesting && !done ? <AuthAccessStrip variant="password" /> : null}
 
         {requesting ? (
-          <p className="py-8 text-center text-base text-[var(--fg-muted)]">
-            Generating verification code…
-          </p>
+          <p className="auth-loading-note">Generating verification code…</p>
         ) : done ? (
           <p className="auth-success my-6">
             Password updated. Redirecting to sign in…
           </p>
         ) : (
-          <>
+          <div className="auth-verify-zone">
             {otp ? (
-              <div className="auth-otp-panel">
-                <p className="auth-otp-caption">
-                  Verification code{email ? ` · ${email}` : ""}
-                </p>
-                <p className="auth-otp-code">{otp}</p>
-              </div>
+              <AuthOtpDisplay otp={otp} caption="Verification code" />
             ) : (
               <p className="auth-error">
                 No code available.{" "}
@@ -153,16 +147,17 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
               </p>
             )}
 
-            <form onSubmit={onSubmit} className="auth-form mt-6">
+            <form onSubmit={onSubmit} className="auth-form">
               <div className="auth-field">
                 <label className="auth-label" htmlFor="change-code">
                   Enter code
                 </label>
                 <input
                   id="change-code"
-                  className="input-field auth-input auth-otp-input w-full !text-left !tracking-[0.28em]"
+                  className="input-field auth-input auth-otp-input w-full"
                   inputMode="numeric"
                   maxLength={6}
+                  placeholder="000000"
                   value={code}
                   onChange={(e) =>
                     setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
@@ -210,14 +205,14 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
                 <button
                   type="submit"
                   className="btn-primary auth-submit w-full"
-                  disabled={loading || code.length !== 6}
+                  disabled={loading || code.length !== 6 || !otp}
                 >
                   {loading ? "Updating…" : "Update password"}
                   {!loading ? <ArrowRight size={16} /> : null}
                 </button>
               </div>
             </form>
-          </>
+          </div>
         )}
 
         <footer className="auth-footer">
@@ -227,6 +222,9 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
           >
             ← {fromDashboard ? "Back to dashboard" : "Back to sign in"}
           </Link>
+          <p className="auth-footnote mt-4">
+            Password must include upper, lower case, and a number.
+          </p>
         </footer>
       </div>
     </AuthShell>

@@ -16,19 +16,20 @@ function Pill({ children }: { children: ReactNode }) {
 export function AuthAccessStrip({ variant = "login" }: Props) {
   if (variant === "verify") {
     return (
-      <div className="auth-access-strip auth-access-strip-compact">
-        <div className="auth-access-icon" aria-hidden>
-          <KeyRound size={20} strokeWidth={1.75} />
+      <div className="auth-access-strip">
+        <div className="auth-access-icon auth-access-icon-lg" aria-hidden>
+          <KeyRound size={22} strokeWidth={1.75} />
         </div>
         <div className="auth-access-body">
-          <p className="auth-access-title">Step 2 · Verification</p>
+          <p className="auth-access-title">On-screen verification</p>
           <p className="auth-access-copy">
-            Enter the 6-digit code shown below. Generated locally — valid for
-            10 minutes.
+            Your 6-digit code appears in the panel below. Nothing is sent by
+            email — enter it to complete sign-in.
           </p>
           <div className="auth-access-pills">
-            <Pill>No email</Pill>
-            <Pill>IST timezone</Pill>
+            <Pill>Local OTP</Pill>
+            <Pill>10 min validity</Pill>
+            <Pill>IST</Pill>
           </div>
         </div>
       </div>
@@ -37,9 +38,9 @@ export function AuthAccessStrip({ variant = "login" }: Props) {
 
   if (variant === "password") {
     return (
-      <div className="auth-access-strip auth-access-strip-compact">
-        <div className="auth-access-icon" aria-hidden>
-          <ShieldCheck size={20} strokeWidth={1.75} />
+      <div className="auth-access-strip">
+        <div className="auth-access-icon auth-access-icon-lg" aria-hidden>
+          <ShieldCheck size={22} strokeWidth={1.75} />
         </div>
         <div className="auth-access-body">
           <p className="auth-access-title">Secure password update</p>

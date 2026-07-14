@@ -53,7 +53,7 @@ export function ForgotPasswordForm() {
 
         <header className="auth-header">
           <div className="min-w-0 flex-1">
-            <p className="auth-eyebrow">Password update</p>
+            <p className="auth-eyebrow">Structured Products Desk</p>
             <h1 className="auth-title">Change your password</h1>
             <p className="auth-lead">
               Enter your registered email address. The system will generate a
@@ -111,6 +111,9 @@ export function ForgotPasswordForm() {
           <Link href="/login" className="auth-link auth-back">
             ← Back to sign in
           </Link>
+          <p className="auth-footnote mt-4">
+            Only approved Structured Products email IDs can reset passwords.
+          </p>
         </footer>
       </div>
     </AuthShell>

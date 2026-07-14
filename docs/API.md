@@ -133,9 +133,21 @@ Query parameters:
 - `timeframe` — `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, or `5Y`
 - `before` — optional Unix timestamp for scroll-back history
 
-Response includes `bars`, `last` (price, change, changePercent, time), and
-`asOf`. Chart header prices for the selected index are synced from the same
-markets feed when the dashboard is open.
+Response includes `bars`, `last` (price, change, changePercent, **reference**,
+time), and `asOf`.
+
+**Period returns are timeframe-aware** (`src/lib/chart-period-return.ts`):
+
+| Timeframe | Change / % measured from |
+|-----------|--------------------------|
+| `1D` | Session open (latest IST trading day) → last / close |
+| `1W` | Week open (Monday IST) → last |
+| `1M` | Calendar month open (1st IST) → last |
+| `3M` / `6M` / `1Y` / `5Y` | Open of first bar ~lookback ago → last |
+
+The chart header uses this period return — **not** previous-close day change
+from `/api/markets`. Live tape price stays synced; % updates when you switch
+1D / 1W / 1M / etc.
 
 The chart client polls every **60 seconds** (`LIVE_REFRESH_MS` in
 `src/lib/live-refresh.ts`).

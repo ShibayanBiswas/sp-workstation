@@ -25,6 +25,7 @@ import {
 } from "@/lib/chart-ist";
 import { buildChartSeries } from "@/lib/chart-series";
 import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
+import { computeTimeframeReturn } from "@/lib/chart-period-return";
 import {
   formatMarketChange,
   formatMarketChangePercent,
@@ -36,9 +37,8 @@ import type { OhlcBar } from "@/lib/yahoo-ohlc";
 type ThemeMode = "light" | "dark";
 
 type SyncedQuote = {
+  /** Live last price only — change/% come from the chart timeframe. */
   price: number | null;
-  change: number | null;
-  changePercent: number | null;
   marketTime?: number;
 };
 
@@ -48,9 +48,8 @@ type Props = {
   theme: ThemeMode;
   name: string;
   zoomEnabled?: boolean;
+  /** Optional last price while chart boots — never used for change/%. */
   fallbackPrice?: number | null;
-  fallbackChange?: number | null;
-  fallbackChangePercent?: number | null;
   syncedQuote?: SyncedQuote | null;
   syncedAsOf?: string;
 };
@@ -176,8 +175,6 @@ export function CandlestickChart({
   name,
   zoomEnabled = false,
   fallbackPrice,
-  fallbackChange,
-  fallbackChangePercent,
   syncedQuote,
   syncedAsOf,
 }: Props) {
@@ -207,6 +204,7 @@ export function CandlestickChart({
     asOf: "",
     hoverTime: "",
   });
+  const [periodReference, setPeriodReference] = useState<number | null>(null);
 
   const displayPrice =
     syncedQuote?.price != null
@@ -216,28 +214,26 @@ export function CandlestickChart({
         : fallbackPrice != null
           ? formatMarketPrice(fallbackPrice, indexId)
           : "—";
-  const displayUp =
-    syncedQuote?.change != null
-      ? syncedQuote.change >= 0
-      : header.price !== "—"
-        ? header.up
-        : (fallbackChange ?? 0) >= 0;
-  const displayChange =
-    syncedQuote?.change != null
-      ? formatMarketChange(syncedQuote.change, indexId)
-      : header.change !== "—"
-        ? header.change
-        : fallbackChange != null
-          ? formatMarketChange(fallbackChange, indexId)
-          : "—";
-  const displayChangePct =
-    syncedQuote?.changePercent != null
-      ? formatMarketChangePercent(syncedQuote.changePercent)
-      : header.changePercent !== "—"
-        ? header.changePercent
-        : fallbackChangePercent != null
-          ? formatMarketChangePercent(fallbackChangePercent)
-          : "—";
+
+  // Live tape price + period open reference → timeframe return stays correct between polls.
+  const livePeriod =
+    syncedQuote?.price != null && periodReference != null && periodReference !== 0
+      ? {
+          change: syncedQuote.price - periodReference,
+          changePercent:
+            ((syncedQuote.price - periodReference) / periodReference) * 100,
+        }
+      : null;
+
+  const displayUp = livePeriod
+    ? livePeriod.change >= 0
+    : header.up;
+  const displayChange = livePeriod
+    ? formatMarketChange(livePeriod.change, indexId)
+    : header.change;
+  const displayChangePct = livePeriod
+    ? formatMarketChangePercent(livePeriod.changePercent)
+    : header.changePercent;
 
   useEffect(() => {
     if (syncedQuote?.price == null) return;
@@ -276,6 +272,7 @@ export function CandlestickChart({
     let alive = true;
     const tf = getTimeframe(timeframe);
     tfRef.current = tf;
+    setPeriodReference(null);
     const colors = chartColors(theme);
     barsRef.current = [];
     hasMoreRef.current = true;
@@ -534,27 +531,59 @@ export function CandlestickChart({
 
         const last = data.last;
         if (last) {
-          const up = (last.change ?? 0) >= 0;
-          const newPrice = last.price as number | undefined;
+          const price =
+            typeof last.price === "number" && Number.isFinite(last.price)
+              ? (last.price as number)
+              : null;
+
+          let reference =
+            typeof last.reference === "number" && Number.isFinite(last.reference)
+              ? (last.reference as number)
+              : null;
+
+          // Client-side fallback if older responses omit reference.
+          if (reference == null && price != null && barsRef.current.length > 0) {
+            const computed = computeTimeframeReturn(
+              barsRef.current,
+              tf.id,
+              price
+            );
+            if (computed) reference = computed.reference;
+          }
+
+          if (reference != null) setPeriodReference(reference);
+
+          const period =
+            price != null && reference != null && reference !== 0
+              ? {
+                  change: price - reference,
+                  changePercent: ((price - reference) / reference) * 100,
+                }
+              : last.change != null
+                ? {
+                    change: last.change as number,
+                    changePercent: (last.changePercent as number) ?? 0,
+                  }
+                : null;
+
+          const up = period ? period.change >= 0 : true;
 
           if (
-            newPrice != null &&
+            price != null &&
             prevPriceRef.current != null &&
-            prevPriceRef.current !== newPrice
+            prevPriceRef.current !== price
           ) {
             setPriceFlash(true);
             setTimeout(() => setPriceFlash(false), 700);
           }
-          if (newPrice != null) prevPriceRef.current = newPrice;
+          if (price != null) prevPriceRef.current = price;
 
           setHeader({
-            price: newPrice != null ? fmt(newPrice) : "—",
-            change:
-              last.change != null
-                ? `${up ? "+" : ""}${fmt(last.change)}`
-                : "—",
-            changePercent:
-              last.changePercent != null ? fmtPct(last.changePercent) : "—",
+            price: price != null ? fmt(price) : "—",
+            change: period
+              ? `${up ? "+" : ""}${fmt(period.change)}`
+              : "—",
+            changePercent: period ? fmtPct(period.changePercent) : "—",
             up,
             asOf: last.time ? formatIstHeaderTime(last.time) : "",
             hoverTime: "",

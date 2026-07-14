@@ -198,14 +198,10 @@ export function LiveCharts() {
           name={active.name}
           zoomEnabled={zoomEnabled}
           fallbackPrice={liveQuote?.price}
-          fallbackChange={liveQuote?.change}
-          fallbackChangePercent={liveQuote?.changePercent}
           syncedQuote={
             liveQuote
               ? {
                   price: liveQuote.price,
-                  change: liveQuote.change,
-                  changePercent: liveQuote.changePercent,
                   marketTime: liveQuote.marketTime,
                 }
               : null

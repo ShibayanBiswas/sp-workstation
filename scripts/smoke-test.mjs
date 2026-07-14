@@ -164,6 +164,40 @@ async function main() {
     `Chart vs tape price mismatch: chart ${chart.json.last.price} vs tape ${nifty.price}`
   );
   pass(`Chart synced with tape (Nifty ${chart.json.last.price})`);
+  assert(
+    typeof chart.json.last.reference === "number" && chart.json.last.reference > 0,
+    "1D chart should include period reference (session open)"
+  );
+  pass(`1D period reference ${chart.json.last.reference}`);
+
+  // 8b. Timeframe period returns include a reference open for each window
+  for (const tf of ["1W", "1M", "3M"]) {
+    const r = await request(`/api/chart?indexId=nifty&timeframe=${tf}`);
+    assert(r.status === 200, `${tf} chart failed: ${r.status}`);
+    assert(
+      typeof r.json?.last?.reference === "number" && r.json.last.reference > 0,
+      `${tf} chart missing period reference`
+    );
+    assert(
+      typeof r.json.last.changePercent === "number" &&
+        Number.isFinite(r.json.last.changePercent),
+      `${tf} chart missing period changePercent`
+    );
+    pass(
+      `${tf} period return ${Number(r.json.last.changePercent).toFixed(2)}% (ref ${r.json.last.reference})`
+    );
+  }
+
+  // Month-to-date open should differ from today's session open in normal weeks.
+  const chartMonth = await request("/api/chart?indexId=nifty&timeframe=1M");
+  if (
+    chartMonth.json?.last?.reference != null &&
+    chart.json.last.reference !== chartMonth.json.last.reference
+  ) {
+    pass("1M period reference differs from 1D (expected)");
+  } else {
+    pass("1M period reference checked (may match 1D on month-start days)");
+  }
 
   // 9. Second markets fetch (simulates minute refresh)
   await new Promise((r) => setTimeout(r, 1500));

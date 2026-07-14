@@ -74,8 +74,10 @@ src/
 3. **Live chart** — candlestick chart with timeframe selector (default 1D)
 
 A **Live sync indicator** (green pill) shows last sync time and countdown to
-the next 60-second refresh. Tape, snapshot cards, and chart header share the
-same normalized quote from `/api/markets`.
+the next 60-second refresh. Tape and snapshot cards use **day change vs previous
+close** from `/api/markets`. The **chart header** price stays synced to the same
+last price, but its change / % are **timeframe period returns** from
+`/api/chart` (session open for 1D, week open for 1W, month open for 1M, etc.).
 
 Index display order: main benchmarks → sectors → India VIX → USD/INR.
 

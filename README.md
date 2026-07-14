@@ -10,7 +10,8 @@ mapped access to the Primary SP Dashboard.
 - Distinct login errors: **Invalid email ID** (non-roster) and **Wrong password** (valid email)
 - MongoDB-backed users and OTP records
 - Live tape, snapshot cards, and candlestick charts for 13 Indian indices
-- **Unified live sync** — prices and returns refresh every 60 seconds across tape, cards, and chart
+- **Unified live sync** — prices refresh every 60 seconds across tape, cards, and chart
+- **Timeframe period returns** on the chart header (1D session / 1W week / 1M month / …)
 - Primary SP Dashboard module and submodule navigation
 - Responsive light and dark themes with polished motion
 

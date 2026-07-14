@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
+import { computeTimeframeReturn } from "@/lib/chart-period-return";
 import { getTimeframe } from "@/lib/chart-timeframes";
 import {
   fetchYahooOhlc,
@@ -76,22 +77,11 @@ export async function GET(req: Request) {
     });
   }
 
-  const prevBar = ohlc.bars.length > 1 ? ohlc.bars[ohlc.bars.length - 2] : null;
-  let price = lastBar.close;
-  let change = prevBar ? price - prevBar.close : 0;
-  let changePercent = prevBar?.close ? (change / prevBar.close) * 100 : 0;
-
   const live = await fetchYahooLiveQuote(index.yahoo, { fresh: true });
-  if (live) {
-    price = live.price;
-    change = live.change;
-    changePercent = live.changePercent;
-  }
-
-  const last = {
-    close: price,
-    time: live?.marketTime ?? lastBar.time,
-  };
+  const price = live?.price ?? lastBar.close;
+  const period = computeTimeframeReturn(ohlc.bars, timeframe.id, price);
+  const change = period?.change ?? 0;
+  const changePercent = period?.changePercent ?? 0;
 
   return NextResponse.json({
     indexId: index.id,
@@ -103,10 +93,11 @@ export async function GET(req: Request) {
     currency: ohlc.currency,
     exchange: ohlc.exchange,
     last: {
-      price: last.close,
+      price,
       change,
       changePercent,
-      time: last.time,
+      reference: period?.reference ?? null,
+      time: live?.marketTime ?? lastBar.time,
     },
     asOf: new Date().toISOString(),
   });
