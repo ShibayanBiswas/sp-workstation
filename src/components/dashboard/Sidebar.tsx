@@ -130,9 +130,19 @@ export function Sidebar({ userName, userEmail }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
-  /** Module trees start collapsed; only the expand chevron opens them. */
-  const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
-  const [openNav, setOpenNav] = useState<Record<string, boolean>>({});
+  /** Module trees + nested sections start fully expanded. */
+  const [openModules, setOpenModules] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(MODULES.map((m) => [m.id, true]))
+  );
+  const [openNav, setOpenNav] = useState<Record<string, boolean>>(() => {
+    const defaults: Record<string, boolean> = {};
+    for (const mod of MODULES) {
+      for (const item of mod.nav) {
+        if (item.children?.length) defaults[item.id] = true;
+      }
+    }
+    return defaults;
+  });
 
   const initials = useMemo(() => {
     return userName
@@ -190,9 +200,6 @@ export function Sidebar({ userName, userEmail }: Props) {
                   href={mod.href}
                   className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1"
                   title={mod.description}
-                  onClick={() =>
-                    setOpenModules((s) => ({ ...s, [mod.id]: false }))
-                  }
                 >
                   <BarChart3 size={18} className="shrink-0 text-[var(--gold-deep)] dark:text-[var(--gold)]" />
                   <span className="min-w-0 flex-1 truncate font-medium">
