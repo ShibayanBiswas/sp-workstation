@@ -170,7 +170,7 @@ export function Sidebar({ userName, userEmail }: Props) {
       <nav className="flex-1 overflow-y-auto px-2 py-4 scrollbar-thin">
         <Link
           href="/dashboard"
-          className={`panel-hover mb-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm ${
+          className={`sidebar-nav-item panel-hover mb-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm ${
             pathname === "/dashboard"
               ? "bg-[color-mix(in_srgb,var(--gold)_18%,transparent)] text-[var(--fg)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--gold)_35%,var(--border))]"
               : "text-[var(--fg-muted)]"

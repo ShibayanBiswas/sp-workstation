@@ -56,7 +56,7 @@ export function OtpForm() {
 
   return (
     <AuthShell subtitle="VERIFICATION" variant="verify">
-      <div className="auth-card auth-card-large animate-rise">
+      <div className="auth-card auth-card-large animate-rise auth-card-alive">
         <div className="auth-card-accent" aria-hidden />
 
         <header className="auth-header">

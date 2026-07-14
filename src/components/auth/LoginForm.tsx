@@ -49,7 +49,7 @@ export function LoginForm() {
 
   return (
     <AuthShell subtitle="SECURE ACCESS" variant="signin">
-      <div className="auth-card auth-card-large animate-rise">
+      <div className="auth-card auth-card-large animate-rise auth-card-alive">
         <div className="auth-card-accent" aria-hidden />
 
         <header className="auth-header">
@@ -137,7 +137,7 @@ export function LoginForm() {
               {loading ? "Authenticating…" : "Continue"}
               {!loading ? <ArrowRight size={16} /> : null}
             </button>
-            <Link href="/forgot-password" className="auth-link text-center">
+            <Link href="/forgot-password" className="btn-gold-secondary auth-secondary-btn w-full sm:w-auto">
               Change password
             </Link>
           </div>

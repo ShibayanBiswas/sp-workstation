@@ -268,13 +268,13 @@ a {
     color-mix(in srgb, var(--bg-elevated) 90%, transparent),
     color-mix(in srgb, var(--bg-muted) 60%, transparent)
   );
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
 }
 
 .module-tile:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--gold) 40%, var(--border));
-  box-shadow: 0 12px 32px var(--panel-glow);
+  transform: translateY(-4px) scale(1.015);
+  border-color: color-mix(in srgb, var(--gold) 42%, var(--border));
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--gold) 14%, transparent);
 }
 
 .snapshot-viewport {
@@ -338,6 +338,10 @@ a {
   animation: rise-in 0.7s ease-out 0.36s both;
 }
 
+.animate-rise-delay-4 {
+  animation: rise-in 0.7s ease-out 0.48s both;
+}
+
 @keyframes ambient-drift {
   0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.82; }
   50% { transform: translate3d(2%, 1.5%, 0) scale(1.03); opacity: 0.95; }
@@ -371,6 +375,76 @@ a {
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 
+@keyframes accent-sweep {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes soft-glow-breathe {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
+      0 40px 100px color-mix(in srgb, var(--ink) 10%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--gold) 10%, transparent),
+      0 0 28px color-mix(in srgb, var(--gold) 6%, transparent);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent),
+      0 48px 120px color-mix(in srgb, var(--ink) 12%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--gold) 18%, transparent),
+      0 0 42px color-mix(in srgb, var(--gold) 14%, transparent);
+  }
+}
+
+@keyframes badge-glow {
+  0%, 100% {
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--gold) 12%, transparent);
+  }
+  50% {
+    box-shadow: 0 10px 32px color-mix(in srgb, var(--gold) 28%, transparent);
+  }
+}
+
+@keyframes otp-pulse {
+  0%, 100% {
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--gold) 8%, transparent);
+  }
+  50% {
+    box-shadow: 0 14px 36px color-mix(in srgb, var(--gold) 22%, transparent);
+  }
+}
+
+@keyframes btn-sheen {
+  0% { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
+  30% { opacity: 0.55; }
+  100% { transform: translateX(220%) skewX(-18deg); opacity: 0; }
+}
+
+@keyframes panel-soft-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes sidebar-item-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .gold-text-shimmer {
   background-size: 200% auto;
   animation: gold-shimmer-text 5s linear infinite;
@@ -379,6 +453,11 @@ a {
 .panel-luxe {
   position: relative;
   overflow: hidden;
+  transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+}
+
+.panel-luxe:hover {
+  transform: translateY(-1px);
 }
 
 .panel-luxe::after {
@@ -402,6 +481,10 @@ a {
   animation: shimmer 2.8s ease-in-out infinite;
 }
 
+.panel-enter-glow {
+  animation: panel-soft-enter 0.85s ease-out both;
+}
+
 .tape-chip-animate,
 .market-card-animate,
 .module-tile-animate {
@@ -414,6 +497,10 @@ a {
 
 .auth-aurora-animate {
   animation: ambient-drift 20s ease-in-out infinite alternate;
+}
+
+.terminal-shell-alive .panel-luxe {
+  will-change: transform;
 }
 
 .animate-shimmer {
@@ -514,6 +601,8 @@ a {
 }
 
 .btn-primary {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -526,17 +615,79 @@ a {
   cursor: pointer;
   color: #111;
   background: linear-gradient(135deg, #e5cf94 0%, #d4b24c 50%, #b8860b 100%);
-  transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--gold) 28%, transparent);
+  transition: transform 0.2s ease, filter 0.2s ease, opacity 0.15s ease, box-shadow 0.2s ease;
+}
+
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, #fff 55%, transparent),
+    transparent
+  );
+  animation: btn-sheen 3.2s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.05);
-  transform: translateY(-1px);
+  filter: brightness(1.06);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--gold) 38%, transparent);
 }
 
 .btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.btn-primary:disabled::after {
+  animation: none;
+  opacity: 0;
+}
+
+.btn-gold-secondary {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 3.35rem;
+  padding: 0.85rem 1.35rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--gold) 55%, var(--border));
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--gold) 16%, var(--bg-elevated)),
+    color-mix(in srgb, var(--gold) 6%, var(--bg-muted))
+  );
+  color: var(--gold-deep);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--gold) 12%, transparent);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.dark .btn-gold-secondary {
+  color: var(--gold-soft);
+}
+
+.btn-gold-secondary:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--gold) 75%, var(--border));
+  filter: brightness(1.04);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--gold) 22%, transparent);
+  text-decoration: none;
 }
 
 .btn-ghost {
@@ -546,12 +697,13 @@ a {
   border-radius: 10px;
   padding: 0.55rem 0.9rem;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
 .btn-ghost:hover {
   background: var(--bg-muted);
   border-color: color-mix(in srgb, var(--gold) 40%, var(--border));
+  transform: translateY(-1px);
 }
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -641,13 +793,18 @@ a {
   transition: transform 0.45s ease, box-shadow 0.45s ease, border-color 0.45s ease;
 }
 
+.auth-card-alive {
+  animation: soft-glow-breathe 6.5s ease-in-out 0.8s infinite;
+}
+
 .auth-card:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--gold) 38%, var(--border));
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--gold) 42%, var(--border));
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent),
     0 56px 130px color-mix(in srgb, var(--ink) 14%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--gold) 16%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--gold) 18%, transparent),
+    0 0 40px color-mix(in srgb, var(--gold) 12%, transparent);
 }
 
 .auth-card::before {
@@ -694,15 +851,35 @@ a {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
+  height: 1.5px;
+  z-index: 2;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--gold) 35%, transparent) 12%,
+    var(--gold-soft) 35%,
+    var(--gold) 50%,
+    var(--gold-soft) 65%,
+    color-mix(in srgb, var(--gold) 35%, transparent) 88%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: accent-sweep 4.5s linear infinite;
+  opacity: 0.92;
+}
+
+.auth-card-accent::after {
+  content: "";
+  position: absolute;
+  inset: 0;
   background: linear-gradient(
     90deg,
     transparent,
-    var(--gold) 18%,
-    var(--gold-soft) 50%,
-    var(--gold) 82%,
+    color-mix(in srgb, #fff 55%, transparent),
     transparent
   );
+  animation: btn-sheen 3.8s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .auth-header {
@@ -750,6 +927,14 @@ a {
     color-mix(in srgb, var(--bg-elevated) 92%, transparent)
   );
   padding: 1.15rem 1.25rem;
+  animation: chip-enter 0.7s ease-out 0.12s both;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.auth-access-strip:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--gold) 42%, var(--border));
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--gold) 8%, transparent);
 }
 
 .auth-access-strip-compact {
@@ -915,6 +1100,12 @@ a {
   );
   color: var(--gold-deep);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--gold) 12%, transparent);
+  animation: badge-glow 4s ease-in-out infinite;
+  transition: transform 0.3s ease;
+}
+
+.auth-icon-badge:hover {
+  transform: scale(1.04) rotate(-2deg);
 }
 
 .auth-icon-badge-lg {
@@ -965,6 +1156,13 @@ a {
   padding: 0.55rem 1.75rem;
   text-align: center;
   box-shadow: 0 10px 28px color-mix(in srgb, var(--gold) 8%, transparent);
+  animation: otp-pulse 3.6s ease-in-out infinite;
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.auth-otp-panel:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--border));
 }
 
 @media (min-width: 640px) {
@@ -1195,4 +1393,68 @@ a {
   display: inline-block;
   margin-top: 2rem;
   font-size: 0.9rem;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.auth-back:hover {
+  transform: translateX(-3px);
+}
+
+/* Module tiles & market surfaces (hover polish above in .module-tile) */
+.market-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.market-card:hover {
+  transform: translateY(-3px);
+}
+
+.sidebar-nav-item {
+  animation: sidebar-item-in 0.45s ease-out both;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.sidebar-nav-item:hover {
+  transform: translateX(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-rise-delay-1,
+  .animate-rise-delay-2,
+  .animate-rise-delay-3,
+  .animate-rise-delay-4,
+  .auth-card-alive,
+  .auth-card-accent,
+  .auth-card-accent::after,
+  .auth-aurora-animate,
+  .auth-icon-badge,
+  .auth-otp-panel,
+  .auth-access-strip,
+  .btn-primary::after,
+  .tape-chip-animate,
+  .market-card-animate,
+  .module-tile-animate,
+  .greeting-orb,
+  .panel-enter-glow,
+  .panel-luxe:hover::after,
+  .live-sync-dot,
+  .animate-pulse-live,
+  .animate-shimmer,
+  .gold-text-shimmer,
+  .sidebar-nav-item {
+    animation: none !important;
+  }
+
+  .auth-card:hover,
+  .btn-primary:hover:not(:disabled),
+  .btn-gold-secondary:hover,
+  .tape-chip:hover,
+  .module-tile:hover,
+  .market-card:hover,
+  .panel-luxe:hover,
+  .auth-otp-panel:hover,
+  .auth-access-strip:hover {
+    transform: none;
+  }
 }

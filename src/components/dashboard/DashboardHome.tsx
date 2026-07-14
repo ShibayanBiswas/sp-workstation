@@ -17,7 +17,7 @@ type Props = {
 export function DashboardHome({ name }: Props) {
   return (
     <MarketsProvider>
-      <div className="terminal-shell min-h-full pb-10">
+      <div className="terminal-shell terminal-shell-alive min-h-full pb-10">
         <div className="terminal-canvas space-y-5 p-5 md:space-y-6 md:p-8">
           <div className="animate-rise space-y-5">
             <TerminalHeader />
@@ -29,15 +29,15 @@ export function DashboardHome({ name }: Props) {
             <IndianMarketCards />
           </div>
 
-          <div className="animate-rise-delay-2">
+          <div className="animate-rise-delay-2 panel-enter-glow">
             <LiveCharts />
           </div>
 
-          <div className="animate-rise-delay-3">
+          <div className="animate-rise-delay-3 panel-enter-glow">
             <QuickModules />
           </div>
 
-          <footer className="border-t border-[var(--border)] pt-6 text-center text-[10px] tracking-[0.2em] text-[var(--fg-subtle)]">
+          <footer className="animate-rise-delay-4 border-t border-[var(--border)] pt-6 text-center text-[10px] tracking-[0.2em] text-[var(--fg-subtle)]">
             ANAND RATHI WEALTH · STRUCTURED PRODUCTS WORKSTATION
           </footer>
         </div>
