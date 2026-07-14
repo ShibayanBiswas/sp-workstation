@@ -14,6 +14,23 @@ steps in order. Do not skip ahead.
 
 ---
 
+## CRITICAL — Atlas Network Access (required for Vercel)
+
+If login is slow or shows “Invalid email ID” / database errors on
+[https://sp-workstation.vercel.app/login](https://sp-workstation.vercel.app/login),
+Atlas is almost always blocking Vercel’s IP.
+
+1. Open [Atlas → Network Access](https://cloud.mongodb.com/v2/6a4a68da2fa4182921441de2#/security/network/whitelist)
+2. Click **Add IP Address**
+3. Click **Allow Access from Anywhere** → this sets `0.0.0.0/0`
+4. Confirm / Finish, wait **2 minutes**
+5. Open `https://sp-workstation.vercel.app/api/health` — should show `"ok": true` and `"mongo": "connected"`
+6. Sign in again with `shibayanbiswas@rathi.com` / `Shibayan@123`
+
+Without `0.0.0.0/0`, Vercel **cannot** use MongoDB and login cannot succeed.
+
+---
+
 ## Big picture (read once)
 
 | Piece | What it is | Why you need it |
