@@ -18,7 +18,7 @@ export function DashboardHome({ name }: Props) {
   return (
     <MarketsProvider>
       <div className="terminal-shell terminal-shell-alive min-h-full pb-10">
-        <div className="terminal-canvas space-y-5 p-5 md:space-y-6 md:p-8">
+          <div className="terminal-canvas space-y-4 p-3 sm:space-y-5 sm:p-5 md:space-y-6 md:p-8">
           <div className="animate-rise space-y-5">
             <TerminalHeader />
             <Greeting name={name} />

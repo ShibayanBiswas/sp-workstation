@@ -165,12 +165,39 @@ export async function fetchYahooLiveQuote(
   const data = await fetchYahooJson(path);
   if (!data) return null;
 
-  const meta = (data as { chart?: { result?: Array<{ meta?: Record<string, number> }> } })
-    ?.chart?.result?.[0]?.meta;
+  const result = (
+    data as {
+      chart?: {
+        result?: Array<{
+          meta?: Record<string, number>;
+          timestamp?: number[];
+          indicators?: { quote?: Array<{ close?: Array<number | null> }> };
+        }>;
+      };
+    }
+  )?.chart?.result?.[0];
+  const meta = result?.meta;
   if (!meta) return null;
 
-  const price = meta.regularMarketPrice ?? meta.previousClose;
-  const previousClose = meta.chartPreviousClose ?? meta.previousClose ?? price;
+  const closes = (result?.indicators?.quote?.[0]?.close ?? []).filter(
+    (v): v is number => typeof v === "number" && Number.isFinite(v)
+  );
+  // Last completed session close from daily bars (penultimate when today is present).
+  const barPreviousClose =
+    closes.length >= 2 ? closes[closes.length - 2] : closes.length === 1 ? closes[0] : null;
+
+  const price = meta.regularMarketPrice ?? closes.at(-1) ?? meta.previousClose;
+  // Prefer Yahoo's session previousClose, then daily bar prior close.
+  // Do NOT prefer chartPreviousClose on wide ranges — that is range-start close.
+  const previousClose =
+    (typeof meta.previousClose === "number" && meta.previousClose > 0
+      ? meta.previousClose
+      : null) ??
+    (barPreviousClose != null && barPreviousClose > 0 ? barPreviousClose : null) ??
+    (typeof meta.chartPreviousClose === "number" && meta.chartPreviousClose > 0
+      ? meta.chartPreviousClose
+      : null) ??
+    price;
   if (price == null || Number.isNaN(price)) return null;
 
   const normalized = normalizeLiveQuote({

@@ -18,7 +18,7 @@ function roundTo(n: number, digits: number): number {
   return Math.round(n * factor) / factor;
 }
 
-/** Recompute change/return from price vs previous close so all surfaces match. */
+/** Recompute change/return from price vs previous session close. */
 export function normalizeLiveQuote(raw: {
   price: number;
   previousClose: number;
