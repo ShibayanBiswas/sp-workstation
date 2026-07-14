@@ -14,7 +14,7 @@ import {
 import { MODULES } from "@/data/modules";
 
 const ICONS: Record<string, ReactNode> = {
-  overview: <LayoutGrid size={18} />,
+  home: <LayoutGrid size={18} />,
   "portfolio-analytics": <BarChart3 size={18} />,
   "portfolio-details": <Table2 size={18} />,
   desk: <LineChart size={18} />,
@@ -24,8 +24,23 @@ const ICONS: Record<string, ReactNode> = {
   upload: <Upload size={18} />,
 };
 
+/** Shortcut tiles — same important leaves as the sidebar. */
+const QUICK_IDS = [
+  "home",
+  "portfolio-analytics",
+  "portfolio-details",
+  "desk",
+  "valuation",
+  "payoff",
+  "intelligence",
+  "upload",
+] as const;
+
 export function QuickModules() {
   const mod = MODULES[0];
+  const tiles = QUICK_IDS.map(
+    (id) => mod.submodules.find((s) => s.id === id)!
+  ).filter(Boolean);
 
   return (
     <section className="panel-stable panel-luxe rounded-2xl p-5 md:p-6">
@@ -39,7 +54,7 @@ export function QuickModules() {
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {mod.submodules.map((sub, index) => (
+        {tiles.map((sub, index) => (
           <Link
             key={sub.id}
             href={sub.path}

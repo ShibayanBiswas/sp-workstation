@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
   ChevronDown,
   LayoutDashboard,
@@ -11,7 +11,11 @@ import {
   Sun,
   BarChart3,
 } from "lucide-react";
-import { MODULES } from "@/data/modules";
+import {
+  MODULES,
+  collectNavPaths,
+  type NavItem,
+} from "@/data/modules";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
@@ -20,13 +24,115 @@ type Props = {
   userEmail: string;
 };
 
+function pathActive(pathname: string, path?: string) {
+  if (!path) return false;
+  return pathname === path;
+}
+
+function branchActive(pathname: string, item: NavItem) {
+  return collectNavPaths(item).some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+}
+
+function NavBranch({
+  item,
+  openMap,
+  setOpenMap,
+}: {
+  item: NavItem;
+  openMap: Record<string, boolean>;
+  setOpenMap: Dispatch<SetStateAction<Record<string, boolean>>>;
+}) {
+  const pathname = usePathname();
+  const hasChildren = Boolean(item.children?.length);
+  const open = openMap[item.id] ?? false;
+  const active = pathActive(pathname, item.path);
+  const childActive = hasChildren && branchActive(pathname, item);
+
+  const rowClass = `flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition ${
+    active
+      ? "bg-[color-mix(in_srgb,var(--gold)_18%,transparent)] text-[var(--fg)]"
+      : childActive
+        ? "text-[var(--fg)]"
+        : "text-[var(--fg-subtle)] hover:bg-[var(--bg-muted)] hover:text-[var(--fg)]"
+  }`;
+
+  const label = (
+    <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+      {item.label}
+    </span>
+  );
+
+  return (
+    <div className="my-0.5">
+      <div className={rowClass}>
+        {item.path ? (
+          <Link
+            href={item.path}
+            className="min-w-0 flex-1 truncate"
+            title={item.description}
+            onClick={() => {
+              if (hasChildren) {
+                setOpenMap((s) => ({ ...s, [item.id]: true }));
+              }
+            }}
+          >
+            {label}
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className="min-w-0 flex-1 truncate text-left"
+            title={item.description}
+            onClick={() =>
+              setOpenMap((s) => ({ ...s, [item.id]: !s[item.id] }))
+            }
+          >
+            {label}
+          </button>
+        )}
+        {hasChildren ? (
+          <button
+            type="button"
+            aria-label={open ? `Collapse ${item.label}` : `Expand ${item.label}`}
+            aria-expanded={open}
+            className="shrink-0 rounded-md p-1 text-[var(--fg-subtle)] hover:bg-[var(--bg-muted)] hover:text-[var(--fg)]"
+            onClick={() =>
+              setOpenMap((s) => ({ ...s, [item.id]: !s[item.id] }))
+            }
+          >
+            <ChevronDown
+              size={14}
+              className={`transition ${open ? "rotate-180" : ""}`}
+            />
+          </button>
+        ) : null}
+      </div>
+
+      {hasChildren && open ? (
+        <div className="ml-3 border-l border-[var(--border)] pl-2">
+          {item.children!.map((child) => (
+            <NavBranch
+              key={child.id}
+              item={child}
+              openMap={openMap}
+              setOpenMap={setOpenMap}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function Sidebar({ userName, userEmail }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
-  const [openModules, setOpenModules] = useState<Record<string, boolean>>({
-    "primary-sp": true,
-  });
+  /** Module trees start collapsed; only the expand chevron opens them. */
+  const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
+  const [openNav, setOpenNav] = useState<Record<string, boolean>>({});
 
   const initials = useMemo(() => {
     return userName
@@ -69,49 +175,56 @@ export function Sidebar({ userName, userEmail }: Props) {
         </p>
 
         {MODULES.map((mod) => {
-          const open = openModules[mod.id];
+          const open = openModules[mod.id] ?? false;
           const active = pathname.startsWith(mod.href);
           return (
             <div key={mod.id} className="mb-1">
-              <button
-                type="button"
-                onClick={() =>
-                  setOpenModules((s) => ({ ...s, [mod.id]: !s[mod.id] }))
-                }
-                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${
+              <div
+                className={`flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-sm transition ${
                   active
                     ? "bg-[var(--bg-muted)] text-[var(--fg)]"
                     : "text-[var(--fg-muted)] hover:bg-[var(--bg-muted)]"
                 }`}
               >
-                <BarChart3 size={18} className="shrink-0 text-[var(--gold-deep)] dark:text-[var(--gold)]" />
-                <span className="min-w-0 flex-1 truncate font-medium">
-                  {mod.label}
-                </span>
-                <ChevronDown
-                  size={14}
-                  className={`transition ${open ? "rotate-180" : ""}`}
-                />
-              </button>
+                <Link
+                  href={mod.href}
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1"
+                  title={mod.description}
+                  onClick={() =>
+                    setOpenModules((s) => ({ ...s, [mod.id]: false }))
+                  }
+                >
+                  <BarChart3 size={18} className="shrink-0 text-[var(--gold-deep)] dark:text-[var(--gold)]" />
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    {mod.label}
+                  </span>
+                </Link>
+                <button
+                  type="button"
+                  aria-label={open ? `Collapse ${mod.label}` : `Expand ${mod.label}`}
+                  aria-expanded={open}
+                  className="shrink-0 rounded-md p-1.5 text-[var(--fg-subtle)] hover:bg-[var(--bg)] hover:text-[var(--fg)]"
+                  onClick={() =>
+                    setOpenModules((s) => ({ ...s, [mod.id]: !s[mod.id] }))
+                  }
+                >
+                  <ChevronDown
+                    size={14}
+                    className={`transition ${open ? "rotate-180" : ""}`}
+                  />
+                </button>
+              </div>
+
               {open ? (
-                <div className="ml-4 border-l border-[var(--border)] pl-2">
-                  {mod.submodules.map((sub) => {
-                    const subActive = pathname === sub.path;
-                    return (
-                      <Link
-                        key={sub.id}
-                        href={sub.path}
-                        className={`my-0.5 block rounded-lg px-3 py-2 text-[13px] transition ${
-                          subActive
-                            ? "bg-[color-mix(in_srgb,var(--gold)_18%,transparent)] text-[var(--fg)]"
-                            : "text-[var(--fg-subtle)] hover:bg-[var(--bg-muted)] hover:text-[var(--fg)]"
-                        }`}
-                        title={sub.description}
-                      >
-                        {sub.label}
-                      </Link>
-                    );
-                  })}
+                <div className="ml-4 mt-1 border-l border-[var(--border)] pl-2">
+                  {mod.nav.map((item) => (
+                    <NavBranch
+                      key={item.id}
+                      item={item}
+                      openMap={openNav}
+                      setOpenMap={setOpenNav}
+                    />
+                  ))}
                 </div>
               ) : null}
             </div>
