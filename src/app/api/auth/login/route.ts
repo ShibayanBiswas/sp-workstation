@@ -66,7 +66,10 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "Invalid email ID." },
+        {
+          error:
+            "Account not provisioned yet. Set SEED_DEFAULT_PASSWORD_MAP on Vercel, then POST /api/auth/seed with x-seed-secret = JWT_SECRET.",
+        },
         { status: 401 }
       );
     }

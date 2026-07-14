@@ -18,14 +18,20 @@ export function LoginForm() {
 
   const noticeTitle = (() => {
     const e = error.toLowerCase();
-    if (e.includes("password")) return "Wrong password";
+    if (e.includes("password") && !e.includes("database")) return "Wrong password";
     if (
       e.includes("mongo") ||
+      e.includes("atlas") ||
       e.includes("whitelist") ||
+      e.includes("network access") ||
+      e.includes("database") ||
       e.includes("connect") ||
-      e.includes("ip")
+      e.includes("ip ")
     ) {
       return "Database connection failed";
+    }
+    if (e.includes("not provisioned") || e.includes("seed")) {
+      return "Account not ready";
     }
     if (e.includes("invalid email")) return "Invalid email ID";
     return "Sign-in failed";
@@ -131,12 +137,16 @@ export function LoginForm() {
             <AuthDisclaimerModal
               title={noticeTitle}
               message={
-                error.toLowerCase().includes("password")
+                error.toLowerCase().includes("password") &&
+                !error.toLowerCase().includes("database")
                   ? "The email ID is valid, but the password does not match our records. Please re-enter your password or use Change password."
                   : error.toLowerCase().includes("mongo") ||
+                      error.toLowerCase().includes("atlas") ||
                       error.toLowerCase().includes("whitelist") ||
+                      error.toLowerCase().includes("network access") ||
+                      error.toLowerCase().includes("database") ||
                       error.toLowerCase().includes("connect")
-                    ? "The app cannot reach MongoDB Atlas. In Atlas → Network Access, allow 0.0.0.0/0 (or Vercel IPs), wait 1–2 minutes, then try again."
+                    ? "Vercel cannot reach your MongoDB Atlas cluster. Fix: Atlas → Network Access → Add IP Address → Allow Access from Anywhere (0.0.0.0/0) → Confirm. Wait 2 minutes, then sign in again."
                     : error.toLowerCase().includes("invalid email")
                       ? "This workstation accepts only approved Anand Rathi Wealth Structured Products email IDs."
                       : error
