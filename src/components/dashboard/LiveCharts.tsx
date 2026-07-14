@@ -184,14 +184,14 @@ export function LiveCharts() {
         </div>
         {zoomEnabled ? (
           <span className="text-[10px] text-[var(--fg-subtle)]">
-            Scroll left for history · wheel to zoom
+            Full history loaded · wheel to zoom · drag to pan
           </span>
         ) : null}
       </div>
 
       {mounted ? (
         <CandlestickChart
-          key={`${selectedIndexId}-${timeframe}`}
+          key={`${selectedIndexId}-${timeframe}-${zoomEnabled ? "full" : "live"}`}
           indexId={selectedIndexId}
           timeframe={timeframe}
           theme={theme}

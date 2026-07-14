@@ -130,11 +130,17 @@ a {
 }
 
 .dashboard-sidebar-toolbar {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 0.35rem;
   border-bottom: 1px solid var(--border);
   padding: 0.55rem 0.65rem;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-sidebar-toolbar {
+    display: flex;
+  }
 }
 
 .dashboard-main {

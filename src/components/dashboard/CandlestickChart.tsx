@@ -65,7 +65,10 @@ const TV_FONT =
   "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif";
 
 function shouldShowRecentWindow(zoomEnabled: boolean, tf: ChartTimeframe) {
-  return zoomEnabled || tf.intraday;
+  // Zoom On → show full loaded history (toward inception).
+  // Zoom Off → for intraday keep a recent trading window; daily+ fit what loaded.
+  if (zoomEnabled) return false;
+  return tf.intraday;
 }
 
 function chartColors(theme: ThemeMode) {
@@ -461,7 +464,7 @@ export function CandlestickChart({
       loadingHistoryRef.current = true;
       try {
         const res = await fetch(
-          `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}&before=${earliest}`,
+          `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}&before=${earliest}&full=1`,
           { cache: "no-store", credentials: "include" }
         );
         const data = await res.json();
@@ -487,6 +490,22 @@ export function CandlestickChart({
       }
     };
 
+    /** When Zoom turns on, keep pulling older chunks until Yahoo has no more. */
+    const loadAllHistory = async () => {
+      let guard = 0;
+      while (alive && zoomRef.current && hasMoreRef.current && guard < 40) {
+        const before = barsRef.current.length;
+        const earliest = barsRef.current[0]?.time;
+        if (!earliest) break;
+        await loadOlderHistory();
+        if (barsRef.current.length <= before) break;
+        guard += 1;
+      }
+      if (alive && zoomRef.current && barsRef.current.length > 0) {
+        fitChartFullWidth(chart, container, barCountRef.current);
+      }
+    };
+
     const onVisibleRangeChange = (range: LogicalRange | null) => {
       if (!range || !zoomRef.current) return;
       if (range.from < 30) void loadOlderHistory();
@@ -505,7 +524,7 @@ export function CandlestickChart({
       }
       try {
         const res = await fetch(
-          `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}`,
+          `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}${zoomRef.current ? "&full=1" : ""}`,
           { cache: "no-store", credentials: "include" }
         );
         const data = await res.json();
@@ -551,6 +570,9 @@ export function CandlestickChart({
           }
         } else {
           applyBars(incoming);
+          if (zoomRef.current) {
+            void loadAllHistory();
+          }
         }
 
         const last = data.last;

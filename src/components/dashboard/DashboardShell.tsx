@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 
 type ShellContextValue = {
@@ -96,14 +96,7 @@ export function DashboardShell({ userName, userEmail, children }: Props) {
           <span className="truncate text-xs font-semibold tracking-[0.18em] text-[var(--fg-subtle)]">
             SP WORKSTATION
           </span>
-          <button
-            type="button"
-            className="dashboard-icon-btn"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={toggleCollapsed}
-          >
-            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          </button>
+          <span className="h-9 w-9" aria-hidden />
         </header>
 
         {/* Desktop / drawer sidebar */}
@@ -111,22 +104,14 @@ export function DashboardShell({ userName, userEmail, children }: Props) {
           className={`dashboard-sidebar ${mobileOpen ? "dashboard-sidebar-open" : ""}`}
           aria-label="Main navigation"
         >
-          <div className="dashboard-sidebar-toolbar">
+          <div className="dashboard-sidebar-toolbar hidden lg:flex">
             <button
               type="button"
-              className="dashboard-icon-btn hidden lg:inline-flex"
+              className="dashboard-icon-btn"
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               onClick={toggleCollapsed}
             >
               {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-            </button>
-            <button
-              type="button"
-              className="dashboard-icon-btn ml-auto lg:hidden"
-              aria-label="Close menu"
-              onClick={() => setMobileOpen(false)}
-            >
-              <X size={18} />
             </button>
           </div>
           <Sidebar

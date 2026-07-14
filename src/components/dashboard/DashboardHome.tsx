@@ -17,7 +17,7 @@ type Props = {
 export function DashboardHome({ name }: Props) {
   return (
     <MarketsProvider>
-      <div className="terminal-shell terminal-shell-alive min-h-full pb-10">
+      <div className="terminal-shell terminal-shell-alive min-h-full pb-3">
           <div className="terminal-canvas space-y-4 p-3 sm:space-y-5 sm:p-5 md:space-y-6 md:p-8">
           <div className="animate-rise space-y-5">
             <TerminalHeader />
@@ -37,7 +37,7 @@ export function DashboardHome({ name }: Props) {
             <QuickModules />
           </div>
 
-          <footer className="animate-rise-delay-4 border-t border-[var(--border)] pt-6 text-center text-[10px] tracking-[0.2em] text-[var(--fg-subtle)]">
+          <footer className="animate-rise-delay-4 border-t border-[var(--border)] pt-3 pb-1 text-center text-[10px] tracking-[0.2em] text-[var(--fg-subtle)]">
             ANAND RATHI WEALTH · STRUCTURED PRODUCTS WORKSTATION
           </footer>
         </div>

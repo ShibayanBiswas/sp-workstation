@@ -226,7 +226,18 @@ function ohlcPath(
   return `${base}&range=${range}`;
 }
 
-function timeframeCandidates(timeframe: ChartTimeframe) {
+function timeframeCandidates(
+  timeframe: ChartTimeframe,
+  opts?: { inception?: boolean }
+) {
+  if (opts?.inception) {
+    return [
+      { interval: timeframe.interval, range: timeframe.inceptionRange },
+      ...(timeframe.inceptionFallbacks ?? []),
+      ...(timeframe.fallbacks ?? []),
+      { interval: timeframe.interval, range: timeframe.range },
+    ];
+  }
   return [
     { interval: timeframe.interval, range: timeframe.range },
     ...(timeframe.fallbacks ?? []),
@@ -246,18 +257,21 @@ async function fetchOhlcCandidate(
 
 export async function fetchYahooOhlc(
   yahooSymbol: string,
-  timeframe: ChartTimeframe
+  timeframe: ChartTimeframe,
+  opts?: { inception?: boolean }
 ): Promise<OhlcResult | null> {
-  const cacheKey = `ohlc:${yahooSymbol}:${timeframe.id}`;
+  const scope = opts?.inception ? "full" : "default";
+  const cacheKey = `ohlc:${yahooSymbol}:${timeframe.id}:${scope}`;
   const cached = getCached<OhlcResult>(cacheKey);
   if (cached) return cached;
 
-  for (const candidate of timeframeCandidates(timeframe)) {
+  for (const candidate of timeframeCandidates(timeframe, opts)) {
     const parsed = await fetchOhlcCandidate(
       yahooSymbol,
       candidate.interval,
       candidate.range,
-      timeframe.intraday
+      // Daily/weekly inception fallbacks are not intraday even if the TF is.
+      timeframe.intraday && !candidate.interval.endsWith("d") && candidate.interval !== "1wk"
     );
     if (parsed?.bars.length) {
       setCached(cacheKey, parsed);

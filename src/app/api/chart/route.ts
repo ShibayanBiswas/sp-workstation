@@ -16,6 +16,10 @@ const querySchema = z.object({
   indexId: z.string().min(1),
   timeframe: z.string().optional().default("1D"),
   before: z.coerce.number().int().positive().optional(),
+  /** Zoom On — request max available history for the timeframe. */
+  full: z
+    .union([z.literal("1"), z.literal("true"), z.literal("0"), z.literal("false")])
+    .optional(),
 });
 
 export async function GET(req: Request) {
@@ -26,10 +30,12 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const beforeRaw = searchParams.get("before");
+  const fullRaw = searchParams.get("full");
   const parsed = querySchema.safeParse({
     indexId: searchParams.get("indexId"),
     timeframe: searchParams.get("timeframe") ?? "1D",
     before: beforeRaw ? Number(beforeRaw) : undefined,
+    full: fullRaw ?? undefined,
   });
 
   if (!parsed.success) {
@@ -41,10 +47,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unknown index" }, { status: 400 });
   }
   const timeframe = getTimeframe(parsed.data.timeframe);
+  const inception =
+    parsed.data.full === "1" || parsed.data.full === "true";
   const isHistory = parsed.data.before != null;
   const ohlc = isHistory
     ? await fetchYahooOhlcBefore(index.yahoo, timeframe, parsed.data.before!)
-    : await fetchYahooOhlc(index.yahoo, timeframe);
+    : await fetchYahooOhlc(index.yahoo, timeframe, { inception });
 
   if (!ohlc || ohlc.bars.length === 0) {
     return NextResponse.json(
