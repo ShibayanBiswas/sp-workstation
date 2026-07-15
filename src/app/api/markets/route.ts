@@ -19,6 +19,8 @@ export type MarketQuote = {
   price: number | null;
   change: number | null;
   changePercent: number | null;
+  /** Today's session open — same basis as tape / Snapshot / 1D chart. */
+  dayOpen: number | null;
   sparkline: number[];
   group: string;
   marketTime?: number;
@@ -36,7 +38,7 @@ async function yahooQuote(
     if (ohlc?.bars.length) {
       sparkline = sparklineSeries(closesFromOhlc(ohlc.bars, 24));
     } else {
-      sparkline = sparklineSeries([live.previousClose, live.price]);
+      sparkline = sparklineSeries([live.dayOpen, live.price]);
     }
 
     return {
@@ -45,6 +47,7 @@ async function yahooQuote(
       price: live.price,
       change: live.change,
       changePercent: live.changePercent,
+      dayOpen: live.dayOpen,
       sparkline,
       group: index.group,
       marketTime: live.marketTime,
@@ -82,6 +85,7 @@ export async function GET() {
               price: null,
               change: null,
               changePercent: null,
+              dayOpen: null,
               sparkline: [],
               group: index.group,
             }))

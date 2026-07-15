@@ -3,7 +3,7 @@ import type { ChartTimeframeId } from "@/lib/chart-timeframes";
 import type { OhlcBar } from "@/lib/yahoo-ohlc";
 
 export type ReturnBasis =
-  | "prev_close"
+  | "day_open"
   | "week_open"
   | "month_open"
   | "lookback_open";
@@ -27,7 +27,7 @@ const LOOKBACK_SEC: Record<
 };
 
 const BASIS_LABEL: Record<ReturnBasis, string> = {
-  prev_close: "vs prev close",
+  day_open: "vs today open",
   week_open: "vs week open",
   month_open: "vs month open",
   lookback_open: "vs period open",
@@ -58,16 +58,13 @@ function firstBarAtOrAfter(bars: OhlcBar[], cutoffUnix: number): OhlcBar {
   return bars.find((b) => b.time >= cutoffUnix) ?? bars[0];
 }
 
-/** Close of the last bar strictly before the latest session day (IST). */
-function previousSessionClose(bars: OhlcBar[]): number | null {
-  if (bars.length < 2) return null;
+/** Open of the first bar on the latest session day (IST). */
+function sessionDayOpen(bars: OhlcBar[]): number | null {
+  if (bars.length === 0) return null;
   const lastDay = istDateString(bars[bars.length - 1].time);
-  for (let i = bars.length - 2; i >= 0; i--) {
-    if (istDateString(bars[i].time) !== lastDay) {
-      return bars[i].close;
-    }
-  }
-  return null;
+  const dayBars = bars.filter((b) => istDateString(b.time) === lastDay);
+  const open = (dayBars[0] ?? bars[bars.length - 1]).open;
+  return Number.isFinite(open) && open !== 0 ? open : null;
 }
 
 function buildReturn(
@@ -82,20 +79,20 @@ function buildReturn(
 }
 
 /**
- * Timeframe return vs a clear reference:
- * - 1D → previous close (same as Snapshot / tape / Yahoo day change)
+ * Timeframe return vs period open (start → now):
+ * - 1D → today's session open
  * - 1W → open of first bar in the current IST week
  * - 1M → open of first bar in the current IST calendar month
  * - 3M+ → open of first bar at/after lookback cutoff
  *
- * Optional `previousClose` (from the live quote) is preferred for 1D so the
- * chart header matches Snapshot exactly.
+ * Optional `dayOpen` (from the live quote) is preferred for 1D so Snapshot
+ * and chart headers stay aligned.
  */
 export function computeTimeframeReturn(
   bars: OhlcBar[],
   timeframeId: ChartTimeframeId,
   currentPrice: number,
-  previousClose?: number | null
+  dayOpen?: number | null
 ): PeriodReturn | null {
   if (!bars.length || !Number.isFinite(currentPrice)) return null;
 
@@ -104,19 +101,11 @@ export function computeTimeframeReturn(
   switch (timeframeId) {
     case "1D": {
       const ref =
-        previousClose != null &&
-        Number.isFinite(previousClose) &&
-        previousClose !== 0
-          ? previousClose
-          : previousSessionClose(bars);
-      if (ref == null) {
-        // Last resort: session open (should rarely happen).
-        const day = istDateString(last.time);
-        const dayBars = bars.filter((b) => istDateString(b.time) === day);
-        const open = (dayBars[0] ?? last).open;
-        return buildReturn(currentPrice, open, "prev_close");
-      }
-      return buildReturn(currentPrice, ref, "prev_close");
+        dayOpen != null && Number.isFinite(dayOpen) && dayOpen !== 0
+          ? dayOpen
+          : sessionDayOpen(bars);
+      if (ref == null) return null;
+      return buildReturn(currentPrice, ref, "day_open");
     }
     case "1W": {
       const weekStart = startOfIstWeekUnix(last.time);

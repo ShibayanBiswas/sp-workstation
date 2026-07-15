@@ -27,6 +27,7 @@ export type MarketQuote = {
   price: number | null;
   change: number | null;
   changePercent: number | null;
+  dayOpen?: number | null;
   sparkline: number[];
   group: string;
   marketTime?: number;

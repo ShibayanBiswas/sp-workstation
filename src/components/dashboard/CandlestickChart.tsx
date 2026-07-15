@@ -53,10 +53,10 @@ type ThemeMode = "light" | "dark";
 
 type SyncedQuote = {
   price: number | null;
-  /** Day change vs previous close from /api/markets (Snapshot / tape). */
+  /** Day change vs today's open from /api/markets (Snapshot / tape). */
   change?: number | null;
   changePercent?: number | null;
-  previousClose?: number | null;
+  dayOpen?: number | null;
   marketTime?: number;
 };
 
@@ -291,8 +291,7 @@ export function CandlestickChart({
           ? formatMarketPrice(fallbackPrice, indexId)
           : "—";
 
-  // 1D: use Snapshot/tape day change (vs prev close) so both panels always match.
-  // 1W+: recompute from period open reference between chart polls.
+  // Prefer Snapshot/tape for 1D (both vs today open). Other TFs use period open.
   const livePeriod =
     timeframe === "1D" &&
     syncedQuote?.price != null &&
@@ -321,10 +320,9 @@ export function CandlestickChart({
   const displayChangePct = livePeriod
     ? formatMarketChangePercent(livePeriod.changePercent)
     : header.changePercent;
-  const basisHint =
-    timeframe === "1D"
-      ? returnBasisLabel("prev_close")
-      : returnBasisLabel(returnBasis);
+  const basisHint = returnBasisLabel(
+    timeframe === "1D" ? "day_open" : returnBasis
+  );
 
   useEffect(() => {
     if (syncedQuote?.price == null) return;
@@ -845,7 +843,7 @@ export function CandlestickChart({
               barsRef.current,
               tf.id,
               price,
-              typeof last.previousClose === "number" ? last.previousClose : null
+              typeof last.dayOpen === "number" ? last.dayOpen : null
             );
             if (computed) {
               reference = computed.reference;
@@ -853,7 +851,7 @@ export function CandlestickChart({
               setReturnBasis(computed.basis);
             }
           } else if (
-            last.basis === "prev_close" ||
+            last.basis === "day_open" ||
             last.basis === "week_open" ||
             last.basis === "month_open" ||
             last.basis === "lookback_open"
@@ -866,11 +864,11 @@ export function CandlestickChart({
 
           referencePrice = reference;
           if (basis == null) {
-            referenceTitle = "Ref";
+            referenceTitle = "Open";
           } else {
             switch (basis) {
-              case "prev_close":
-                referenceTitle = "Prev";
+              case "day_open":
+                referenceTitle = "Open";
                 break;
               case "week_open":
                 referenceTitle = "W Open";
@@ -884,7 +882,7 @@ export function CandlestickChart({
               default: {
                 const _exhaustive: never = basis;
                 void _exhaustive;
-                referenceTitle = "Ref";
+                referenceTitle = "Open";
               }
             }
           }

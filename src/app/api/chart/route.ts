@@ -91,7 +91,7 @@ export async function GET(req: Request) {
     ohlc.bars,
     timeframe.id,
     price,
-    live?.previousClose
+    live?.dayOpen
   );
   const change = period?.change ?? live?.change ?? 0;
   const changePercent = period?.changePercent ?? live?.changePercent ?? 0;
@@ -109,9 +109,9 @@ export async function GET(req: Request) {
       price,
       change,
       changePercent,
-      reference: period?.reference ?? live?.previousClose ?? null,
-      basis: period?.basis ?? "prev_close",
-      previousClose: live?.previousClose ?? null,
+      reference: period?.reference ?? live?.dayOpen ?? null,
+      basis: period?.basis ?? "day_open",
+      dayOpen: live?.dayOpen ?? null,
       time: live?.marketTime ?? lastBar.time,
     },
     asOf: new Date().toISOString(),

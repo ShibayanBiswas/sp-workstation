@@ -4,7 +4,8 @@ export type NormalizedQuote = {
   price: number;
   change: number;
   changePercent: number;
-  previousClose: number;
+  /** Today's (session) open — Snapshot / 1D return basis. */
+  dayOpen: number;
   marketTime?: number;
 };
 
@@ -18,22 +19,22 @@ function roundTo(n: number, digits: number): number {
   return Math.round(n * factor) / factor;
 }
 
-/** Recompute change/return from price vs previous session close. */
+/** Recompute change/return from price vs today's session open. */
 export function normalizeLiveQuote(raw: {
   price: number;
-  previousClose: number;
+  dayOpen: number;
   marketTime?: number;
 }): NormalizedQuote {
   const price = raw.price;
-  const previousClose = raw.previousClose;
-  const change = price - previousClose;
-  const changePercent = previousClose !== 0 ? (change / previousClose) * 100 : 0;
+  const dayOpen = raw.dayOpen;
+  const change = price - dayOpen;
+  const changePercent = dayOpen !== 0 ? (change / dayOpen) * 100 : 0;
 
   return {
     price,
     change,
     changePercent,
-    previousClose,
+    dayOpen,
     marketTime: raw.marketTime,
   };
 }

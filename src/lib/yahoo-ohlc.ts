@@ -22,7 +22,8 @@ export type YahooLiveQuote = {
   price: number;
   change: number;
   changePercent: number;
-  previousClose: number;
+  /** Today's session open — Snapshot / 1D return basis. */
+  dayOpen: number;
   marketTime?: number;
 };
 
@@ -171,7 +172,12 @@ export async function fetchYahooLiveQuote(
         result?: Array<{
           meta?: Record<string, number>;
           timestamp?: number[];
-          indicators?: { quote?: Array<{ close?: Array<number | null> }> };
+          indicators?: {
+            quote?: Array<{
+              open?: Array<number | null>;
+              close?: Array<number | null>;
+            }>;
+          };
         }>;
       };
     }
@@ -179,30 +185,49 @@ export async function fetchYahooLiveQuote(
   const meta = result?.meta;
   if (!meta) return null;
 
-  const closes = (result?.indicators?.quote?.[0]?.close ?? []).filter(
-    (v): v is number => typeof v === "number" && Number.isFinite(v)
-  );
-  // Last completed session close from daily bars (penultimate when today is present).
-  const barPreviousClose =
-    closes.length >= 2 ? closes[closes.length - 2] : closes.length === 1 ? closes[0] : null;
+  const quoteBars = result?.indicators?.quote?.[0];
+  const timestamps = result?.timestamp ?? [];
+  const opens = quoteBars?.open ?? [];
+  const closes = quoteBars?.close ?? [];
 
-  const price = meta.regularMarketPrice ?? closes.at(-1) ?? meta.previousClose;
-  // Prefer Yahoo's session previousClose, then daily bar prior close.
-  // Do NOT prefer chartPreviousClose on wide ranges — that is range-start close.
-  const previousClose =
-    (typeof meta.previousClose === "number" && meta.previousClose > 0
-      ? meta.previousClose
-      : null) ??
-    (barPreviousClose != null && barPreviousClose > 0 ? barPreviousClose : null) ??
-    (typeof meta.chartPreviousClose === "number" && meta.chartPreviousClose > 0
-      ? meta.chartPreviousClose
-      : null) ??
-    price;
+  // Latest daily session with a real open (skips holiday null bars).
+  let barDayOpen: number | null = null;
+  let barLastClose: number | null = null;
+  for (let i = timestamps.length - 1; i >= 0; i--) {
+    const open = opens[i];
+    const close = closes[i];
+    if (
+      barDayOpen == null &&
+      typeof open === "number" &&
+      Number.isFinite(open) &&
+      open > 0
+    ) {
+      barDayOpen = open;
+    }
+    if (
+      barLastClose == null &&
+      typeof close === "number" &&
+      Number.isFinite(close)
+    ) {
+      barLastClose = close;
+    }
+    if (barDayOpen != null && barLastClose != null) break;
+  }
+
+  const price = meta.regularMarketPrice ?? barLastClose;
   if (price == null || Number.isNaN(price)) return null;
+
+  // Day P&L vs today's session open — never previous close / chartPreviousClose.
+  const dayOpen =
+    (typeof meta.regularMarketOpen === "number" && meta.regularMarketOpen > 0
+      ? meta.regularMarketOpen
+      : null) ??
+    barDayOpen ??
+    price;
 
   const normalized = normalizeLiveQuote({
     price,
-    previousClose: previousClose ?? price,
+    dayOpen,
     marketTime: meta.regularMarketTime,
   });
 
