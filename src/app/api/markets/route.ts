@@ -6,9 +6,10 @@ import {
   fetchYahooLiveQuote,
   fetchYahooOhlc,
   mapPool,
-  sessionClosesForSparkline,
+  sessionSparkPath,
 } from "@/lib/yahoo-ohlc";
 import { sparklineSeries } from "@/lib/sparkline";
+import { normalizeLiveQuote } from "@/lib/market-quote";
 import { getTimeframe } from "@/lib/chart-timeframes";
 
 export const dynamic = "force-dynamic";
@@ -30,31 +31,45 @@ async function yahooQuote(
   index: (typeof INDIAN_MARKET_INDICES)[number]
 ): Promise<MarketQuote | null> {
   try {
-    const live = await fetchYahooLiveQuote(index.yahoo, { fresh: true });
+    // Parallel: live print + 1D 5m path (same feed as Live Chart Zoom Off).
+    const [live, ohlc] = await Promise.all([
+      fetchYahooLiveQuote(index.yahoo, { fresh: true }),
+      fetchYahooOhlc(index.yahoo, getTimeframe("1D")),
+    ]);
     if (!live) return null;
 
-    // Same session path as Live Chart 1D (Zoom Off) — today's IST closes vs open.
+    const sparkPath = ohlc?.bars.length
+      ? sessionSparkPath(ohlc.bars)
+      : null;
+
+    // Prefer the 5m session open so sparklines and % share one baseline.
+    const dayOpen = sparkPath?.sessionOpen ?? live.dayOpen;
+    const priced = normalizeLiveQuote({
+      price: live.price,
+      dayOpen,
+      marketTime: live.marketTime,
+    });
+
     let sparkline: number[] = [];
-    const ohlc = await fetchYahooOhlc(index.yahoo, getTimeframe("1D"));
-    const sessionCloses = ohlc?.bars.length
-      ? sessionClosesForSparkline(ohlc.bars)
-      : [];
-    if (sessionCloses.length >= 2) {
-      sparkline = sparklineSeries(sessionCloses, live.dayOpen);
+    if (sparkPath && sparkPath.prices.length >= 2) {
+      // Keep last point nailed to the live print so tape/chart stay locked.
+      const prices = sparkPath.prices.slice();
+      prices[prices.length - 1] = live.price;
+      sparkline = sparklineSeries(prices, dayOpen);
     } else {
-      sparkline = sparklineSeries([live.dayOpen, live.price], live.dayOpen);
+      sparkline = sparklineSeries([dayOpen, live.price], dayOpen);
     }
 
     return {
       id: index.id,
       name: index.name,
-      price: live.price,
-      change: live.change,
-      changePercent: live.changePercent,
-      dayOpen: live.dayOpen,
+      price: priced.price,
+      change: priced.change,
+      changePercent: priced.changePercent,
+      dayOpen: priced.dayOpen,
       sparkline,
       group: index.group,
-      marketTime: live.marketTime,
+      marketTime: priced.marketTime,
     };
   } catch {
     return null;

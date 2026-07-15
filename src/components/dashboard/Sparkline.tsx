@@ -10,6 +10,8 @@ type Props = {
   className?: string;
   showArea?: boolean;
   strokeWidth?: number;
+  /** Draw a horizontal open/zero baseline (data is % vs open). */
+  showOpenLevel?: boolean;
 };
 
 export function Sparkline({
@@ -20,6 +22,7 @@ export function Sparkline({
   className = "",
   showArea = true,
   strokeWidth = 1.75,
+  showOpenLevel = true,
 }: Props) {
   const gradientId = useId().replace(/:/g, "");
   const points =
@@ -27,15 +30,18 @@ export function Sparkline({
       ? data
       : data.length === 1
         ? [data[0], data[0]]
-        : [1, 1];
+        : [0, 0];
   const min = Math.min(...points);
   const max = Math.max(...points);
   const range = max - min || 1;
   const pad = 2;
 
+  const yFor = (v: number) =>
+    pad + (1 - (v - min) / range) * (height - pad * 2);
+
   const coords = points.map((v, i) => {
     const x = pad + (i / (points.length - 1)) * (width - pad * 2);
-    const y = pad + (1 - (v - min) / range) * (height - pad * 2);
+    const y = yFor(v);
     return { x, y };
   });
 
@@ -45,6 +51,10 @@ export function Sparkline({
   const areaPath = `${linePath} L${coords[coords.length - 1].x},${height - pad} L${coords[0].x},${height - pad} Z`;
   const stroke = up ? "#089981" : "#f23645";
   const polylinePoints = coords.map((p) => `${p.x},${p.y}`).join(" ");
+
+  // Open / zero baseline — only when the session path crossed or left the open.
+  const openInView = min <= 0 && max >= 0;
+  const openY = yFor(0);
 
   return (
     <svg
@@ -62,6 +72,18 @@ export function Sparkline({
             <stop offset="100%" stopColor={stroke} stopOpacity="0.02" />
           </linearGradient>
         </defs>
+      ) : null}
+      {showOpenLevel && openInView ? (
+        <line
+          x1={pad}
+          x2={width - pad}
+          y1={openY}
+          y2={openY}
+          stroke="currentColor"
+          strokeOpacity="0.28"
+          strokeWidth={1}
+          strokeDasharray="3 3"
+        />
       ) : null}
       {showArea ? <path d={areaPath} fill={`url(#${gradientId})`} /> : null}
       <polyline

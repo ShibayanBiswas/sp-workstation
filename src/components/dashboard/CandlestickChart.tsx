@@ -855,8 +855,6 @@ export function CandlestickChart({
               ? (last.reference as number)
               : null;
 
-          let basis: ReturnBasis | null = null;
-
           // Client-side fallback if older responses omit reference.
           if (reference == null && price != null && barsRef.current.length > 0) {
             const computed = computeTimeframeReturn(
@@ -867,7 +865,6 @@ export function CandlestickChart({
             );
             if (computed) {
               reference = computed.reference;
-              basis = computed.basis;
               setReturnBasis(computed.basis);
             }
           } else if (
@@ -876,7 +873,6 @@ export function CandlestickChart({
             last.basis === "month_open" ||
             last.basis === "lookback_open"
           ) {
-            basis = last.basis;
             setReturnBasis(last.basis);
           }
 

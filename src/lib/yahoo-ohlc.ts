@@ -354,30 +354,47 @@ export function closesFromOhlc(bars: OhlcBar[], maxPoints = 24): number[] {
 }
 
 /**
- * Closes for the latest IST session day — same path the Live Chart 1D candles
- * show when Zoom is Off (today's session). Downsamples if denser than maxPoints.
+ * Today's IST session price path for sparklines — same 5m session the Live Chart
+ * uses on 1D. Starts at the session open so the line reads open → high → low → now.
  */
+export function sessionSparkPath(
+  bars: OhlcBar[],
+  maxPoints = 96
+): { prices: number[]; sessionOpen: number } | null {
+  if (bars.length === 0) return null;
+  const lastDay = istDateString(bars[bars.length - 1].time);
+  const dayBars = bars.filter((b) => istDateString(b.time) === lastDay);
+  if (dayBars.length === 0) return null;
+
+  const sessionOpen = dayBars[0].open;
+  if (!Number.isFinite(sessionOpen) || sessionOpen === 0) return null;
+
+  // Open first, then every close — matches “opened, ran up, fell through open”.
+  const prices: number[] = [sessionOpen];
+  for (const bar of dayBars) {
+    if (Number.isFinite(bar.close)) prices.push(bar.close);
+  }
+  if (prices.length < 2) return null;
+
+  if (prices.length <= maxPoints) {
+    return { prices, sessionOpen };
+  }
+
+  const step = Math.ceil((prices.length - 1) / (maxPoints - 1));
+  const sampled: number[] = [prices[0]];
+  for (let i = step; i < prices.length - 1; i += step) {
+    sampled.push(prices[i]);
+  }
+  sampled.push(prices[prices.length - 1]);
+  return { prices: sampled, sessionOpen };
+}
+
+/** @deprecated Prefer sessionSparkPath — kept for any legacy callers. */
 export function sessionClosesForSparkline(
   bars: OhlcBar[],
   maxPoints = 78
 ): number[] {
-  if (bars.length === 0) return [];
-  const lastDay = istDateString(bars[bars.length - 1].time);
-  const dayCloses = bars
-    .filter((b) => istDateString(b.time) === lastDay)
-    .map((b) => b.close)
-    .filter((v) => Number.isFinite(v));
-
-  if (dayCloses.length <= maxPoints) return dayCloses;
-
-  const step = Math.ceil(dayCloses.length / maxPoints);
-  const sampled: number[] = [];
-  for (let i = 0; i < dayCloses.length; i += step) {
-    sampled.push(dayCloses[i]);
-  }
-  const last = dayCloses[dayCloses.length - 1];
-  if (sampled[sampled.length - 1] !== last) sampled.push(last);
-  return sampled;
+  return sessionSparkPath(bars, maxPoints)?.prices.slice(1) ?? [];
 }
 
 /** Run async tasks with limited concurrency. */
