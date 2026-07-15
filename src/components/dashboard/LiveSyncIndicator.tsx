@@ -52,7 +52,10 @@ export function LiveSyncIndicator({
             ? `Live · ${syncedLabel} IST`
             : "Live · connecting…"}
         {!syncing && lastSyncedAt ? (
-          <span className="live-sync-countdown"> · next in {secondsUntil}s</span>
+          <span key={secondsUntil} className="live-sync-countdown">
+            {" "}
+            · next in {secondsUntil}s
+          </span>
         ) : null}
       </span>
     </div>

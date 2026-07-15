@@ -62,7 +62,7 @@ export function Greeting({ name }: { name: string }) {
       </div>
 
       <div className="relative max-w-3xl pr-0 pt-1 md:pr-[240px]">
-        <p className="section-kicker text-[var(--gold-deep)] dark:text-[var(--gold)]">
+        <p className="section-kicker section-kicker-alive text-[var(--gold-deep)] dark:text-[var(--gold)]">
           Structured Products · Anand Rathi Wealth
         </p>
         <h1 className="mt-2 text-[2rem] leading-[1.08] md:text-[2.65rem]">

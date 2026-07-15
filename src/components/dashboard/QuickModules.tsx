@@ -61,7 +61,7 @@ export function QuickModules() {
             style={{ animationDelay: `${index * 80}ms` }}
             className="module-tile module-tile-animate group flex flex-col gap-3 rounded-xl p-4"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--gold)_30%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]">
+            <span className="module-icon flex h-10 w-10 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--gold)_30%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]">
               {ICONS[sub.id] ?? <LayoutGrid size={18} />}
             </span>
             <span className="text-sm font-medium leading-tight text-[var(--fg)]">

@@ -82,7 +82,7 @@ export function DashboardShell({ userName, userEmail, children }: Props) {
 
   return (
     <ShellContext.Provider value={value}>
-      <div className={`dashboard-shell ${collapsed ? "dashboard-shell-collapsed" : ""} ${ready ? "" : "opacity-0"}`}>
+      <div className={`dashboard-shell dashboard-shell-alive ${collapsed ? "dashboard-shell-collapsed" : ""} ${ready ? "dashboard-shell-ready" : ""}`}>
         {/* Mobile top bar */}
         <header className="dashboard-mobile-bar lg:hidden">
           <button

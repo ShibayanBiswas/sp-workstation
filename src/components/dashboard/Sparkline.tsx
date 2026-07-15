@@ -45,14 +45,12 @@ export function Sparkline({
     return { x, y };
   });
 
-  const linePath = coords
-    .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
+  const d = coords
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(2)},${p.y.toFixed(2)}`)
     .join(" ");
-  const areaPath = `${linePath} L${coords[coords.length - 1].x},${height - pad} L${coords[0].x},${height - pad} Z`;
+  const areaPath = `${d} L${coords[coords.length - 1].x},${height - pad} L${coords[0].x},${height - pad} Z`;
   const stroke = up ? "#089981" : "#f23645";
-  const polylinePoints = coords.map((p) => `${p.x},${p.y}`).join(" ");
 
-  // Open / zero baseline — only when the session path crossed or left the open.
   const openInView = min <= 0 && max >= 0;
   const openY = yFor(0);
 
@@ -85,14 +83,22 @@ export function Sparkline({
           strokeDasharray="3 3"
         />
       ) : null}
-      {showArea ? <path d={areaPath} fill={`url(#${gradientId})`} /> : null}
-      <polyline
+      {showArea ? (
+        <path
+          className="sparkline-area-draw"
+          d={areaPath}
+          fill={`url(#${gradientId})`}
+        />
+      ) : null}
+      <path
+        className="sparkline-draw"
+        d={d}
         fill="none"
         stroke={stroke}
         strokeWidth={strokeWidth}
         strokeLinejoin="round"
         strokeLinecap="round"
-        points={polylinePoints}
+        pathLength={1}
       />
     </svg>
   );
