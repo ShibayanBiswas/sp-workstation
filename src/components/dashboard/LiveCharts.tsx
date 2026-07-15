@@ -191,7 +191,7 @@ export function LiveCharts() {
 
       {mounted ? (
         <CandlestickChart
-          key={`${selectedIndexId}-${timeframe}-${zoomEnabled ? "full" : "live"}`}
+          key={`${selectedIndexId}-${timeframe}`}
           indexId={selectedIndexId}
           timeframe={timeframe}
           theme={theme}

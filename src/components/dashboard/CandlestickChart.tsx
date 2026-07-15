@@ -262,9 +262,14 @@ export function CandlestickChart({
   const tfRef = useRef(getTimeframe(timeframe));
   const barsRef = useRef<OhlcBar[]>([]);
   const hasMoreRef = useRef(true);
+  const historyExhaustedRef = useRef(false);
   const loadingHistoryRef = useRef(false);
   const barCountRef = useRef(0);
   const prevPriceRef = useRef<number | null>(null);
+  /** Apply Zoom On/Off without remounting — keeps candles warm. */
+  const onZoomModeChangeRef = useRef<((enabled: boolean) => void) | null>(
+    null
+  );
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -339,19 +344,7 @@ export function CandlestickChart({
 
   useEffect(() => {
     zoomRef.current = zoomEnabled;
-    const chart = chartRef.current;
-    const container = containerRef.current;
-    if (!chart || !container) return;
-
-    chart.applyOptions(chartInteractionOptions(zoomEnabled));
-    const count = barCountRef.current;
-    if (count > 0) {
-      if (shouldShowRecentWindow(zoomEnabled, tfRef.current)) {
-        showRecentWindow(chart, count, tfRef.current);
-      } else {
-        fitChartFullWidth(chart, container, count);
-      }
-    }
+    onZoomModeChangeRef.current?.(zoomEnabled);
   }, [zoomEnabled]);
 
   useEffect(() => {
@@ -366,6 +359,7 @@ export function CandlestickChart({
     const colors = chartColors(theme);
     barsRef.current = [];
     hasMoreRef.current = true;
+    historyExhaustedRef.current = false;
     loadingHistoryRef.current = false;
     barCountRef.current = 0;
 
@@ -703,6 +697,7 @@ export function CandlestickChart({
         const data = await res.json();
         if (!alive || !res.ok || !data.bars?.length) {
           hasMoreRef.current = false;
+          historyExhaustedRef.current = true;
           return;
         }
 
@@ -711,10 +706,12 @@ export function CandlestickChart({
         const added = merged.length - barsRef.current.length;
         if (added <= 0) {
           hasMoreRef.current = Boolean(data.hasMore);
+          if (!hasMoreRef.current) historyExhaustedRef.current = true;
           return;
         }
 
         hasMoreRef.current = Boolean(data.hasMore);
+        if (!hasMoreRef.current) historyExhaustedRef.current = true;
         applyBars(merged, { preserveRange: true, prependCount: added });
       } catch {
         /* ignore — user can scroll again */
@@ -738,6 +735,29 @@ export function CandlestickChart({
         fitChartFullWidth(chart, container, barCountRef.current);
       }
     };
+
+    /**
+     * Seamless Zoom On/Off: never tear down the chart — only interaction,
+     * visible window, and optional background history expansion change.
+     */
+    const applyZoomMode = (enabled: boolean) => {
+      chart.applyOptions(chartInteractionOptions(enabled));
+      const count = barCountRef.current;
+      if (count <= 0) return;
+
+      if (shouldShowRecentWindow(enabled, tf)) {
+        showRecentWindow(chart, count, tf);
+        return;
+      }
+
+      fitChartFullWidth(chart, container, count);
+      if (enabled && !historyExhaustedRef.current) {
+        void loadAllHistory();
+      }
+    };
+    onZoomModeChangeRef.current = applyZoomMode;
+    // Sync current prop in case Zoom toggled before chart finished mounting.
+    applyZoomMode(zoomRef.current);
 
     const onVisibleRangeChange = (range: LogicalRange | null) => {
       if (!range || !zoomRef.current) return;
@@ -1016,6 +1036,7 @@ export function CandlestickChart({
       resizeObs.disconnect();
       container.removeEventListener("dblclick", onDblClick);
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChange);
+      onZoomModeChangeRef.current = null;
       chart.remove();
       chartRef.current = null;
       candleRef.current = null;

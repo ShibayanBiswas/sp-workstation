@@ -1,8 +1,17 @@
-/** Normalize closes to % move from first point so small ranges still render visibly. */
-export function sparklineSeries(closes: number[]): number[] {
+/**
+ * Normalize closes to % move from an anchor (session open or first close)
+ * so sparklines match today's Live Chart shape and small ranges stay visible.
+ */
+export function sparklineSeries(
+  closes: number[],
+  anchor?: number | null
+): number[] {
   if (closes.length < 2) return closes.length ? [closes[0], closes[0]] : [0, 0];
 
-  const base = closes[0];
+  const base =
+    anchor != null && Number.isFinite(anchor) && anchor !== 0
+      ? anchor
+      : closes[0];
   if (!base || Number.isNaN(base)) return closes;
 
   const indexed = closes.map((v) => ((v - base) / base) * 100);

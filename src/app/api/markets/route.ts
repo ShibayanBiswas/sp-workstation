@@ -3,10 +3,10 @@ import { getSession } from "@/lib/auth";
 import { getNseMarketStatus } from "@/lib/market-hours";
 import { INDIAN_MARKET_INDICES, sortByDisplayOrder } from "@/data/indian-markets";
 import {
-  closesFromOhlc,
   fetchYahooLiveQuote,
   fetchYahooOhlc,
   mapPool,
+  sessionClosesForSparkline,
 } from "@/lib/yahoo-ohlc";
 import { sparklineSeries } from "@/lib/sparkline";
 import { getTimeframe } from "@/lib/chart-timeframes";
@@ -33,12 +33,16 @@ async function yahooQuote(
     const live = await fetchYahooLiveQuote(index.yahoo, { fresh: true });
     if (!live) return null;
 
+    // Same session path as Live Chart 1D (Zoom Off) — today's IST closes vs open.
     let sparkline: number[] = [];
-    const ohlc = await fetchYahooOhlc(index.yahoo, getTimeframe("1M"));
-    if (ohlc?.bars.length) {
-      sparkline = sparklineSeries(closesFromOhlc(ohlc.bars, 24));
+    const ohlc = await fetchYahooOhlc(index.yahoo, getTimeframe("1D"));
+    const sessionCloses = ohlc?.bars.length
+      ? sessionClosesForSparkline(ohlc.bars)
+      : [];
+    if (sessionCloses.length >= 2) {
+      sparkline = sparklineSeries(sessionCloses, live.dayOpen);
     } else {
-      sparkline = sparklineSeries([live.dayOpen, live.price]);
+      sparkline = sparklineSeries([live.dayOpen, live.price], live.dayOpen);
     }
 
     return {

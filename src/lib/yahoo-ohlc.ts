@@ -1,5 +1,5 @@
 import type { ChartTimeframe } from "@/lib/chart-timeframes";
-import { filterNseSessionBars } from "@/lib/chart-ist";
+import { filterNseSessionBars, istDateString } from "@/lib/chart-ist";
 import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
 import { normalizeLiveQuote } from "@/lib/market-quote";
 
@@ -351,6 +351,33 @@ export async function fetchYahooOhlcBefore(
 export function closesFromOhlc(bars: OhlcBar[], maxPoints = 24): number[] {
   const closes = bars.map((b) => b.close).filter((v) => !Number.isNaN(v));
   return closes.slice(-maxPoints);
+}
+
+/**
+ * Closes for the latest IST session day — same path the Live Chart 1D candles
+ * show when Zoom is Off (today's session). Downsamples if denser than maxPoints.
+ */
+export function sessionClosesForSparkline(
+  bars: OhlcBar[],
+  maxPoints = 78
+): number[] {
+  if (bars.length === 0) return [];
+  const lastDay = istDateString(bars[bars.length - 1].time);
+  const dayCloses = bars
+    .filter((b) => istDateString(b.time) === lastDay)
+    .map((b) => b.close)
+    .filter((v) => Number.isFinite(v));
+
+  if (dayCloses.length <= maxPoints) return dayCloses;
+
+  const step = Math.ceil(dayCloses.length / maxPoints);
+  const sampled: number[] = [];
+  for (let i = 0; i < dayCloses.length; i += step) {
+    sampled.push(dayCloses[i]);
+  }
+  const last = dayCloses[dayCloses.length - 1];
+  if (sampled[sampled.length - 1] !== last) sampled.push(last);
+  return sampled;
 }
 
 /** Run async tasks with limited concurrency. */
