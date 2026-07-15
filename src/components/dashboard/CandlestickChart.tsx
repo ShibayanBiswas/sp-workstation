@@ -497,7 +497,7 @@ export function CandlestickChart({
     let highLine: IPriceLine | null = null;
     let lowLine: IPriceLine | null = null;
     let referencePrice: number | null = null;
-    let referenceTitle = "Ref";
+    let referenceTitle = "Open";
 
     const renderLegend = (
       bar: { open: number; high: number; low: number; close: number } | null,
@@ -883,29 +883,7 @@ export function CandlestickChart({
           if (reference != null) setPeriodReference(reference);
 
           referencePrice = reference;
-          if (basis == null) {
-            referenceTitle = "Open";
-          } else {
-            switch (basis) {
-              case "day_open":
-                referenceTitle = "Open";
-                break;
-              case "week_open":
-                referenceTitle = "W Open";
-                break;
-              case "month_open":
-                referenceTitle = "M Open";
-                break;
-              case "lookback_open":
-                referenceTitle = "Open";
-                break;
-              default: {
-                const _exhaustive: never = basis;
-                void _exhaustive;
-                referenceTitle = "Open";
-              }
-            }
-          }
+          referenceTitle = "Open";
           referenceLine = syncPriceLine(
             candleSeries,
             referenceLine,
