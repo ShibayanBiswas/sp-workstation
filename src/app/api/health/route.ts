@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { User } from "@/lib/models/User";
+import { jsonDynamic } from "@/lib/json-dynamic";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 /** Lightweight readiness probe for Vercel / ops — no secrets returned. */
 export async function GET() {
@@ -15,7 +16,7 @@ export async function GET() {
   try {
     await connectDB();
     const users = await User.countDocuments();
-    return NextResponse.json({
+    return jsonDynamic({
       ok: true,
       mongo: "connected",
       users,
@@ -28,7 +29,7 @@ export async function GET() {
       asOf: new Date().toISOString(),
     });
   } catch (err) {
-    return NextResponse.json(
+    return jsonDynamic(
       {
         ok: false,
         mongo: "disconnected",

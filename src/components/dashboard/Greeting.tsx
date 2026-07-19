@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { getNseMarketStatus } from "@/lib/market-hours";
+import { useEffect, useState } from "react";
+import { getNseMarketStatus, type MarketStatus } from "@/lib/market-hours";
 
 function greetingForHour(hour: number) {
   if (hour < 12) return "Good morning";
@@ -9,60 +9,69 @@ function greetingForHour(hour: number) {
   return "Good evening";
 }
 
-export function Greeting({ name }: { name: string }) {
-  const { greet, dateLine, weekday, first, tagline } = useMemo(() => {
-    const now = new Date();
-    const status = getNseMarketStatus(now);
-    const istHour = Number(
-      now.toLocaleString("en-US", {
-        timeZone: "Asia/Kolkata",
-        hour: "numeric",
-        hour12: false,
-      })
-    );
-    const weekday = now.toLocaleDateString("en-IN", {
+function buildGreeting(name: string, now: Date) {
+  const status = getNseMarketStatus(now);
+  const istHour = Number(
+    now.toLocaleString("en-US", {
       timeZone: "Asia/Kolkata",
-      weekday: "long",
-    });
-    const dateLine = now.toLocaleDateString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+      hour: "numeric",
+      hour12: false,
+    })
+  );
+  const weekday = now.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    weekday: "long",
+  });
+  const dateLine = now.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
-    let tagline: string;
-    switch (status) {
-      case "weekend":
-        tagline =
-          "Markets are closed for the weekend — last session figures are shown below.";
-        break;
-      case "closed":
-        tagline =
-          "Cash markets are closed — review the last session and prepare for the next open.";
-        break;
-      case "pre-open":
-        tagline =
-          "Pre-open is underway — quotes may be thin until continuous trading starts.";
-        break;
-      case "open":
-        tagline =
-          "Live Indian indices, institutional charts, and desk intelligence.";
-        break;
-      default: {
-        const _exhaustive: never = status;
-        return _exhaustive;
-      }
+  let tagline: string;
+  switch (status) {
+    case "weekend":
+      tagline =
+        "Markets are closed for the weekend — last session figures are shown below.";
+      break;
+    case "closed":
+      tagline =
+        "Cash markets are closed — review the last session and prepare for the next open.";
+      break;
+    case "pre-open":
+      tagline =
+        "Pre-open is underway — quotes may be thin until continuous trading starts.";
+      break;
+    case "open":
+      tagline =
+        "Live Indian indices, institutional charts, and desk intelligence.";
+      break;
+    default: {
+      const _exhaustive: never = status;
+      return _exhaustive;
     }
+  }
 
-    return {
-      greet: greetingForHour(istHour),
-      weekday,
-      dateLine,
-      first: name.split(" ")[0] || name,
-      tagline,
-    };
-  }, [name]);
+  return {
+    greet: greetingForHour(istHour),
+    weekday,
+    dateLine,
+    first: name.split(" ")[0] || name,
+    tagline,
+    status: status as MarketStatus,
+  };
+}
+
+export function Greeting({ name }: { name: string }) {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const { greet, dateLine, weekday, first, tagline } = buildGreeting(name, now);
 
   return (
     <section className="panel-stable panel-luxe relative overflow-hidden rounded-2xl px-6 py-6 md:px-9 md:py-7">

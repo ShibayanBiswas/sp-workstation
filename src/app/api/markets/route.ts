@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getNseMarketStatus } from "@/lib/market-hours";
 import { INDIAN_MARKET_INDICES, sortByDisplayOrder } from "@/data/indian-markets";
@@ -11,8 +10,10 @@ import {
 import { sparklineSeries } from "@/lib/sparkline";
 import { normalizeLiveQuote } from "@/lib/market-quote";
 import { getTimeframe } from "@/lib/chart-timeframes";
+import { jsonDynamic } from "@/lib/json-dynamic";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export type MarketQuote = {
   id: string;
@@ -79,7 +80,7 @@ async function yahooQuote(
 export async function GET() {
   const session = await getSession();
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonDynamic({ error: "Unauthorized" }, { status: 401 });
   }
 
   const results = await mapPool(INDIAN_MARKET_INDICES, yahooQuote, 4);
@@ -93,7 +94,7 @@ export async function GET() {
     })
   );
 
-  return NextResponse.json({
+  return jsonDynamic({
     quotes:
       quotes.length > 0
         ? quotes

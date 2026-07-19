@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { computeTimeframeReturn } from "@/lib/chart-period-return";
 import { getTimeframe } from "@/lib/chart-timeframes";
+import { jsonDynamic } from "@/lib/json-dynamic";
 import {
   fetchYahooOhlc,
   fetchYahooOhlcBefore,
@@ -12,6 +12,7 @@ import {
 import { INDIAN_MARKET_INDICES, getIndexById } from "@/data/indian-markets";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const querySchema = z.object({
   indexId: z.string().min(1),
@@ -26,7 +27,7 @@ const querySchema = z.object({
 export async function GET(req: Request) {
   const session = await getSession();
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonDynamic({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { searchParams } = new URL(req.url);
@@ -40,12 +41,12 @@ export async function GET(req: Request) {
   });
 
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    return jsonDynamic({ error: "Invalid request" }, { status: 400 });
   }
 
   const index = getIndexById(parsed.data.indexId);
   if (!INDIAN_MARKET_INDICES.some((i) => i.id === parsed.data.indexId)) {
-    return NextResponse.json({ error: "Unknown index" }, { status: 400 });
+    return jsonDynamic({ error: "Unknown index" }, { status: 400 });
   }
   const timeframe = getTimeframe(parsed.data.timeframe);
   const inception =
@@ -56,7 +57,7 @@ export async function GET(req: Request) {
     : await fetchYahooOhlc(index.yahoo, timeframe, { inception });
 
   if (!ohlc || ohlc.bars.length === 0) {
-    return NextResponse.json(
+    return jsonDynamic(
       {
         error: isHistory ? "No older history" : "Chart data unavailable",
         bars: [],
@@ -75,7 +76,7 @@ export async function GET(req: Request) {
     : nowSec - earliest > 86_400;
 
   if (isHistory) {
-    return NextResponse.json({
+    return jsonDynamic({
       indexId: index.id,
       name: index.name,
       timeframe: timeframe.id,
@@ -102,7 +103,7 @@ export async function GET(req: Request) {
   const change = period?.change ?? live?.change ?? 0;
   const changePercent = period?.changePercent ?? live?.changePercent ?? 0;
 
-  return NextResponse.json({
+  return jsonDynamic({
     indexId: index.id,
     name: index.name,
     timeframe: timeframe.id,

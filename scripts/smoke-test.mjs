@@ -65,7 +65,11 @@ async function request(path, options = {}) {
   } catch {
     json = { raw: text.slice(0, 200) };
   }
-  return { status: res.status, json };
+  return {
+    status: res.status,
+    json,
+    cacheControl: res.headers.get("cache-control") || "",
+  };
 }
 
 function assert(cond, message) {
@@ -151,13 +155,32 @@ async function main() {
   assert(markets1.json.quotes.length >= 10, "Expected 10+ index quotes");
   const nifty = markets1.json.quotes.find((q) => q.id === "nifty");
   assert(nifty?.price != null, "Nifty 50 price missing");
+  assert(
+    /no-store/i.test(markets1.cacheControl),
+    `Markets must be uncached, got Cache-Control: ${markets1.cacheControl}`
+  );
   pass(`Markets: ${markets1.json.quotes.length} quotes, Nifty ${nifty.price}`);
+  pass(`Markets Cache-Control: ${markets1.cacheControl}`);
+
+  // 7b. Dynamic freshness — consecutive polls must mint distinct asOf stamps
+  await new Promise((r) => setTimeout(r, 400));
+  const marketsFresh = await request("/api/markets");
+  assert(marketsFresh.status === 200, "Markets refresh poll failed");
+  assert(
+    marketsFresh.json?.asOf && marketsFresh.json.asOf !== markets1.json.asOf,
+    `Markets asOf should advance (got ${markets1.json.asOf} then ${marketsFresh.json?.asOf})`
+  );
+  pass(`Markets asOf advances (${markets1.json.asOf} → ${marketsFresh.json.asOf})`);
 
   // 8. Chart API + price alignment
   const chart = await request("/api/chart?indexId=nifty&timeframe=1D");
   assert(chart.status === 200, `Chart failed: ${chart.status}`);
   assert(chart.json?.bars?.length > 0, "Chart bars missing");
   assert(chart.json?.last?.price != null, "Chart last price missing");
+  assert(
+    /no-store/i.test(chart.cacheControl),
+    `Chart must be uncached, got Cache-Control: ${chart.cacheControl}`
+  );
   const priceDiff = Math.abs(chart.json.last.price - nifty.price);
   assert(
     priceDiff < 0.05,
@@ -169,6 +192,14 @@ async function main() {
     "1D chart should include period reference (session open)"
   );
   pass(`1D period reference ${chart.json.last.reference}`);
+
+  await new Promise((r) => setTimeout(r, 300));
+  const chartFresh = await request("/api/chart?indexId=nifty&timeframe=1D");
+  assert(
+    chartFresh.json?.asOf && chartFresh.json.asOf !== chart.json.asOf,
+    `Chart asOf should advance (got ${chart.json.asOf} then ${chartFresh.json?.asOf})`
+  );
+  pass(`Chart asOf advances (${chart.json.asOf} → ${chartFresh.json.asOf})`);
 
   // 8a. Sensex (BSE) dayOpen must match markets tape baseline
   const sensex = markets1.json.quotes.find((q) => q.id === "sensex");
@@ -260,6 +291,33 @@ async function main() {
   assert(markets2.status === 200, "Second markets fetch failed");
   assert(markets2.json?.asOf, "asOf timestamp missing");
   pass(`Markets refresh OK (asOf ${markets2.json.asOf})`);
+
+  // 9b. Todos CRUD is dynamic (create → list → delete)
+  const todoTitle = `smoke-dyn-${Date.now()}`;
+  const created = await request("/api/todos", {
+    method: "POST",
+    body: JSON.stringify({ title: todoTitle, priority: "low" }),
+  });
+  assert(created.status === 200, `Todo create failed: ${created.status}`);
+  assert(
+    /no-store/i.test(created.cacheControl),
+    `Todos must be uncached, got Cache-Control: ${created.cacheControl}`
+  );
+  const todoId = created.json?.todo?._id;
+  assert(todoId, "Todo id missing after create");
+  const listed = await request("/api/todos");
+  assert(
+    (listed.json?.todos || []).some((t) => t._id === todoId),
+    "Created todo missing from list"
+  );
+  const deleted = await request(`/api/todos?id=${todoId}`, { method: "DELETE" });
+  assert(deleted.status === 200, `Todo delete failed: ${deleted.status}`);
+  const listedAfter = await request("/api/todos");
+  assert(
+    !(listedAfter.json?.todos || []).some((t) => t._id === todoId),
+    "Deleted todo still present"
+  );
+  pass("Todos CRUD is dynamic");
 
   // 10. Forgot password flow (invalid email)
   cookieJar.clear();
