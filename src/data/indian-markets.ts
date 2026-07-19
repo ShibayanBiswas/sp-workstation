@@ -54,3 +54,20 @@ export function indicesByGroup(group: IndianIndexGroup): IndianIndex[] {
 export function isCashSessionGroup(group: IndianIndexGroup): boolean {
   return group === "benchmark" || group === "sector" || group === "volatility";
 }
+
+/** Cash venue for session copy — Sensex is BSE; other cash indices are NSE. */
+export function cashExchangeLabel(
+  indexId: string
+): "NSE" | "BSE" | null {
+  const index = INDIAN_MARKET_INDICES.find((i) => i.id === indexId);
+  if (!index || !isCashSessionGroup(index.group)) return null;
+  if (index.id === "sensex") return "BSE";
+  return "NSE";
+}
+
+/** e.g. "Last BSE session" / "Last NSE session" / "Last session". */
+export function lastSessionPhrase(indexId?: string | null): string {
+  if (!indexId) return "Last session";
+  const ex = cashExchangeLabel(indexId);
+  return ex ? `Last ${ex} session` : "Last session";
+}

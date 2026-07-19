@@ -10,14 +10,25 @@ import {
   Moon,
   Sun,
   BarChart3,
+  GraduationCap,
+  Layers,
+  Shield,
 } from "lucide-react";
 import {
   MODULES,
   collectNavPaths,
+  type ModuleGroup,
   type NavItem,
 } from "@/data/modules";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { BrandLogo } from "@/components/ui/BrandLogo";
+
+const MODULE_ICONS: Record<ModuleGroup["icon"], typeof BarChart3> = {
+  chart: BarChart3,
+  layers: Layers,
+  shield: Shield,
+  graduation: GraduationCap,
+};
 
 type Props = {
   userName: string;
@@ -219,6 +230,7 @@ export function Sidebar({
         {MODULES.map((mod) => {
           const open = !collapsed && (openModules[mod.id] ?? false);
           const active = pathname.startsWith(mod.href);
+          const ModuleIcon = MODULE_ICONS[mod.icon];
           return (
             <div key={mod.id} className="mb-1">
               <div
@@ -236,7 +248,7 @@ export function Sidebar({
                   title={mod.label}
                   onClick={onNavigate}
                 >
-                  <BarChart3 size={18} className="shrink-0 text-[var(--gold-deep)] dark:text-[var(--gold)]" />
+                  <ModuleIcon size={18} className="shrink-0 text-[var(--gold-deep)] dark:text-[var(--gold)]" />
                   <span className="sidebar-label min-w-0 flex-1 truncate font-medium">
                     {mod.label}
                   </span>

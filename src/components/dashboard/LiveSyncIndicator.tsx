@@ -78,11 +78,11 @@ export function LiveSyncIndicator({
     }
   } else if (status === "weekend") {
     label = stamp
-      ? `Weekend · last NSE session ${stamp} IST`
+      ? `Weekend · last session ${stamp} IST`
       : "Weekend · markets closed";
   } else {
     label = stamp
-      ? `Closed · last NSE session ${stamp} IST`
+      ? `Closed · last session ${stamp} IST`
       : "Markets closed";
   }
 

@@ -53,6 +53,7 @@ import {
   formatIstSessionStamp,
   formatIstSyncTime,
 } from "@/lib/market-quote";
+import { lastSessionPhrase } from "@/data/indian-markets";
 import type { OhlcBar } from "@/lib/yahoo-ohlc";
 
 type ThemeMode = "light" | "dark";
@@ -349,9 +350,12 @@ export function CandlestickChart({
   const displayChangePct = livePeriod
     ? formatMarketChangePercent(livePeriod.changePercent)
     : header.changePercent;
-  const basisHint = returnBasisLabel(
-    timeframe === "1D" ? "day_open" : returnBasis
-  );
+  // Hide "vs today open" (and other basis hints) when markets are closed —
+  // weekends/holidays make "today" misleading.
+  const basisHint = sessionActive
+    ? returnBasisLabel(timeframe === "1D" ? "day_open" : returnBasis)
+    : "";
+  const sessionPhrase = lastSessionPhrase(indexId);
 
   useEffect(() => {
     if (syncedQuote?.price == null) return;
@@ -1087,16 +1091,16 @@ export function CandlestickChart({
             {header.hoverTime
               ? `${header.hoverTime} IST`
               : syncedQuote?.marketTime
-                ? `${sessionActive ? "Synced" : "Last NSE session"} · ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: !sessionActive }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
+                ? `${sessionActive ? "Synced" : sessionPhrase} · ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: !sessionActive }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
                 : syncedAsOf
                   ? sessionActive
                     ? `Synced · ${formatIstSyncTime(syncedAsOf)} IST · every minute`
-                    : `Last NSE session · ${formatIstSessionStamp(syncedAsOf, { forceDate: true })} IST`
+                    : `${sessionPhrase} · ${formatIstSessionStamp(syncedAsOf, { forceDate: true })} IST`
                   : header.asOf
-                    ? `${sessionActive ? "Last update" : "Last NSE session"} · ${header.asOf} IST`
+                    ? `${sessionActive ? "Last update" : sessionPhrase} · ${header.asOf} IST`
                     : sessionActive
                       ? "Live · refreshes every minute · axis in IST"
-                      : "Markets closed · showing last NSE session · axis in IST"}
+                      : `Markets closed · showing ${sessionPhrase.toLowerCase()} · axis in IST`}
             {" · "}
             SMA {SMA_FAST}/{SMA_SLOW}
             {timeframe === "1D" ? " · VWAP" : ""}

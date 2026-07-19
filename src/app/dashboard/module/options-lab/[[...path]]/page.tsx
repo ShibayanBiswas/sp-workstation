@@ -9,10 +9,10 @@ type Props = {
   params: Promise<{ path?: string[] }>;
 };
 
-export default async function PrimarySpModulePage({ params }: Props) {
+export default async function OptionsLabModulePage({ params }: Props) {
   const { path } = await params;
-  const group = getModuleByRouteSlug("primary-sp")!;
-  const sub = findSubmoduleBySegments("primary-sp", path);
+  const group = getModuleByRouteSlug("options-lab")!;
+  const sub = findSubmoduleBySegments("options-lab", path);
   const src = resolveEmbedUrl(group, sub.spPath);
 
   return (
