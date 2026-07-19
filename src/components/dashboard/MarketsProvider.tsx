@@ -11,12 +11,18 @@ import {
   type ReactNode,
 } from "react";
 import { INDIAN_MARKET_INDICES, sortByDisplayOrder } from "@/data/indian-markets";
-import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
+import { refreshIntervalForStatus } from "@/lib/live-refresh";
+import {
+  getNseMarketStatus,
+  isMarketLive,
+  isMarketSessionActive,
+  type MarketStatus,
+} from "@/lib/market-hours";
 import {
   formatMarketChange,
   formatMarketChangePercent,
   formatMarketPrice,
-  formatIstSyncTime,
+  formatIstSessionStamp,
 } from "@/lib/market-quote";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { LiveSyncIndicator } from "@/components/dashboard/LiveSyncIndicator";
@@ -36,6 +42,9 @@ export type MarketQuote = {
 type MarketsContextValue = {
   quotes: MarketQuote[];
   asOf: string;
+  /** Latest exchange print across quotes (unix sec). */
+  lastMarketTime: number | null;
+  marketStatus: MarketStatus;
   loading: boolean;
   syncing: boolean;
   refresh: () => Promise<void>;
@@ -62,6 +71,9 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
+  const [marketStatus, setMarketStatus] = useState<MarketStatus>(
+    getNseMarketStatus()
+  );
   const prevPrices = useRef<Map<string, number>>(new Map());
   const inFlight = useRef(false);
   const [selectedIndexId, setSelectedIndexId] = useState(
@@ -71,6 +83,8 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
+    const status = getNseMarketStatus();
+    setMarketStatus(status);
     setSyncing(true);
     try {
       const res = await fetch("/api/markets", {
@@ -81,18 +95,26 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       const next = dedupeQuotes(data.quotes || []);
       const changed = new Set<string>();
-      for (const q of next) {
-        if (q.price == null) continue;
-        const prev = prevPrices.current.get(q.id);
-        if (prev != null && prev !== q.price) changed.add(q.id);
-        prevPrices.current.set(q.id, q.price);
-      }
-      if (changed.size > 0) {
-        setFlashIds(changed);
-        setTimeout(() => setFlashIds(new Set()), 700);
+      // Only flash ticks while the cash session is live.
+      if (isMarketLive(status)) {
+        for (const q of next) {
+          if (q.price == null) continue;
+          const prev = prevPrices.current.get(q.id);
+          if (prev != null && prev !== q.price) changed.add(q.id);
+          prevPrices.current.set(q.id, q.price);
+        }
+        if (changed.size > 0) {
+          setFlashIds(changed);
+          setTimeout(() => setFlashIds(new Set()), 700);
+        }
+      } else {
+        for (const q of next) {
+          if (q.price != null) prevPrices.current.set(q.id, q.price);
+        }
       }
       setQuotes(sortByDisplayOrder(next));
       setAsOf(data.asOf || new Date().toISOString());
+      if (data.marketStatus) setMarketStatus(data.marketStatus);
     } catch {
       /* ignore */
     } finally {
@@ -103,25 +125,58 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    let timeoutId = 0;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      const status = getNseMarketStatus();
+      setMarketStatus(status);
+      const delay = refreshIntervalForStatus(status);
+      timeoutId = window.setTimeout(() => {
+        void refresh().finally(() => {
+          if (!cancelled) scheduleNext();
+        });
+      }, delay);
+    };
+
     const frame = window.requestAnimationFrame(() => {
-      void refresh();
+      void refresh().finally(() => {
+        if (!cancelled) scheduleNext();
+      });
     });
-    const id = setInterval(refresh, LIVE_REFRESH_MS);
+
     return () => {
+      cancelled = true;
       window.cancelAnimationFrame(frame);
-      clearInterval(id);
+      window.clearTimeout(timeoutId);
     };
   }, [refresh]);
+
+  useEffect(() => {
+    const id = setInterval(() => setMarketStatus(getNseMarketStatus()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const quoteFor = useCallback(
     (id: string) => quotes.find((q) => q.id === id),
     [quotes]
   );
 
+  const lastMarketTime = useMemo(() => {
+    let max = 0;
+    for (const q of quotes) {
+      if (q.marketTime != null && q.marketTime > max) max = q.marketTime;
+    }
+    return max > 0 ? max : null;
+  }, [quotes]);
+
   const value = useMemo(
     () => ({
       quotes: sortByDisplayOrder(dedupeQuotes(quotes)),
       asOf,
+      lastMarketTime,
+      marketStatus,
       loading,
       syncing,
       refresh,
@@ -130,7 +185,18 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
       flashIds,
       quoteFor,
     }),
-    [quotes, asOf, loading, syncing, refresh, selectedIndexId, flashIds, quoteFor]
+    [
+      quotes,
+      asOf,
+      lastMarketTime,
+      marketStatus,
+      loading,
+      syncing,
+      refresh,
+      selectedIndexId,
+      flashIds,
+      quoteFor,
+    ]
   );
 
   return (
@@ -144,9 +210,18 @@ export function useMarkets() {
   return ctx;
 }
 
-/** Row 1 — auto-scrolling live tape. */
+/** Row 1 — auto-scrolling market tape. */
 export function IndianMarketTape() {
-  const { quotes, loading, flashIds, syncing, asOf } = useMarkets();
+  const {
+    quotes,
+    loading,
+    flashIds,
+    syncing,
+    asOf,
+    lastMarketTime,
+    marketStatus,
+  } = useMarkets();
+  const sessionActive = isMarketSessionActive(marketStatus);
 
   const chips = quotes.map((q, index) => {
     const up = (q.change ?? 0) >= 0;
@@ -187,12 +262,22 @@ export function IndianMarketTape() {
     <section className="panel-stable panel-luxe overflow-hidden rounded-2xl">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-2.5 md:px-5">
         <div>
-          <p className="section-kicker">Live tape</p>
+          <p className="section-kicker">
+            {sessionActive ? "Live tape" : "Market tape"}
+          </p>
           <p className="section-title">Indian market indices</p>
         </div>
-        <LiveSyncIndicator syncing={syncing} lastSyncedAt={asOf} compact />
+        <LiveSyncIndicator
+          syncing={syncing}
+          lastSyncedAt={asOf}
+          lastMarketTime={lastMarketTime}
+          marketStatus={marketStatus}
+          compact
+        />
       </div>
-      <div className="tape-viewport relative min-h-[104px] overflow-hidden py-1">
+      <div
+        className={`tape-viewport relative min-h-[104px] overflow-hidden py-1 ${!sessionActive ? "tape-viewport-paused" : ""}`}
+      >
         {loading && quotes.length === 0 ? (
           <div className="flex h-[92px] items-center gap-2 px-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -205,7 +290,7 @@ export function IndianMarketTape() {
         ) : (
           <div className="tape-track flex min-h-[92px] items-center gap-2 px-3">
             {chips}
-            {chips}
+            {sessionActive ? chips : null}
           </div>
         )}
       </div>
@@ -215,9 +300,20 @@ export function IndianMarketTape() {
 
 /** Row 2 — snapshot cards, horizontal scroll. */
 export function IndianMarketCards() {
-  const { quotes, loading, asOf, selectedIndexId, setSelectedIndexId, flashIds, syncing } =
-    useMarkets();
-  const timeLabel = formatIstSyncTime(asOf);
+  const {
+    quotes,
+    loading,
+    asOf,
+    selectedIndexId,
+    setSelectedIndexId,
+    flashIds,
+    syncing,
+    lastMarketTime,
+    marketStatus,
+  } = useMarkets();
+  const timeLabel =
+    formatIstSessionStamp(lastMarketTime ?? undefined) ||
+    formatIstSessionStamp(asOf);
 
   return (
     <section className="panel-stable panel-luxe rounded-2xl">
@@ -230,7 +326,13 @@ export function IndianMarketCards() {
           <p className="text-[10px] text-[var(--fg-subtle)]">
             {quotes.length} indices
           </p>
-          <LiveSyncIndicator syncing={syncing} lastSyncedAt={asOf} compact />
+          <LiveSyncIndicator
+            syncing={syncing}
+            lastSyncedAt={asOf}
+            lastMarketTime={lastMarketTime}
+            marketStatus={marketStatus}
+            compact
+          />
         </div>
       </div>
       <div className="snapshot-viewport overflow-x-auto p-3 scrollbar-thin md:p-4">

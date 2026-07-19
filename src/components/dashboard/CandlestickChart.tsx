@@ -35,7 +35,12 @@ import {
   formatVolumeShort,
 } from "@/lib/chart-indicators";
 import { buildChartSeries } from "@/lib/chart-series";
-import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
+import { refreshIntervalForStatus } from "@/lib/live-refresh";
+import {
+  getNseMarketStatus,
+  isMarketSessionActive,
+  type MarketStatus,
+} from "@/lib/market-hours";
 import {
   computeTimeframeReturn,
   returnBasisLabel,
@@ -45,6 +50,7 @@ import {
   formatMarketChange,
   formatMarketChangePercent,
   formatMarketPrice,
+  formatIstSessionStamp,
   formatIstSyncTime,
 } from "@/lib/market-quote";
 import type { OhlcBar } from "@/lib/yahoo-ohlc";
@@ -66,6 +72,7 @@ type Props = {
   theme: ThemeMode;
   name: string;
   zoomEnabled?: boolean;
+  marketStatus?: MarketStatus;
   /** Optional last price while chart boots — never used for change/%. */
   fallbackPrice?: number | null;
   syncedQuote?: SyncedQuote | null;
@@ -249,6 +256,7 @@ export function CandlestickChart({
   theme,
   name,
   zoomEnabled = false,
+  marketStatus: marketStatusProp,
   fallbackPrice,
   syncedQuote,
   syncedAsOf,
@@ -286,6 +294,22 @@ export function CandlestickChart({
   });
   const [periodReference, setPeriodReference] = useState<number | null>(null);
   const [returnBasis, setReturnBasis] = useState<ReturnBasis | null>(null);
+  const [clockStatus, setClockStatus] = useState<MarketStatus>(() =>
+    getNseMarketStatus()
+  );
+  const marketStatus = marketStatusProp ?? clockStatus;
+  const sessionActive = isMarketSessionActive(marketStatus);
+  const marketStatusRef = useRef(marketStatus);
+
+  useEffect(() => {
+    marketStatusRef.current = marketStatus;
+  }, [marketStatus]);
+
+  useEffect(() => {
+    if (marketStatusProp != null) return;
+    const id = setInterval(() => setClockStatus(getNseMarketStatus()), 30_000);
+    return () => clearInterval(id);
+  }, [marketStatusProp]);
 
   const displayPrice =
     syncedQuote?.price != null
@@ -992,7 +1016,18 @@ export function CandlestickChart({
     });
 
     void loadData(false);
-    const pollId = setInterval(() => void loadData(true), LIVE_REFRESH_MS);
+    let cancelled = false;
+    let timeoutId = 0;
+    const schedulePoll = () => {
+      if (cancelled) return;
+      const delay = refreshIntervalForStatus(marketStatusRef.current);
+      timeoutId = window.setTimeout(() => {
+        void loadData(true).finally(() => {
+          if (!cancelled) schedulePoll();
+        });
+      }, delay);
+    };
+    schedulePoll();
 
     const resizeObs = new ResizeObserver(() => {
       if (
@@ -1005,8 +1040,9 @@ export function CandlestickChart({
     resizeObs.observe(container);
 
     return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
       alive = false;
-      clearInterval(pollId);
       resizeObs.disconnect();
       container.removeEventListener("dblclick", onDblClick);
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChange);
@@ -1051,12 +1087,16 @@ export function CandlestickChart({
             {header.hoverTime
               ? `${header.hoverTime} IST`
               : syncedQuote?.marketTime
-                ? `Synced · ${formatIstHeaderTime(syncedQuote.marketTime)} IST`
+                ? `${sessionActive ? "Synced" : "Last session"} · ${formatIstHeaderTime(syncedQuote.marketTime)} IST`
                 : syncedAsOf
-                  ? `Synced · ${formatIstSyncTime(syncedAsOf)} IST · every minute`
+                  ? sessionActive
+                    ? `Synced · ${formatIstSyncTime(syncedAsOf)} IST · every minute`
+                    : `Last session · ${formatIstSessionStamp(syncedAsOf)} IST`
                   : header.asOf
-                    ? `Last update · ${header.asOf} IST`
-                    : "Live · refreshes every minute · axis in IST"}
+                    ? `${sessionActive ? "Last update" : "Last session"} · ${header.asOf} IST`
+                    : sessionActive
+                      ? "Live · refreshes every minute · axis in IST"
+                      : "Markets closed · showing last session · axis in IST"}
             {" · "}
             SMA {SMA_FAST}/{SMA_SLOW}
             {timeframe === "1D" ? " · VWAP" : ""}

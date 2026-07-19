@@ -5,7 +5,7 @@ import { Clock } from "lucide-react";
 import { useMarkets } from "@/components/dashboard/MarketsProvider";
 import { LiveSyncIndicator } from "@/components/dashboard/LiveSyncIndicator";
 import {
-  getNseMarketStatus,
+  isMarketLive,
   marketStatusLabel,
   type MarketStatus,
 } from "@/lib/market-hours";
@@ -18,7 +18,7 @@ function statusColor(status: MarketStatus) {
       return "bg-amber-500";
     case "closed":
     case "weekend":
-      return "bg-red-500";
+      return "bg-[var(--fg-subtle)]";
     default: {
       const _exhaustive: never = status;
       return _exhaustive;
@@ -27,16 +27,11 @@ function statusColor(status: MarketStatus) {
 }
 
 export function TerminalHeader() {
-  const { syncing, asOf } = useMarkets();
+  const { syncing, asOf, lastMarketTime, marketStatus } = useMarkets();
   const [now, setNow] = useState<Date | null>(null);
-  const [status, setStatus] = useState<MarketStatus>("closed");
 
   useEffect(() => {
-    const tick = () => {
-      const current = new Date();
-      setNow(current);
-      setStatus(getNseMarketStatus(current));
-    };
+    const tick = () => setNow(new Date());
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
@@ -68,9 +63,9 @@ export function TerminalHeader() {
         <span className="hidden h-4 w-px bg-[var(--border)] sm:block" />
         <span className="status-pill">
           <span
-            className={`h-1.5 w-1.5 rounded-full ${statusColor(status)} ${status === "open" ? "animate-pulse-live" : ""}`}
+            className={`h-1.5 w-1.5 rounded-full ${statusColor(marketStatus)} ${isMarketLive(marketStatus) ? "animate-pulse-live" : ""}`}
           />
-          {marketStatusLabel(status)}
+          {marketStatusLabel(marketStatus)}
         </span>
         <span className="hidden text-[11px] text-[var(--fg-subtle)] lg:inline">
           NSE · BSE · IST
@@ -78,8 +73,14 @@ export function TerminalHeader() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <LiveSyncIndicator syncing={syncing} lastSyncedAt={asOf} compact />
-        <Clock size={14} />
+        <LiveSyncIndicator
+          syncing={syncing}
+          lastSyncedAt={asOf}
+          lastMarketTime={lastMarketTime}
+          marketStatus={marketStatus}
+          compact
+        />
+        <Clock size={14} className="text-[var(--fg-subtle)]" />
         <span className="fin-num text-sm font-medium text-[var(--fg)]">
           {timeStr}
         </span>

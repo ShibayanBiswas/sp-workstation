@@ -10,15 +10,15 @@ import {
   CHART_TIMEFRAMES,
   type ChartTimeframeId,
 } from "@/lib/chart-timeframes";
-import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
 import {
-  getNseMarketStatus,
+  isMarketSessionActive,
   marketStatusLabel,
+  type MarketStatus,
 } from "@/lib/market-hours";
 
 type ThemeMode = "light" | "dark";
 
-function marketBadgeClass(status: ReturnType<typeof getNseMarketStatus>) {
+function marketBadgeClass(status: MarketStatus) {
   switch (status) {
     case "open":
       return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400";
@@ -29,7 +29,7 @@ function marketBadgeClass(status: ReturnType<typeof getNseMarketStatus>) {
   }
 }
 
-/** Row 3 — live candlestick chart with timeframes. */
+/** Row 3 — candlestick chart with timeframes. */
 export function LiveCharts() {
   const {
     quoteFor,
@@ -37,12 +37,13 @@ export function LiveCharts() {
     setSelectedIndexId,
     asOf,
     syncing,
+    lastMarketTime,
+    marketStatus,
   } = useMarkets();
   const [theme, setTheme] = useState<ThemeMode>("light");
   const [timeframe, setTimeframe] = useState<ChartTimeframeId>("1D");
   const [zoomEnabled, setZoomEnabled] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [marketStatus, setMarketStatus] = useState(getNseMarketStatus());
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setMounted(true));
@@ -64,18 +65,12 @@ export function LiveCharts() {
     return () => obs.disconnect();
   }, []);
 
-  useEffect(() => {
-    const tick = () => setMarketStatus(getNseMarketStatus());
-    tick();
-    const id = setInterval(tick, LIVE_REFRESH_MS);
-    return () => clearInterval(id);
-  }, []);
-
   const active =
     INDIAN_MARKET_INDICES.find((i) => i.id === selectedIndexId) ??
     INDIAN_MARKET_INDICES[0];
 
   const liveQuote = quoteFor(selectedIndexId);
+  const sessionActive = isMarketSessionActive(marketStatus);
 
   const benchmarks = indicesByGroup("benchmark");
   const sectors = indicesByGroup("sector");
@@ -89,7 +84,9 @@ export function LiveCharts() {
     >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3 md:px-5">
         <div>
-          <p className="section-kicker">Live chart</p>
+          <p className="section-kicker">
+            {sessionActive ? "Live chart" : "Session chart"}
+          </p>
           <h3 className="section-title">{active.name}</h3>
         </div>
         <div className="relative w-full min-w-[240px] sm:w-auto sm:min-w-[280px]">
@@ -175,7 +172,13 @@ export function LiveCharts() {
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <LiveSyncIndicator syncing={syncing} lastSyncedAt={asOf} compact />
+          <LiveSyncIndicator
+            syncing={syncing}
+            lastSyncedAt={asOf}
+            lastMarketTime={lastMarketTime}
+            marketStatus={marketStatus}
+            compact
+          />
           <span
             className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${marketBadgeClass(marketStatus)}`}
           >
@@ -197,6 +200,7 @@ export function LiveCharts() {
           theme={theme}
           name={active.name}
           zoomEnabled={zoomEnabled}
+          marketStatus={marketStatus}
           fallbackPrice={liveQuote?.price}
           syncedQuote={
             liveQuote
@@ -213,7 +217,9 @@ export function LiveCharts() {
         />
       ) : (
         <div className="flex h-[540px] items-center justify-center text-sm text-[var(--fg-subtle)]">
-          <span className="animate-pulse-live">Preparing chart…</span>
+          <span className={sessionActive ? "animate-pulse-live" : ""}>
+            Preparing chart…
+          </span>
         </div>
       )}
     </section>

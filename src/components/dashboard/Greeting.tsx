@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { getNseMarketStatus } from "@/lib/market-hours";
 
 function greetingForHour(hour: number) {
   if (hour < 12) return "Good morning";
@@ -11,6 +12,7 @@ function greetingForHour(hour: number) {
 export function Greeting({ name }: { name: string }) {
   const { greet, dateLine, weekday, first, tagline } = useMemo(() => {
     const now = new Date();
+    const status = getNseMarketStatus(now);
     const istHour = Number(
       now.toLocaleString("en-US", {
         timeZone: "Asia/Kolkata",
@@ -28,15 +30,37 @@ export function Greeting({ name }: { name: string }) {
       month: "long",
       year: "numeric",
     });
+
+    let tagline: string;
+    switch (status) {
+      case "weekend":
+        tagline =
+          "Markets are closed for the weekend — last session figures are shown below.";
+        break;
+      case "closed":
+        tagline =
+          "Cash markets are closed — review the last session and prepare for the next open.";
+        break;
+      case "pre-open":
+        tagline =
+          "Pre-open is underway — quotes may be thin until continuous trading starts.";
+        break;
+      case "open":
+        tagline =
+          "Live Indian indices, institutional charts, and desk intelligence.";
+        break;
+      default: {
+        const _exhaustive: never = status;
+        return _exhaustive;
+      }
+    }
+
     return {
       greet: greetingForHour(istHour),
       weekday,
       dateLine,
       first: name.split(" ")[0] || name,
-      tagline:
-        istHour >= 9 && istHour < 16
-          ? "Live Indian indices, institutional charts, and desk intelligence."
-          : "Overnight view — review markets and prepare the session ahead.",
+      tagline,
     };
   }, [name]);
 

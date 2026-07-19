@@ -347,6 +347,10 @@ a {
   animation-play-state: paused;
 }
 
+.tape-viewport-paused .tape-track {
+  animation: none;
+}
+
 .tape-chip {
   background: color-mix(in srgb, var(--bg-muted) 40%, var(--bg-elevated));
   box-shadow: none;
@@ -813,6 +817,11 @@ a {
   border-color: color-mix(in srgb, var(--gold) 40%, var(--border));
 }
 
+.live-sync-pill-closed {
+  border-color: var(--border);
+  color: var(--fg-subtle);
+}
+
 .live-sync-dot {
   height: 0.45rem;
   width: 0.45rem;
@@ -824,6 +833,12 @@ a {
 .live-sync-dot-syncing {
   background: var(--gold);
   animation: pulse-live 1s ease-in-out infinite;
+}
+
+.live-sync-dot-closed {
+  background: var(--fg-subtle);
+  animation: none;
+  opacity: 0.7;
 }
 
 .live-sync-text {

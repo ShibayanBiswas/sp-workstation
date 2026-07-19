@@ -8,7 +8,6 @@ import {
   IndianMarketCards,
 } from "@/components/dashboard/MarketsProvider";
 import { LiveCharts } from "@/components/dashboard/LiveCharts";
-import { QuickModules } from "@/components/dashboard/QuickModules";
 
 type Props = {
   name: string;
@@ -33,11 +32,7 @@ export function DashboardHome({ name }: Props) {
             <LiveCharts />
           </div>
 
-          <div className="animate-rise-delay-3 panel-enter-glow">
-            <QuickModules />
-          </div>
-
-          <footer className="animate-rise-delay-4 footer-alive border-t border-[var(--border)] pt-2 pb-0 text-center text-[10px] tracking-[0.2em] text-[var(--fg-subtle)]">
+          <footer className="animate-rise-delay-3 footer-alive border-t border-[var(--border)] pt-2 pb-0 text-center text-[10px] tracking-[0.2em] text-[var(--fg-subtle)]">
             ANAND RATHI WEALTH · STRUCTURED PRODUCTS WORKSTATION
           </footer>
         </div>

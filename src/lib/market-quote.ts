@@ -84,3 +84,28 @@ export function formatIstSyncTime(isoOrUnix?: string | number): string {
     hour12: true,
   });
 }
+
+/** Time + short date when the stamp is not today (IST) — for closed sessions. */
+export function formatIstSessionStamp(isoOrUnix?: string | number): string {
+  if (!isoOrUnix) return "";
+  const d =
+    typeof isoOrUnix === "number" ? new Date(isoOrUnix * 1000) : new Date(isoOrUnix);
+  if (Number.isNaN(d.getTime())) return "";
+
+  const todayIst = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Kolkata",
+  });
+  const stampIst = d.toLocaleDateString("en-CA", {
+    timeZone: "Asia/Kolkata",
+  });
+  const time = formatIstSyncTime(isoOrUnix);
+  if (!time) return "";
+  if (stampIst === todayIst) return time;
+
+  const day = d.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "short",
+  });
+  return `${day}, ${time}`;
+}

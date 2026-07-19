@@ -43,6 +43,16 @@ export function getNseMarketStatus(now = new Date()): MarketStatus {
   return "closed";
 }
 
+/** True while cash market is trading (or in pre-open). */
+export function isMarketSessionActive(status: MarketStatus): boolean {
+  return status === "open" || status === "pre-open";
+}
+
+/** True only during continuous trading — drives live pulses / countdowns. */
+export function isMarketLive(status: MarketStatus): boolean {
+  return status === "open";
+}
+
 export function marketStatusLabel(status: MarketStatus): string {
   switch (status) {
     case "open":
