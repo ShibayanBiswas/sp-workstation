@@ -85,11 +85,16 @@ export function formatIstSyncTime(isoOrUnix?: string | number): string {
   });
 }
 
-/** Time + short date when the stamp is not today (IST) — for closed sessions. */
-export function formatIstSessionStamp(isoOrUnix?: string | number): string {
+/** Time (+ short date when not today IST, or when forceDate). */
+export function formatIstSessionStamp(
+  isoOrUnix?: string | number,
+  opts?: { forceDate?: boolean }
+): string {
   if (!isoOrUnix) return "";
   const d =
-    typeof isoOrUnix === "number" ? new Date(isoOrUnix * 1000) : new Date(isoOrUnix);
+    typeof isoOrUnix === "number"
+      ? new Date(isoOrUnix * 1000)
+      : new Date(isoOrUnix);
   if (Number.isNaN(d.getTime())) return "";
 
   const todayIst = new Date().toLocaleDateString("en-CA", {
@@ -100,10 +105,12 @@ export function formatIstSessionStamp(isoOrUnix?: string | number): string {
   });
   const time = formatIstSyncTime(isoOrUnix);
   if (!time) return "";
-  if (stampIst === todayIst) return time;
+
+  if (!opts?.forceDate && stampIst === todayIst) return time;
 
   const day = d.toLocaleDateString("en-IN", {
     timeZone: "Asia/Kolkata",
+    weekday: "short",
     day: "numeric",
     month: "short",
   });

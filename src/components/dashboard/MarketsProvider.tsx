@@ -10,7 +10,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { INDIAN_MARKET_INDICES, sortByDisplayOrder } from "@/data/indian-markets";
+import {
+  INDIAN_MARKET_INDICES,
+  isCashSessionGroup,
+  sortByDisplayOrder,
+  type IndianIndexGroup,
+} from "@/data/indian-markets";
 import { refreshIntervalForStatus } from "@/lib/live-refresh";
 import {
   getNseMarketStatus,
@@ -35,7 +40,7 @@ export type MarketQuote = {
   changePercent: number | null;
   dayOpen?: number | null;
   sparkline: number[];
-  group: string;
+  group: IndianIndexGroup;
   marketTime?: number;
 };
 
@@ -163,11 +168,18 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
     [quotes]
   );
 
+  /** Latest NSE/BSE cash-session print (excludes FX overnight stamps). */
   const lastMarketTime = useMemo(() => {
     let max = 0;
+    let niftyTime: number | null = null;
     for (const q of quotes) {
-      if (q.marketTime != null && q.marketTime > max) max = q.marketTime;
+      if (!isCashSessionGroup(q.group)) continue;
+      if (q.marketTime == null) continue;
+      if (q.id === "nifty") niftyTime = q.marketTime;
+      if (q.marketTime > max) max = q.marketTime;
     }
+    // Prefer Nifty when it is within 15 minutes of the latest cash print.
+    if (niftyTime != null && max - niftyTime < 15 * 60) return niftyTime;
     return max > 0 ? max : null;
   }, [quotes]);
 
@@ -303,17 +315,15 @@ export function IndianMarketCards() {
   const {
     quotes,
     loading,
-    asOf,
     selectedIndexId,
     setSelectedIndexId,
     flashIds,
     syncing,
+    asOf,
     lastMarketTime,
     marketStatus,
   } = useMarkets();
-  const timeLabel =
-    formatIstSessionStamp(lastMarketTime ?? undefined) ||
-    formatIstSessionStamp(asOf);
+  const sessionActive = isMarketSessionActive(marketStatus);
 
   return (
     <section className="panel-stable panel-luxe rounded-2xl">
@@ -349,6 +359,9 @@ export function IndianMarketCards() {
                 const active = q.id === selectedIndexId;
                 const spark = q.sparkline?.length ? q.sparkline : [0, 0];
                 const flash = flashIds.has(q.id);
+                const cardStamp = formatIstSessionStamp(q.marketTime, {
+                  forceDate: !sessionActive || q.group === "fx",
+                });
                 return (
                   <button
                     key={`card-${q.id}`}
@@ -389,9 +402,9 @@ export function IndianMarketCards() {
                       {formatMarketChange(q.change, q.id)} (
                       {formatMarketChangePercent(q.changePercent)})
                     </p>
-                    {timeLabel ? (
+                    {cardStamp ? (
                       <p className="mt-2 text-[10px] text-[var(--fg-subtle)]">
-                        {timeLabel} IST
+                        {cardStamp} IST
                       </p>
                     ) : null}
                   </button>

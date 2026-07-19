@@ -49,3 +49,8 @@ export function sortByDisplayOrder<T extends { id: string }>(items: T[]): T[] {
 export function indicesByGroup(group: IndianIndexGroup): IndianIndex[] {
   return INDIAN_MARKET_INDICES.filter((i) => i.group === group);
 }
+
+/** NSE/BSE cash session instruments — exclude 24x5 FX from “last session” stamps. */
+export function isCashSessionGroup(group: IndianIndexGroup): boolean {
+  return group === "benchmark" || group === "sector" || group === "volatility";
+}

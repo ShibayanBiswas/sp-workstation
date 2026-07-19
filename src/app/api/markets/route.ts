@@ -23,7 +23,7 @@ export type MarketQuote = {
   /** Today's session open — same basis as tape / Snapshot / 1D chart. */
   dayOpen: number | null;
   sparkline: number[];
-  group: string;
+  group: (typeof INDIAN_MARKET_INDICES)[number]["group"];
   marketTime?: number;
 };
 

@@ -1087,16 +1087,16 @@ export function CandlestickChart({
             {header.hoverTime
               ? `${header.hoverTime} IST`
               : syncedQuote?.marketTime
-                ? `${sessionActive ? "Synced" : "Last session"} · ${formatIstHeaderTime(syncedQuote.marketTime)} IST`
+                ? `${sessionActive ? "Synced" : "Last NSE session"} · ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: !sessionActive }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
                 : syncedAsOf
                   ? sessionActive
                     ? `Synced · ${formatIstSyncTime(syncedAsOf)} IST · every minute`
-                    : `Last session · ${formatIstSessionStamp(syncedAsOf)} IST`
+                    : `Last NSE session · ${formatIstSessionStamp(syncedAsOf, { forceDate: true })} IST`
                   : header.asOf
-                    ? `${sessionActive ? "Last update" : "Last session"} · ${header.asOf} IST`
+                    ? `${sessionActive ? "Last update" : "Last NSE session"} · ${header.asOf} IST`
                     : sessionActive
                       ? "Live · refreshes every minute · axis in IST"
-                      : "Markets closed · showing last session · axis in IST"}
+                      : "Markets closed · showing last NSE session · axis in IST"}
             {" · "}
             SMA {SMA_FAST}/{SMA_SLOW}
             {timeframe === "1D" ? " · VWAP" : ""}

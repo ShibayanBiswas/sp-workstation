@@ -59,7 +59,7 @@ export function LiveSyncIndicator({
   const sessionActive = isMarketSessionActive(status);
   const stamp =
     !sessionActive && lastMarketTime
-      ? formatIstSessionStamp(lastMarketTime)
+      ? formatIstSessionStamp(lastMarketTime, { forceDate: true })
       : formatIstSessionStamp(lastSyncedAt) || formatIstSyncTime(lastSyncedAt);
 
   const secondsUntil =
@@ -78,11 +78,11 @@ export function LiveSyncIndicator({
     }
   } else if (status === "weekend") {
     label = stamp
-      ? `Weekend · last session ${stamp} IST`
+      ? `Weekend · last NSE session ${stamp} IST`
       : "Weekend · markets closed";
   } else {
     label = stamp
-      ? `Closed · last session ${stamp} IST`
+      ? `Closed · last NSE session ${stamp} IST`
       : "Markets closed";
   }
 
