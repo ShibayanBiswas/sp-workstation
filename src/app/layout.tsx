@@ -33,8 +33,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable} h-full`} suppressHydrationWarning>
-      <body className="min-h-full antialiased" style={{ fontFamily: "var(--font-body)" }}>
+    <html
+      lang="en"
+      className={`${display.variable} ${body.variable} ${mono.variable} h-full`}
+      suppressHydrationWarning
+    >
+      <body
+        className="min-h-full antialiased"
+        style={{ fontFamily: "var(--font-body)" }}
+      >
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("sp-theme");if(t!=="dark"&&t!=="light")t="light";document.documentElement.classList.toggle("dark",t==="dark");document.documentElement.style.colorScheme=t;}catch(e){}})();`,
+          }}
+        />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

@@ -7,6 +7,7 @@ import {
   fetchYahooOhlc,
   fetchYahooOhlcBefore,
   fetchYahooLiveQuote,
+  sessionSparkPath,
 } from "@/lib/yahoo-ohlc";
 import { INDIAN_MARKET_INDICES, getIndexById } from "@/data/indian-markets";
 
@@ -87,11 +88,16 @@ export async function GET(req: Request) {
 
   const live = await fetchYahooLiveQuote(index.yahoo, { fresh: true });
   const price = live?.price ?? lastBar.close;
+  // Match /api/markets: prefer first 5m session-bar open so tape and chart % share one baseline.
+  const sessionOpen =
+    timeframe.id === "1D"
+      ? sessionSparkPath(ohlc.bars)?.sessionOpen ?? live?.dayOpen ?? null
+      : live?.dayOpen ?? null;
   const period = computeTimeframeReturn(
     ohlc.bars,
     timeframe.id,
     price,
-    live?.dayOpen
+    sessionOpen
   );
   const change = period?.change ?? live?.change ?? 0;
   const changePercent = period?.changePercent ?? live?.changePercent ?? 0;
@@ -109,9 +115,9 @@ export async function GET(req: Request) {
       price,
       change,
       changePercent,
-      reference: period?.reference ?? live?.dayOpen ?? null,
+      reference: period?.reference ?? sessionOpen ?? null,
       basis: period?.basis ?? "day_open",
-      dayOpen: live?.dayOpen ?? null,
+      dayOpen: sessionOpen,
       time: live?.marketTime ?? lastBar.time,
     },
     asOf: new Date().toISOString(),

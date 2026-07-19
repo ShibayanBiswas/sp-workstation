@@ -20,30 +20,27 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+function applyTheme(t: Theme) {
+  document.documentElement.classList.toggle("dark", t === "dark");
+  document.documentElement.style.colorScheme = t;
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  // Default light for SSR; hydrate from localStorage after mount (no blank gate).
   const [theme, setThemeState] = useState<Theme>("light");
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      const stored = window.localStorage.getItem("sp-theme");
-      // Default is always light unless the user explicitly chose dark before.
-      const preferred: Theme =
-        stored === "dark" || stored === "light" ? stored : "light";
-      setThemeState(preferred);
-      document.documentElement.classList.toggle("dark", preferred === "dark");
-      document.documentElement.style.colorScheme = preferred;
-      setReady(true);
-    });
-
-    return () => window.cancelAnimationFrame(frame);
+    const stored = window.localStorage.getItem("sp-theme");
+    const preferred: Theme =
+      stored === "dark" || stored === "light" ? stored : "light";
+    setThemeState(preferred);
+    applyTheme(preferred);
   }, []);
 
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
     window.localStorage.setItem("sp-theme", t);
-    document.documentElement.classList.toggle("dark", t === "dark");
-    document.documentElement.style.colorScheme = t;
+    applyTheme(t);
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -54,10 +51,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     () => ({ theme, toggleTheme, setTheme }),
     [theme, toggleTheme, setTheme]
   );
-
-  if (!ready) {
-    return <div className="min-h-screen bg-[var(--bg)]" />;
-  }
 
   return (
     <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

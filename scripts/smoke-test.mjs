@@ -170,6 +170,23 @@ async function main() {
   );
   pass(`1D period reference ${chart.json.last.reference}`);
 
+  // 8a. Sensex (BSE) dayOpen must match markets tape baseline
+  const sensex = markets1.json.quotes.find((q) => q.id === "sensex");
+  assert(sensex?.price != null, "Sensex price missing");
+  const sensexChart = await request("/api/chart?indexId=sensex&timeframe=1D");
+  assert(sensexChart.status === 200, `Sensex chart failed: ${sensexChart.status}`);
+  assert(
+    Math.abs((sensexChart.json.last?.dayOpen ?? 0) - (sensex.dayOpen ?? 0)) < 0.05,
+    `Sensex dayOpen mismatch: chart ${sensexChart.json.last?.dayOpen} vs markets ${sensex.dayOpen}`
+  );
+  assert(
+    /BSE/i.test(sensexChart.json?.exchange || ""),
+    `Sensex exchange should be BSE, got ${sensexChart.json?.exchange}`
+  );
+  pass(
+    `Sensex dayOpen aligned (${sensex.dayOpen}) · exchange ${sensexChart.json.exchange}`
+  );
+
   // 8b. Timeframe period returns include a reference open for each window
   for (const tf of ["1W", "1M", "3M"]) {
     const r = await request(`/api/chart?indexId=nifty&timeframe=${tf}`);
@@ -198,6 +215,44 @@ async function main() {
   } else {
     pass("1M period reference checked (may match 1D on month-start days)");
   }
+
+  // 8c. Learning & Development / Options Lab routes embed the external app
+  for (const [path, needle] of [
+    ["/dashboard/module/options-lab", "option-strategies.vercel.app"],
+    ["/dashboard/module/options-lab/intro", "option-strategies.vercel.app/intro"],
+    [
+      "/dashboard/module/options-lab/strategies",
+      "option-strategies.vercel.app/strategies",
+    ],
+  ]) {
+    const page = await fetch(`${BASE}${path}`, {
+      headers: cookieHeader() ? { Cookie: cookieHeader() } : {},
+    });
+    assert(page.ok, `${path} should load (${page.status})`);
+    const html = await page.text();
+    assert(
+      html.includes(needle) || html.includes("OPTIONS LAB"),
+      `${path} missing Options Lab embed (${needle})`
+    );
+    pass(`${path} embeds Options Lab`);
+  }
+
+  // Dashboard SSR must include L&D nav (ThemeProvider must not blank the tree)
+  const dash = await fetch(`${BASE}/dashboard`, {
+    headers: cookieHeader() ? { Cookie: cookieHeader() } : {},
+  });
+  assert(dash.ok, `/dashboard should load (${dash.status})`);
+  const dashHtml = await dash.text();
+  assert(
+    dashHtml.includes("Learning &amp; Development") ||
+      dashHtml.includes("Learning & Development"),
+    "Dashboard SSR missing Learning & Development nav"
+  );
+  assert(
+    dashHtml.includes("Options Lab"),
+    "Dashboard SSR missing Options Lab nav"
+  );
+  pass("Dashboard SSR includes L&D / Options Lab nav");
 
   // 9. Second markets fetch (simulates minute refresh)
   await new Promise((r) => setTimeout(r, 1500));
