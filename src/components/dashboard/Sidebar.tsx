@@ -54,17 +54,21 @@ function NavBranch({
   setOpenMap,
   collapsed,
   onNavigate,
+  suppressExactActive = false,
 }: {
   item: NavItem;
   openMap: Record<string, boolean>;
   setOpenMap: Dispatch<SetStateAction<Record<string, boolean>>>;
   collapsed?: boolean;
   onNavigate?: () => void;
+  /** When a child shares the parent path (e.g. Options Lab + Home), parent wins. */
+  suppressExactActive?: boolean;
 }) {
   const pathname = usePathname();
   const hasChildren = Boolean(item.children?.length);
   const open = !collapsed && (openMap[item.id] ?? false);
-  const active = pathActive(pathname, item.path);
+  const active =
+    !suppressExactActive && pathActive(pathname, item.path);
   const childActive = hasChildren && branchActive(pathname, item);
 
   const rowClass = `flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition ${
@@ -138,6 +142,11 @@ function NavBranch({
               setOpenMap={setOpenMap}
               collapsed={collapsed}
               onNavigate={onNavigate}
+              suppressExactActive={
+                Boolean(
+                  item.path && child.path && item.path === child.path
+                )
+              }
             />
           ))}
         </div>
