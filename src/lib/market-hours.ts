@@ -34,6 +34,33 @@ function istMinutesOfDay(now: Date): { day: number; minutes: number } {
   return { day, minutes: hour * 60 + minute };
 }
 
+/** Calendar date in IST as YYYY-MM-DD. */
+export function istCalendarDate(input: Date | number = new Date()): string {
+  const d = typeof input === "number" ? new Date(input * 1000) : input;
+  return d.toLocaleDateString("en-CA", { timeZone: IST });
+}
+
+/** True when unix seconds fall on today's IST calendar day. */
+export function isSameIstDay(
+  unixSec: number | null | undefined,
+  now = new Date()
+): boolean {
+  if (unixSec == null || !Number.isFinite(unixSec)) return false;
+  return istCalendarDate(unixSec) === istCalendarDate(now);
+}
+
+/**
+ * Cash indices are "session-printed" only once the feed shows a print on
+ * today's IST date. During early open, some feeds (notably Sensex/^BSESN)
+ * can lag while Nifty is already live — treat those as awaiting today's print.
+ */
+export function hasTodaySessionPrint(
+  marketTime: number | null | undefined,
+  now = new Date()
+): boolean {
+  return isSameIstDay(marketTime, now);
+}
+
 export function getNseMarketStatus(now = new Date()): MarketStatus {
   const { day, minutes } = istMinutesOfDay(now);
   if (day === 0 || day === 6) return "weekend";
@@ -51,6 +78,29 @@ export function isMarketSessionActive(status: MarketStatus): boolean {
 /** True only during continuous trading — drives live pulses / countdowns. */
 export function isMarketLive(status: MarketStatus): boolean {
   return status === "open";
+}
+
+/**
+ * Per-instrument live: venue session is open AND this symbol already has
+ * today's IST print. Prevents Sensex-from-Friday looking "Synced" on Monday.
+ */
+export function isInstrumentSessionLive(
+  status: MarketStatus,
+  marketTime: number | null | undefined,
+  now = new Date()
+): boolean {
+  return isMarketSessionActive(status) && hasTodaySessionPrint(marketTime, now);
+}
+
+/** Venue open/pre-open but this symbol still on a prior-session print. */
+export function isAwaitingTodayPrint(
+  status: MarketStatus,
+  marketTime: number | null | undefined,
+  now = new Date()
+): boolean {
+  return (
+    isMarketSessionActive(status) && !hasTodaySessionPrint(marketTime, now)
+  );
 }
 
 export function marketStatusLabel(status: MarketStatus): string {

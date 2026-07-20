@@ -38,7 +38,8 @@ import { buildChartSeries } from "@/lib/chart-series";
 import { refreshIntervalForStatus } from "@/lib/live-refresh";
 import {
   getNseMarketStatus,
-  isMarketSessionActive,
+  isAwaitingTodayPrint,
+  isInstrumentSessionLive,
   type MarketStatus,
 } from "@/lib/market-hours";
 import {
@@ -65,6 +66,7 @@ type SyncedQuote = {
   changePercent?: number | null;
   dayOpen?: number | null;
   marketTime?: number;
+  sessionPrinted?: boolean;
 };
 
 type Props = {
@@ -299,7 +301,14 @@ export function CandlestickChart({
     getNseMarketStatus()
   );
   const marketStatus = marketStatusProp ?? clockStatus;
-  const sessionActive = isMarketSessionActive(marketStatus);
+  const instrumentLive = isInstrumentSessionLive(
+    marketStatus,
+    syncedQuote?.marketTime
+  );
+  const awaitingPrint = isAwaitingTodayPrint(
+    marketStatus,
+    syncedQuote?.marketTime
+  );
   const marketStatusRef = useRef(marketStatus);
 
   useEffect(() => {
@@ -350,11 +359,12 @@ export function CandlestickChart({
   const displayChangePct = livePeriod
     ? formatMarketChangePercent(livePeriod.changePercent)
     : header.changePercent;
-  // Hide "vs today open" (and other basis hints) when markets are closed —
-  // weekends/holidays make "today" misleading.
-  const basisHint = sessionActive
+  // "vs today open" only when this instrument already printed today.
+  const basisHint = instrumentLive
     ? returnBasisLabel(timeframe === "1D" ? "day_open" : returnBasis)
-    : "";
+    : awaitingPrint && timeframe === "1D"
+      ? "last session"
+      : "";
   const sessionPhrase = lastSessionPhrase(indexId);
 
   useEffect(() => {
@@ -1091,16 +1101,22 @@ export function CandlestickChart({
             {header.hoverTime
               ? `${header.hoverTime} IST`
               : syncedQuote?.marketTime
-                ? `${sessionActive ? "Synced" : sessionPhrase} · ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: !sessionActive }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
+                ? awaitingPrint
+                  ? `Awaiting today's print · ${sessionPhrase} ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: true }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
+                  : `${instrumentLive ? "Synced" : sessionPhrase} · ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: !instrumentLive }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
                 : syncedAsOf
-                  ? sessionActive
+                  ? instrumentLive
                     ? `Synced · ${formatIstSyncTime(syncedAsOf)} IST · every minute`
-                    : `${sessionPhrase} · ${formatIstSessionStamp(syncedAsOf, { forceDate: true })} IST`
+                    : awaitingPrint
+                      ? `Awaiting today's print · polling for open`
+                      : `${sessionPhrase} · ${formatIstSessionStamp(syncedAsOf, { forceDate: true })} IST`
                   : header.asOf
-                    ? `${sessionActive ? "Last update" : sessionPhrase} · ${header.asOf} IST`
-                    : sessionActive
+                    ? `${instrumentLive ? "Last update" : awaitingPrint ? "Awaiting open" : sessionPhrase} · ${header.asOf} IST`
+                    : instrumentLive
                       ? "Live · refreshes every minute · axis in IST"
-                      : `Markets closed · showing ${sessionPhrase.toLowerCase()} · axis in IST`}
+                      : awaitingPrint
+                        ? "Awaiting today's print · chart shows last session · axis in IST"
+                        : `Markets closed · showing ${sessionPhrase.toLowerCase()} · axis in IST`}
             {" · "}
             SMA {SMA_FAST}/{SMA_SLOW}
             {timeframe === "1D" ? " · VWAP" : ""}

@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { computeTimeframeReturn } from "@/lib/chart-period-return";
 import { getTimeframe } from "@/lib/chart-timeframes";
 import { jsonDynamic } from "@/lib/json-dynamic";
+import { hasTodaySessionPrint } from "@/lib/market-hours";
 import {
   fetchYahooOhlc,
   fetchYahooOhlcBefore,
@@ -120,6 +121,8 @@ export async function GET(req: Request) {
       basis: period?.basis ?? "day_open",
       dayOpen: sessionOpen,
       time: live?.marketTime ?? lastBar.time,
+      /** False when the feed still shows a prior IST day (e.g. Sensex lag). */
+      sessionPrinted: hasTodaySessionPrint(live?.marketTime ?? lastBar.time),
     },
     asOf: new Date().toISOString(),
   });

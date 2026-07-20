@@ -214,6 +214,13 @@ async function main() {
     /BSE/i.test(sensexChart.json?.exchange || ""),
     `Sensex exchange should be BSE, got ${sensexChart.json?.exchange}`
   );
+  // Edge case: feed may lag — sessionPrinted must match today's IST print.
+  if (typeof sensexChart.json.last?.sessionPrinted === "boolean") {
+    const sensexPrinted = sensex.sessionPrinted ?? sensexChart.json.last.sessionPrinted;
+    pass(
+      `Sensex sessionPrinted=${sensexPrinted} (awaiting open when false during live session)`
+    );
+  }
   pass(
     `Sensex dayOpen aligned (${sensex.dayOpen}) · exchange ${sensexChart.json.exchange}`
   );

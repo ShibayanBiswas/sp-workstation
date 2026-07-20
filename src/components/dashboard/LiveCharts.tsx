@@ -11,21 +11,30 @@ import {
   type ChartTimeframeId,
 } from "@/lib/chart-timeframes";
 import {
-  isMarketSessionActive,
+  isAwaitingTodayPrint,
+  isInstrumentSessionLive,
   marketStatusLabel,
   type MarketStatus,
 } from "@/lib/market-hours";
 
 type ThemeMode = "light" | "dark";
 
-function marketBadgeClass(status: MarketStatus) {
+function marketBadgeClass(status: MarketStatus, awaiting = false) {
+  if (awaiting) {
+    return "bg-amber-500/15 text-amber-800 dark:text-amber-300";
+  }
   switch (status) {
     case "open":
       return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400";
     case "pre-open":
       return "bg-amber-500/15 text-amber-700 dark:text-amber-400";
-    default:
+    case "weekend":
+    case "closed":
       return "bg-[var(--bg-muted)] text-[var(--fg-subtle)]";
+    default: {
+      const _exhaustive: never = status;
+      return _exhaustive;
+    }
   }
 }
 
@@ -70,7 +79,14 @@ export function LiveCharts() {
     INDIAN_MARKET_INDICES[0];
 
   const liveQuote = quoteFor(selectedIndexId);
-  const sessionActive = isMarketSessionActive(marketStatus);
+  const instrumentLive = isInstrumentSessionLive(
+    marketStatus,
+    liveQuote?.marketTime
+  );
+  const awaitingPrint = isAwaitingTodayPrint(
+    marketStatus,
+    liveQuote?.marketTime
+  );
 
   const benchmarks = indicesByGroup("benchmark");
   const sectors = indicesByGroup("sector");
@@ -85,7 +101,11 @@ export function LiveCharts() {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3 md:px-5">
         <div>
           <p className="section-kicker">
-            {sessionActive ? "Live chart" : "Session chart"}
+            {instrumentLive
+              ? "Live chart"
+              : awaitingPrint
+                ? "Awaiting open"
+                : "Session chart"}
           </p>
           <h3 className="section-title">{active.name}</h3>
         </div>
@@ -175,14 +195,17 @@ export function LiveCharts() {
           <LiveSyncIndicator
             syncing={syncing}
             lastSyncedAt={asOf}
-            lastMarketTime={lastMarketTime}
+            lastMarketTime={liveQuote?.marketTime ?? lastMarketTime}
             marketStatus={marketStatus}
+            awaitingTodayPrint={awaitingPrint}
             compact
           />
           <span
-            className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${marketBadgeClass(marketStatus)}`}
+            className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${marketBadgeClass(marketStatus, awaitingPrint)}`}
           >
-            {marketStatusLabel(marketStatus)} · IST
+            {awaitingPrint
+              ? "Awaiting open · IST"
+              : `${marketStatusLabel(marketStatus)} · IST`}
           </span>
         </div>
         {zoomEnabled ? (
@@ -210,6 +233,7 @@ export function LiveCharts() {
                   changePercent: liveQuote.changePercent,
                   dayOpen: liveQuote.dayOpen,
                   marketTime: liveQuote.marketTime,
+                  sessionPrinted: liveQuote.sessionPrinted,
                 }
               : null
           }
@@ -217,7 +241,7 @@ export function LiveCharts() {
         />
       ) : (
         <div className="flex h-[540px] items-center justify-center text-sm text-[var(--fg-subtle)]">
-          <span className={sessionActive ? "animate-pulse-live" : ""}>
+          <span className={instrumentLive ? "animate-pulse-live" : ""}>
             Preparing chart…
           </span>
         </div>

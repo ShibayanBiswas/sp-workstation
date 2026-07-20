@@ -19,6 +19,7 @@ import {
 import { refreshIntervalForStatus } from "@/lib/live-refresh";
 import {
   getNseMarketStatus,
+  hasTodaySessionPrint,
   isMarketLive,
   isMarketSessionActive,
   type MarketStatus,
@@ -42,6 +43,8 @@ export type MarketQuote = {
   sparkline: number[];
   group: IndianIndexGroup;
   marketTime?: number;
+  /** True when marketTime is on today's IST calendar day. */
+  sessionPrinted?: boolean;
 };
 
 type MarketsContextValue = {
@@ -359,8 +362,12 @@ export function IndianMarketCards() {
                 const active = q.id === selectedIndexId;
                 const spark = q.sparkline?.length ? q.sparkline : [0, 0];
                 const flash = flashIds.has(q.id);
+                const printToday =
+                  q.sessionPrinted ?? hasTodaySessionPrint(q.marketTime);
+                const awaitingPrint = sessionActive && !printToday;
                 const cardStamp = formatIstSessionStamp(q.marketTime, {
-                  forceDate: !sessionActive || q.group === "fx",
+                  forceDate:
+                    !sessionActive || awaitingPrint || q.group === "fx",
                 });
                 return (
                   <button
@@ -377,7 +384,7 @@ export function IndianMarketCards() {
                       active
                         ? "market-card-active border-[color-mix(in_srgb,var(--gold)_45%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_10%,var(--bg-muted))]"
                         : "border-[var(--border)] bg-[var(--bg-elevated)]"
-                    } ${flash ? "price-flash" : ""}`}
+                    } ${flash ? "price-flash" : ""} ${awaitingPrint ? "opacity-90" : ""}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <p className="line-clamp-2 min-h-[2rem] text-[10px] font-bold leading-tight tracking-[0.1em] text-[var(--fg-subtle)]">
@@ -401,10 +408,21 @@ export function IndianMarketCards() {
                     >
                       {formatMarketChange(q.change, q.id)} (
                       {formatMarketChangePercent(q.changePercent)})
+                      {awaitingPrint ? (
+                        <span className="ml-1 text-[10px] font-medium text-[var(--fg-subtle)]">
+                          last session
+                        </span>
+                      ) : null}
                     </p>
                     {cardStamp ? (
                       <p className="mt-2 text-[10px] text-[var(--fg-subtle)]">
-                        {cardStamp} IST
+                        {awaitingPrint
+                          ? `Awaiting open · ${cardStamp} IST`
+                          : `${cardStamp} IST`}
+                      </p>
+                    ) : awaitingPrint ? (
+                      <p className="mt-2 text-[10px] text-[var(--fg-subtle)]">
+                        Awaiting today&apos;s print
                       </p>
                     ) : null}
                   </button>

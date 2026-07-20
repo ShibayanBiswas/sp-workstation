@@ -20,6 +20,11 @@ type Props = {
   lastMarketTime?: number | null;
   compact?: boolean;
   marketStatus?: MarketStatus;
+  /**
+   * Selected instrument still shows a prior IST-day print while the venue
+   * session is open (feed lag / not yet opened on this symbol).
+   */
+  awaitingTodayPrint?: boolean;
 };
 
 function secondsUntilRefresh(lastSyncedAt: string, now: number): number {
@@ -34,6 +39,7 @@ export function LiveSyncIndicator({
   lastMarketTime,
   compact = false,
   marketStatus: statusProp,
+  awaitingTodayPrint = false,
 }: Props) {
   const [now, setNow] = useState(0);
   const [clockStatus, setClockStatus] = useState<MarketStatus>(() =>
@@ -48,17 +54,17 @@ export function LiveSyncIndicator({
   }, [statusProp]);
 
   useEffect(() => {
-    if (!isMarketLive(status)) return;
+    if (!isMarketLive(status) || awaitingTodayPrint) return;
     const tick = () => setNow(Date.now());
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [status]);
+  }, [status, awaitingTodayPrint]);
 
-  const live = isMarketLive(status);
+  const live = isMarketLive(status) && !awaitingTodayPrint;
   const sessionActive = isMarketSessionActive(status);
   const stamp =
-    !sessionActive && lastMarketTime
+    (!sessionActive || awaitingTodayPrint) && lastMarketTime
       ? formatIstSessionStamp(lastMarketTime, { forceDate: true })
       : formatIstSessionStamp(lastSyncedAt) || formatIstSyncTime(lastSyncedAt);
 
@@ -68,7 +74,11 @@ export function LiveSyncIndicator({
       : Math.ceil(LIVE_REFRESH_MS / 1000);
 
   let label: string;
-  if (sessionActive) {
+  if (awaitingTodayPrint) {
+    label = stamp
+      ? `Awaiting open · last print ${stamp} IST`
+      : "Awaiting today's print";
+  } else if (sessionActive) {
     if (syncing) {
       label = live ? "Syncing markets…" : "Updating quotes…";
     } else if (stamp) {
@@ -86,13 +96,15 @@ export function LiveSyncIndicator({
       : "Markets closed";
   }
 
-  const title = sessionActive
-    ? "Prices refresh automatically during the market session"
-    : "NSE/BSE cash markets are closed — showing the last session print";
+  const title = awaitingTodayPrint
+    ? "This index has no print for today's IST session yet — showing the last available session"
+    : sessionActive
+      ? "Prices refresh automatically during the market session"
+      : "NSE/BSE cash markets are closed — showing the last session print";
 
   return (
     <div
-      className={`live-sync-pill ${syncing && sessionActive ? "live-sync-pill-syncing" : ""} ${!sessionActive ? "live-sync-pill-closed" : ""} ${compact ? "live-sync-pill-compact" : ""}`}
+      className={`live-sync-pill ${syncing && sessionActive && !awaitingTodayPrint ? "live-sync-pill-syncing" : ""} ${!sessionActive || awaitingTodayPrint ? "live-sync-pill-closed" : ""} ${compact ? "live-sync-pill-compact" : ""}`}
       title={title}
     >
       <span

@@ -1,5 +1,8 @@
 import { getSession } from "@/lib/auth";
-import { getNseMarketStatus } from "@/lib/market-hours";
+import {
+  getNseMarketStatus,
+  hasTodaySessionPrint,
+} from "@/lib/market-hours";
 import { INDIAN_MARKET_INDICES, sortByDisplayOrder } from "@/data/indian-markets";
 import {
   fetchYahooLiveQuote,
@@ -26,6 +29,8 @@ export type MarketQuote = {
   sparkline: number[];
   group: (typeof INDIAN_MARKET_INDICES)[number]["group"];
   marketTime?: number;
+  /** True when marketTime falls on today's IST calendar day. */
+  sessionPrinted: boolean;
 };
 
 async function yahooQuote(
@@ -71,6 +76,7 @@ async function yahooQuote(
       sparkline,
       group: index.group,
       marketTime: priced.marketTime,
+      sessionPrinted: hasTodaySessionPrint(priced.marketTime),
     };
   } catch {
     return null;
@@ -108,6 +114,7 @@ export async function GET() {
               dayOpen: null,
               sparkline: [],
               group: index.group,
+              sessionPrinted: false,
             }))
           ),
     marketStatus: getNseMarketStatus(),
