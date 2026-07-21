@@ -11,6 +11,7 @@ import {
 } from "react";
 import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
+import { SessionGuard } from "@/components/auth/SessionGuard";
 
 type ShellContextValue = {
   collapsed: boolean;
@@ -82,6 +83,7 @@ export function DashboardShell({ userName, userEmail, children }: Props) {
 
   return (
     <ShellContext.Provider value={value}>
+      <SessionGuard />
       <div className={`dashboard-shell dashboard-shell-alive ${collapsed ? "dashboard-shell-collapsed" : ""} ${ready ? "dashboard-shell-ready" : ""}`}>
         {/* Mobile top bar */}
         <header className="dashboard-mobile-bar lg:hidden">

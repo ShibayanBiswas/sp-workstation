@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const session = await getSession();
   if (!session) {
@@ -14,5 +16,7 @@ export async function GET() {
       role: session.role,
       userId: session.userId,
     },
+    /** Unix seconds — client schedules auto sign-out at this time. */
+    expiresAt: session.exp ?? null,
   });
 }

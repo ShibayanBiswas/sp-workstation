@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { AuthDisclaimerModal } from "@/components/auth/AuthDisclaimerModal";
 import { AuthAccessStrip } from "@/components/auth/AuthAccessStrip";
@@ -15,6 +15,16 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [sessionNotice, setSessionNotice] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reason") === "session_expired") {
+      setSessionNotice(
+        "Your session ended. Sign in again to continue on the desk."
+      );
+    }
+  }, []);
 
   const noticeTitle = (() => {
     const e = error.toLowerCase();
@@ -87,6 +97,15 @@ export function LoginForm() {
         <div className="auth-divider" />
 
         <AuthAccessStrip variant="login" />
+
+        {sessionNotice ? (
+          <p
+            className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-900 dark:text-amber-200"
+            role="status"
+          >
+            {sessionNotice}
+          </p>
+        ) : null}
 
         <form onSubmit={onSubmit} className="auth-form">
           <div className="auth-field">

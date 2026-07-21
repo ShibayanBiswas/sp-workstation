@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Layers,
   Shield,
+  Database,
 } from "lucide-react";
 import {
   MODULES,
@@ -28,6 +29,7 @@ const MODULE_ICONS: Record<ModuleGroup["icon"], typeof BarChart3> = {
   layers: Layers,
   shield: Shield,
   graduation: GraduationCap,
+  database: Database,
 };
 
 type Props = {
@@ -169,11 +171,15 @@ export function Sidebar({
   );
   const [openNav, setOpenNav] = useState<Record<string, boolean>>(() => {
     const defaults: Record<string, boolean> = {};
-    for (const mod of MODULES) {
-      for (const item of mod.nav) {
-        if (item.children?.length) defaults[item.id] = true;
+    function walk(items: NavItem[]) {
+      for (const item of items) {
+        if (item.children?.length) {
+          defaults[item.id] = true;
+          walk(item.children);
+        }
       }
     }
+    for (const mod of MODULES) walk(mod.nav);
     return defaults;
   });
 

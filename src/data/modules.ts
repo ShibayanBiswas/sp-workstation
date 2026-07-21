@@ -22,7 +22,7 @@ export type ModuleGroup = {
   id: string;
   label: string;
   description: string;
-  icon: "chart" | "layers" | "shield" | "graduation";
+  icon: "chart" | "layers" | "shield" | "graduation" | "database";
   /** Primary module home — clicking the module row goes here. */
   href: string;
   /** Route segment under /dashboard/module/… */
@@ -45,8 +45,13 @@ const OPTIONS_LAB_BASE =
   process.env.NEXT_PUBLIC_OPTIONS_LAB_URL ??
   "https://option-strategies.vercel.app";
 
+const OPTION_CHAIN_ARCHIVE_BASE =
+  process.env.NEXT_PUBLIC_OPTION_CHAIN_ARCHIVE_URL ??
+  "https://option-data-fetcher-365l.vercel.app";
+
 export const SP_DASHBOARD_BASE = SP_BASE;
 export const OPTIONS_LAB_EMBED_BASE = OPTIONS_LAB_BASE;
+export const OPTION_CHAIN_ARCHIVE_EMBED_BASE = OPTION_CHAIN_ARCHIVE_BASE;
 
 const PRIMARY_LEAVES: SubModule[] = [
   {
@@ -131,6 +136,45 @@ const OPTIONS_LAB_LEAVES: SubModule[] = [
   },
 ];
 
+/** Mirrors Option Chain Archive nav — Browse / NSE / BSE / Schema. */
+const OPTION_CHAIN_LEAVES: SubModule[] = [
+  {
+    id: "oca-overview",
+    label: "Overview",
+    description: "Option Chain Archive home & coverage",
+    path: "/dashboard/module/option-chain-archive",
+    spPath: "/",
+  },
+  {
+    id: "oca-browse",
+    label: "Browse",
+    description: "File tree explorer for NSE & BSE chains",
+    path: "/dashboard/module/option-chain-archive/browse",
+    spPath: "/browse",
+  },
+  {
+    id: "oca-nse",
+    label: "NSE",
+    description: "NSE option chain archive tree",
+    path: "/dashboard/module/option-chain-archive/browse/NSE",
+    spPath: "/browse/NSE",
+  },
+  {
+    id: "oca-bse",
+    label: "BSE",
+    description: "BSE option chain archive tree",
+    path: "/dashboard/module/option-chain-archive/browse/BSE",
+    spPath: "/browse/BSE",
+  },
+  {
+    id: "oca-schema",
+    label: "Schema map",
+    description: "Hierarchy, sectors & ingest pipeline map",
+    path: "/dashboard/module/option-chain-archive/schema",
+    spPath: "/schema",
+  },
+];
+
 function leafFrom(list: SubModule[], id: string): NavItem {
   const sub = list.find((s) => s.id === id)!;
   return {
@@ -147,6 +191,10 @@ function primaryLeaf(id: string): NavItem {
 
 function optionsLabLeaf(id: string): NavItem {
   return leafFrom(OPTIONS_LAB_LEAVES, id);
+}
+
+function optionChainLeaf(id: string): NavItem {
+  return leafFrom(OPTION_CHAIN_LEAVES, id);
 }
 
 /** Workstation navigation — embedded desk modules with live app routes. */
@@ -206,6 +254,41 @@ export const MODULES: ModuleGroup[] = [
       },
     ],
     submodules: OPTIONS_LAB_LEAVES,
+  },
+  {
+    id: "database-hub",
+    label: "Database Hub",
+    description:
+      "Historical NSE & BSE option chain archive for download and backtesting",
+    icon: "database",
+    href: "/dashboard/module/option-chain-archive",
+    routeSlug: "option-chain-archive",
+    embedBase: OPTION_CHAIN_ARCHIVE_BASE,
+    frameTitle: "OPTION CHAIN ARCHIVE",
+    nav: [
+      {
+        id: "option-chain-archive",
+        label: "Option Chain Archive",
+        description:
+          "Daily Indian option chains — NSE & BSE bhavcopy, segregated CE/PE",
+        path: "/dashboard/module/option-chain-archive",
+        children: [
+          optionChainLeaf("oca-overview"),
+          {
+            id: "oca-browse-group",
+            label: "Browse",
+            description: "Explorer for NSE & BSE archive trees",
+            path: "/dashboard/module/option-chain-archive/browse",
+            children: [
+              optionChainLeaf("oca-nse"),
+              optionChainLeaf("oca-bse"),
+            ],
+          },
+          optionChainLeaf("oca-schema"),
+        ],
+      },
+    ],
+    submodules: OPTION_CHAIN_LEAVES,
   },
 ];
 

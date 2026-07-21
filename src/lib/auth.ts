@@ -18,7 +18,12 @@ export type SessionPayload = {
   email: string;
   name: string;
   role: string;
+  /** Unix seconds JWT expiry — set when reading a verified token. */
+  exp?: number;
 };
+
+/** Session lifetime for cookies and JWT (must stay in sync). */
+export const SESSION_MAX_AGE_SEC = 60 * 60 * 12;
 
 export type PendingPurpose = "login" | "password_reset";
 
@@ -43,10 +48,11 @@ export async function verifyPassword(
 export async function createSessionToken(
   payload: SessionPayload
 ): Promise<string> {
-  return new SignJWT({ ...payload })
+  const { exp: _exp, ...claims } = payload;
+  return new SignJWT({ ...claims })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("12h")
+    .setExpirationTime(`${SESSION_MAX_AGE_SEC}s`)
     .sign(getSecret());
 }
 
@@ -76,7 +82,7 @@ export async function setSessionCookie(token: string) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 12,
+    maxAge: SESSION_MAX_AGE_SEC,
   });
 }
 
@@ -106,7 +112,20 @@ export async function getSession(): Promise<SessionPayload | null> {
   const jar = await cookies();
   const token = jar.get(COOKIE_NAME)?.value;
   if (!token) return null;
-  return verifyToken<SessionPayload>(token);
+  try {
+    const { payload } = await jwtVerify(token, getSecret());
+    const session = payload as unknown as SessionPayload;
+    if (!session.userId || !session.email) return null;
+    return {
+      userId: session.userId,
+      email: session.email,
+      name: session.name,
+      role: session.role,
+      exp: typeof payload.exp === "number" ? payload.exp : undefined,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function getPending(): Promise<PendingPayload | null> {
