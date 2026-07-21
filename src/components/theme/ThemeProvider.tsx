@@ -6,7 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
@@ -18,34 +18,76 @@ type ThemeContextValue = {
   setTheme: (t: Theme) => void;
 };
 
+const STORAGE_KEY = "sp-theme";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+const listeners = new Set<() => void>();
+
+function emitThemeChange() {
+  for (const listener of listeners) listener();
+}
+
+function subscribe(onStoreChange: () => void) {
+  listeners.add(onStoreChange);
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === STORAGE_KEY || event.key === null) onStoreChange();
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    listeners.delete(onStoreChange);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+function readStoredTheme(): Theme {
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (stored === "dark" || stored === "light") return stored;
+  } catch {
+    /* private mode / blocked storage */
+  }
+  return "light";
+}
+
+function getServerSnapshot(): Theme {
+  return "light";
+}
 
 function applyTheme(t: Theme) {
   document.documentElement.classList.toggle("dark", t === "dark");
   document.documentElement.style.colorScheme = t;
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Default light for SSR; hydrate from localStorage after mount (no blank gate).
-  const [theme, setThemeState] = useState<Theme>("light");
+function persistTheme(t: Theme) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, t);
+  } catch {
+    /* ignore */
+  }
+  applyTheme(t);
+  emitThemeChange();
+}
 
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  // Syncs with localStorage without an effect-driven setState (avoids cascading renders).
+  const theme = useSyncExternalStore(
+    subscribe,
+    readStoredTheme,
+    getServerSnapshot
+  );
+
+  // Keep the document class in sync with the store (DOM only — no setState).
   useEffect(() => {
-    const stored = window.localStorage.getItem("sp-theme");
-    const preferred: Theme =
-      stored === "dark" || stored === "light" ? stored : "light";
-    setThemeState(preferred);
-    applyTheme(preferred);
-  }, []);
+    applyTheme(theme);
+  }, [theme]);
 
   const setTheme = useCallback((t: Theme) => {
-    setThemeState(t);
-    window.localStorage.setItem("sp-theme", t);
-    applyTheme(t);
+    persistTheme(t);
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  }, [setTheme, theme]);
+    persistTheme(readStoredTheme() === "dark" ? "light" : "dark");
+  }, []);
 
   const value = useMemo(
     () => ({ theme, toggleTheme, setTheme }),

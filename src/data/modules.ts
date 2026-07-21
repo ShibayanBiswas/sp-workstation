@@ -47,7 +47,7 @@ const OPTIONS_LAB_BASE =
 
 const OPTION_CHAIN_ARCHIVE_BASE =
   process.env.NEXT_PUBLIC_OPTION_CHAIN_ARCHIVE_URL ??
-  "https://option-data-fetcher-365l.vercel.app";
+  "https://option-data-fetcher.vercel.app";
 
 export const SP_DASHBOARD_BASE = SP_BASE;
 export const OPTIONS_LAB_EMBED_BASE = OPTIONS_LAB_BASE;
