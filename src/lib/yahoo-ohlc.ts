@@ -2,6 +2,7 @@ import type { ChartTimeframe } from "@/lib/chart-timeframes";
 import { filterNseSessionBars, istDateString } from "@/lib/chart-ist";
 import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
 import { normalizeLiveQuote } from "@/lib/market-quote";
+import { fetchWithTimeout, UPSTREAM_TIMEOUT_MS } from "@/lib/fetch-timeout";
 
 export type OhlcBar = {
   time: number;
@@ -61,10 +62,14 @@ function setCached<T>(key: string, value: T) {
 async function fetchYahooJson(path: string): Promise<unknown | null> {
   for (const host of YAHOO_HOSTS) {
     try {
-      const res = await fetch(`${host}${path}`, {
-        cache: "no-store",
-        headers: FETCH_HEADERS,
-      });
+      const res = await fetchWithTimeout(
+        `${host}${path}`,
+        {
+          cache: "no-store",
+          headers: FETCH_HEADERS,
+        },
+        UPSTREAM_TIMEOUT_MS
+      );
       if (!res.ok) continue;
       return await res.json();
     } catch {

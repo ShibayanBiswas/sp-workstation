@@ -19,6 +19,7 @@ import {
   nseIndexNameForId,
 } from "@/lib/nse-indices";
 import { fetchBseSensexQuote } from "@/lib/bse-sensex";
+import { withTimeout } from "@/lib/fetch-timeout";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -42,15 +43,24 @@ export type MarketQuote = {
   source?: "nse" | "bse" | "yahoo";
 };
 
+/** Fast open→LTP spark — never blocks the tape on Yahoo OHLC. */
+function quickSpark(dayOpen: number, price: number): number[] {
+  return sparklineSeries([dayOpen, price], dayOpen);
+}
+
 async function yahooQuote(
   index: (typeof INDIAN_MARKET_INDICES)[number]
 ): Promise<MarketQuote | null> {
   try {
-    const [live, ohlc] = await Promise.all([
-      fetchYahooLiveQuote(index.yahoo, { fresh: true }),
-      fetchYahooOhlc(index.yahoo, getTimeframe("1D")),
-    ]);
+    // Live quote is required; OHLC sparkle is best-effort with a short cap.
+    const live = await fetchYahooLiveQuote(index.yahoo, { fresh: true });
     if (!live) return null;
+
+    const ohlc = await withTimeout(
+      fetchYahooOhlc(index.yahoo, getTimeframe("1D")),
+      2_500,
+      null
+    );
 
     const sparkPath = ohlc?.bars.length
       ? sessionSparkPath(ohlc.bars)
@@ -70,7 +80,7 @@ async function yahooQuote(
       prices[prices.length - 1] = live.price;
       sparkline = sparklineSeries(prices, dayOpen);
     } else {
-      sparkline = sparklineSeries([dayOpen, live.price], dayOpen);
+      sparkline = quickSpark(dayOpen, live.price);
     }
 
     return {
@@ -98,7 +108,8 @@ export async function GET() {
     return jsonDynamic({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // NSE cash indices + BSE Sensex (Zerodha prev-close %). Yahoo for FX / fallback.
+  // Exchange LTP first (timed upstream). Skip Yahoo OHLC for NSE/BSE so the
+  // tape cannot hang when Yahoo is slow — sparklines use open→last.
   const [nseMap, bseSensex] = await Promise.all([
     fetchNseIndexQuotes({ fresh: true }),
     fetchBseSensexQuote({ fresh: true }),
@@ -108,40 +119,15 @@ export async function GET() {
     INDIAN_MARKET_INDICES,
     async (index) => {
       if (index.id === "sensex" && bseSensex) {
-        let sparkline: number[] = [];
-        let dayOpen = bseSensex.dayOpen;
-        try {
-          const ohlc = await fetchYahooOhlc(index.yahoo, getTimeframe("1D"));
-          const sparkPath = ohlc?.bars.length
-            ? sessionSparkPath(ohlc.bars)
-            : null;
-          if (sparkPath && sparkPath.prices.length >= 2) {
-            dayOpen = sparkPath.sessionOpen;
-            const prices = sparkPath.prices.slice();
-            prices[prices.length - 1] = bseSensex.price;
-            sparkline = sparklineSeries(prices, sparkPath.sessionOpen);
-          } else {
-            sparkline = sparklineSeries(
-              [bseSensex.dayOpen, bseSensex.price],
-              bseSensex.dayOpen
-            );
-          }
-        } catch {
-          sparkline = sparklineSeries(
-            [bseSensex.dayOpen, bseSensex.price],
-            bseSensex.dayOpen
-          );
-        }
-
         return {
           id: index.id,
           name: index.name,
           price: bseSensex.price,
           change: bseSensex.change,
           changePercent: bseSensex.changePercent,
-          dayOpen,
+          dayOpen: bseSensex.dayOpen,
           previousClose: bseSensex.previousClose,
-          sparkline,
+          sparkline: quickSpark(bseSensex.dayOpen, bseSensex.price),
           group: index.group,
           marketTime: bseSensex.marketTime,
           sessionPrinted: hasTodaySessionPrint(bseSensex.marketTime),
@@ -152,27 +138,6 @@ export async function GET() {
       if (nseIndexNameForId(index.id)) {
         const nse = nseMap.get(index.id);
         if (nse) {
-          // Sparklines still from Yahoo 5m when possible (shape vs session open).
-          let sparkline: number[] = [];
-          try {
-            const ohlc = await fetchYahooOhlc(index.yahoo, getTimeframe("1D"));
-            const sparkPath = ohlc?.bars.length
-              ? sessionSparkPath(ohlc.bars)
-              : null;
-            if (sparkPath && sparkPath.prices.length >= 2) {
-              const prices = sparkPath.prices.slice();
-              prices[prices.length - 1] = nse.price;
-              sparkline = sparklineSeries(prices, sparkPath.sessionOpen);
-            } else {
-              sparkline = sparklineSeries(
-                [nse.dayOpen, nse.price],
-                nse.dayOpen
-              );
-            }
-          } catch {
-            sparkline = sparklineSeries([nse.dayOpen, nse.price], nse.dayOpen);
-          }
-
           return {
             id: index.id,
             name: index.name,
@@ -181,7 +146,7 @@ export async function GET() {
             changePercent: nse.changePercent,
             dayOpen: nse.dayOpen,
             previousClose: nse.previousClose,
-            sparkline,
+            sparkline: quickSpark(nse.dayOpen, nse.price),
             group: index.group,
             marketTime: nse.marketTime,
             sessionPrinted: hasTodaySessionPrint(nse.marketTime),
@@ -189,9 +154,10 @@ export async function GET() {
           } satisfies MarketQuote;
         }
       }
-      return yahooQuote(index);
+
+      return withTimeout(yahooQuote(index), 10_000, null);
     },
-    4
+    3
   );
 
   const seen = new Set<string>();

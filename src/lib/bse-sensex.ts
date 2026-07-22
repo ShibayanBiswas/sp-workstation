@@ -4,6 +4,7 @@
  */
 
 import { getNseMarketStatus } from "@/lib/market-hours";
+import { fetchWithTimeout, UPSTREAM_TIMEOUT_MS } from "@/lib/fetch-timeout";
 
 export type BseSensexQuote = {
   price: number;
@@ -48,7 +49,7 @@ function parseBseStamp(dttm: unknown): number | undefined {
 
 async function fetchBseSensexRaw(): Promise<unknown | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       "https://api.bseindia.com/RealTimeBseIndiaAPI/api/GetSensexData/w",
       {
         cache: "no-store",
@@ -59,7 +60,8 @@ async function fetchBseSensexRaw(): Promise<unknown | null> {
           Referer: "https://www.bseindia.com/",
           Origin: "https://www.bseindia.com",
         },
-      }
+      },
+      UPSTREAM_TIMEOUT_MS
     );
     if (!res.ok) return null;
     return await res.json();

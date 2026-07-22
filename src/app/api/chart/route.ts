@@ -16,6 +16,7 @@ import {
   nseIndexNameForId,
 } from "@/lib/nse-indices";
 import { fetchBseSensexQuote } from "@/lib/bse-sensex";
+import { withTimeout } from "@/lib/fetch-timeout";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -59,8 +60,16 @@ export async function GET(req: Request) {
     parsed.data.full === "1" || parsed.data.full === "true";
   const isHistory = parsed.data.before != null;
   const ohlc = isHistory
-    ? await fetchYahooOhlcBefore(index.yahoo, timeframe, parsed.data.before!)
-    : await fetchYahooOhlc(index.yahoo, timeframe, { inception });
+    ? await withTimeout(
+        fetchYahooOhlcBefore(index.yahoo, timeframe, parsed.data.before!),
+        12_000,
+        null
+      )
+    : await withTimeout(
+        fetchYahooOhlc(index.yahoo, timeframe, { inception }),
+        12_000,
+        null
+      );
 
   if (!ohlc || ohlc.bars.length === 0) {
     return jsonDynamic(
@@ -107,11 +116,11 @@ export async function GET(req: Request) {
     ? null
     : await fetchYahooLiveQuote(index.yahoo, { fresh: true });
   const price = venue?.price ?? live?.price ?? lastBar.close;
-  // Open line / sparklines still use session open; headline % uses prev close.
+  // Prefer exchange session open for Open line when NSE/BSE LTP is used.
   const sessionOpen =
     timeframe.id === "1D"
-      ? sessionSparkPath(ohlc.bars)?.sessionOpen ??
-        venue?.dayOpen ??
+      ? venue?.dayOpen ??
+        sessionSparkPath(ohlc.bars)?.sessionOpen ??
         live?.dayOpen ??
         null
       : venue?.dayOpen ?? live?.dayOpen ?? null;

@@ -59,6 +59,7 @@ export function SessionGuard() {
       const res = await fetch("/api/auth/me", {
         cache: "no-store",
         credentials: "include",
+        signal: AbortSignal.timeout(8_000),
       });
       if (res.status === 401) {
         await signOut();

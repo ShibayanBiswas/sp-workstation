@@ -36,6 +36,7 @@ import {
 } from "@/lib/chart-indicators";
 import { buildChartSeries } from "@/lib/chart-series";
 import { refreshIntervalForStatus } from "@/lib/live-refresh";
+import { CLIENT_API_TIMEOUT_MS } from "@/lib/fetch-timeout";
 import {
   getNseMarketStatus,
   isAwaitingTodayPrint,
@@ -731,7 +732,11 @@ export function CandlestickChart({
       try {
         const res = await fetch(
           `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}&before=${earliest}&full=1`,
-          { cache: "no-store", credentials: "include" }
+          {
+            cache: "no-store",
+            credentials: "include",
+            signal: AbortSignal.timeout(CLIENT_API_TIMEOUT_MS),
+          }
         );
         const data = await res.json();
         if (!alive || !res.ok || !data.bars?.length) {
@@ -830,7 +835,11 @@ export function CandlestickChart({
       try {
         const res = await fetch(
           `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}${zoomRef.current ? "&full=1" : ""}`,
-          { cache: "no-store", credentials: "include" }
+          {
+            cache: "no-store",
+            credentials: "include",
+            signal: AbortSignal.timeout(CLIENT_API_TIMEOUT_MS),
+          }
         );
         const data = await res.json();
         if (!alive) return;

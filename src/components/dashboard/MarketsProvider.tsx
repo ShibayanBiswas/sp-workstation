@@ -17,6 +17,7 @@ import {
   type IndianIndexGroup,
 } from "@/data/indian-markets";
 import { refreshIntervalForStatus } from "@/lib/live-refresh";
+import { CLIENT_API_TIMEOUT_MS } from "@/lib/fetch-timeout";
 import {
   getNseMarketStatus,
   hasTodaySessionPrint,
@@ -96,10 +97,13 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
     const status = getNseMarketStatus();
     setMarketStatus(status);
     setSyncing(true);
+    const ac = new AbortController();
+    const kill = window.setTimeout(() => ac.abort(), CLIENT_API_TIMEOUT_MS);
     try {
       const res = await fetch("/api/markets", {
         cache: "no-store",
         credentials: "include",
+        signal: ac.signal,
       });
       if (!res.ok) return;
       const data = await res.json();
@@ -126,8 +130,9 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
       setAsOf(data.asOf || new Date().toISOString());
       if (data.marketStatus) setMarketStatus(data.marketStatus);
     } catch {
-      /* ignore */
+      /* abort / network — keep last good quotes */
     } finally {
+      window.clearTimeout(kill);
       inFlight.current = false;
       setSyncing(false);
       setLoading(false);

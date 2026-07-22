@@ -4,6 +4,7 @@
  */
 
 import { getNseMarketStatus } from "@/lib/market-hours";
+import { fetchWithTimeout, UPSTREAM_TIMEOUT_MS } from "@/lib/fetch-timeout";
 
 export type NseIndexQuote = {
   price: number;
@@ -76,7 +77,7 @@ async function fetchNseAllIndicesRaw(): Promise<unknown | null> {
   try {
     // Cookie warm-up (NSE often 403s without it). Node fetch has no jar —
     // forward Set-Cookie explicitly on the API call.
-    const warm = await fetch(
+    const warm = await fetchWithTimeout(
       "https://www.nseindia.com/market-data/live-market-indices",
       {
         cache: "no-store",
@@ -85,20 +86,25 @@ async function fetchNseAllIndicesRaw(): Promise<unknown | null> {
           Accept: "text/html,application/xhtml+xml",
           "Accept-Language": "en-US,en;q=0.9",
         },
-      }
+      },
+      UPSTREAM_TIMEOUT_MS
     );
     const cookie = cookieHeaderFromResponse(warm);
 
-    const res = await fetch("https://www.nseindia.com/api/allIndices", {
-      cache: "no-store",
-      headers: {
-        "User-Agent": UA,
-        Accept: "application/json,text/plain,*/*",
-        "Accept-Language": "en-US,en;q=0.9",
-        Referer: "https://www.nseindia.com/market-data/live-market-indices",
-        ...(cookie ? { Cookie: cookie } : {}),
+    const res = await fetchWithTimeout(
+      "https://www.nseindia.com/api/allIndices",
+      {
+        cache: "no-store",
+        headers: {
+          "User-Agent": UA,
+          Accept: "application/json,text/plain,*/*",
+          "Accept-Language": "en-US,en;q=0.9",
+          Referer: "https://www.nseindia.com/market-data/live-market-indices",
+          ...(cookie ? { Cookie: cookie } : {}),
+        },
       },
-    });
+      UPSTREAM_TIMEOUT_MS
+    );
     if (!res.ok) return null;
     return await res.json();
   } catch {
