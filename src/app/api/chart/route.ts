@@ -10,8 +10,8 @@ import {
   fetchYahooLiveQuote,
   sessionSparkPath,
   applyLiveCloseToBars,
+  snapFormingBarTip,
   yahooIntervalSeconds,
-  coalesceBarsToInterval,
 } from "@/lib/yahoo-ohlc";
 import { INDIAN_MARKET_INDICES, getIndexById } from "@/data/indian-markets";
 import {
@@ -91,7 +91,7 @@ export async function GET(req: Request) {
   const intervalSec = yahooIntervalSeconds(timeframe.interval);
   let bars =
     timeframe.intraday && intervalSec != null && intervalSec < 86_400
-      ? coalesceBarsToInterval(ohlc.bars, intervalSec)
+      ? snapFormingBarTip(ohlc.bars, intervalSec)
       : ohlc.bars.slice();
 
   const lastBar = bars[bars.length - 1]!;

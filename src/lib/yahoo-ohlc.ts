@@ -123,36 +123,53 @@ export function yahooIntervalSeconds(interval: string): number | null {
 }
 
 /**
- * Floor bar times into fixed interval buckets and merge OHLC.
- * Stops Yahoo’s advancing “live tip” timestamps from stacking as orphan flats.
+ * Snap only Yahoo’s advancing live tip into its interval bucket.
+ * Leaves completed history untouched (full-series coalesce was flattening shape).
  */
-export function coalesceBarsToInterval(
+export function snapFormingBarTip(
   bars: OhlcBar[],
   intervalSec: number
 ): OhlcBar[] {
   if (bars.length === 0 || !Number.isFinite(intervalSec) || intervalSec <= 0) {
     return bars;
   }
-  const byBucket = new Map<number, OhlcBar>();
-  for (const bar of bars) {
-    const time = Math.floor(bar.time / intervalSec) * intervalSec;
-    const prev = byBucket.get(time);
-    if (!prev) {
-      byBucket.set(time, { ...bar, time });
-      continue;
-    }
-    byBucket.set(time, {
-      time,
-      open: prev.open,
-      high: Math.max(prev.high, bar.high),
-      low: Math.min(prev.low, bar.low),
-      close: bar.close,
-      ...(bar.volume != null || prev.volume != null
-        ? { volume: (prev.volume ?? 0) + (bar.volume ?? 0) }
-        : {}),
-    });
+  if (bars.length === 1) {
+    const only = bars[0]!;
+    const bucket = Math.floor(only.time / intervalSec) * intervalSec;
+    return [{ ...only, time: bucket }];
   }
-  return [...byBucket.values()].sort((a, b) => a.time - b.time);
+
+  const body = bars.slice(0, -1);
+  const tip = bars[bars.length - 1]!;
+  const bucket = Math.floor(tip.time / intervalSec) * intervalSec;
+  const snapped = { ...tip, time: bucket };
+  const prev = body[body.length - 1]!;
+  const prevBucket = Math.floor(prev.time / intervalSec) * intervalSec;
+
+  // Live tip landed in the same bucket as the prior bar — merge OHLC.
+  if (bucket === prevBucket || bucket === prev.time) {
+    body[body.length - 1] = {
+      ...prev,
+      high: Math.max(prev.high, snapped.high),
+      low: Math.min(prev.low, snapped.low),
+      close: snapped.close,
+      ...(snapped.volume != null || prev.volume != null
+        ? { volume: (prev.volume ?? 0) + (snapped.volume ?? 0) }
+        : {}),
+    };
+    return body;
+  }
+
+  body.push(snapped);
+  return body;
+}
+
+/** @deprecated Prefer snapFormingBarTip — kept for any legacy callers. */
+export function coalesceBarsToInterval(
+  bars: OhlcBar[],
+  intervalSec: number
+): OhlcBar[] {
+  return snapFormingBarTip(bars, intervalSec);
 }
 
 /** Patch the forming candle so chart close tracks exchange LTP. */
@@ -397,7 +414,7 @@ async function fetchOhlcCandidate(
   if (intraday && intervalSec != null && intervalSec < 86_400) {
     return {
       ...parsed,
-      bars: coalesceBarsToInterval(parsed.bars, intervalSec),
+      bars: snapFormingBarTip(parsed.bars, intervalSec),
     };
   }
   return parsed;
@@ -476,7 +493,7 @@ export async function fetchYahooOhlcBefore(
     ) {
       parsed = {
         ...parsed,
-        bars: coalesceBarsToInterval(parsed.bars, intervalSec),
+        bars: snapFormingBarTip(parsed.bars, intervalSec),
       };
     }
     setCached(cacheKey, parsed);

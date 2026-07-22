@@ -37,7 +37,7 @@ import {
 import { buildChartSeries, barToChartTime } from "@/lib/chart-series";
 import {
   applyLiveCloseToBars,
-  coalesceBarsToInterval,
+  snapFormingBarTip,
   yahooIntervalSeconds,
   type OhlcBar,
 } from "@/lib/yahoo-ohlc";
@@ -229,7 +229,7 @@ function mergeBars(
   for (const bar of incoming) byTime.set(bar.time, bar);
   let bars = [...byTime.values()].sort((a, b) => a.time - b.time);
   if (intervalSec != null && intervalSec > 0 && intervalSec < 86_400) {
-    bars = coalesceBarsToInterval(bars, intervalSec);
+    bars = snapFormingBarTip(bars, intervalSec);
   }
   return bars;
 }
@@ -892,7 +892,7 @@ export function CandlestickChart({
         const intervalSec = yahooIntervalSeconds(tf.interval);
         let incoming = data.bars as OhlcBar[];
         if (intervalSec != null && tf.intraday && intervalSec < 86_400) {
-          incoming = coalesceBarsToInterval(incoming, intervalSec);
+          incoming = snapFormingBarTip(incoming, intervalSec);
         }
         const livePrice =
           typeof data.last?.price === "number" &&
