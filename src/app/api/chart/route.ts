@@ -11,6 +11,10 @@ import {
   sessionSparkPath,
 } from "@/lib/yahoo-ohlc";
 import { INDIAN_MARKET_INDICES, getIndexById } from "@/data/indian-markets";
+import {
+  fetchNseIndexQuotes,
+  nseIndexNameForId,
+} from "@/lib/nse-indices";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -88,21 +92,48 @@ export async function GET(req: Request) {
     });
   }
 
-  const live = await fetchYahooLiveQuote(index.yahoo, { fresh: true });
-  const price = live?.price ?? lastBar.close;
-  // Match /api/markets: prefer first 5m session-bar open so tape and chart % share one baseline.
+  // Prefer NSE LTP / prev-close % (Zerodha) when the index is on NSE.
+  const nse =
+    timeframe.id === "1D" && nseIndexNameForId(index.id)
+      ? (await fetchNseIndexQuotes({ fresh: true })).get(index.id)
+      : undefined;
+  const live = nse
+    ? null
+    : await fetchYahooLiveQuote(index.yahoo, { fresh: true });
+  const price = nse?.price ?? live?.price ?? lastBar.close;
+  // Open line / sparklines still use session open; headline % uses prev close.
   const sessionOpen =
     timeframe.id === "1D"
-      ? sessionSparkPath(ohlc.bars)?.sessionOpen ?? live?.dayOpen ?? null
-      : live?.dayOpen ?? null;
+      ? sessionSparkPath(ohlc.bars)?.sessionOpen ??
+        nse?.dayOpen ??
+        live?.dayOpen ??
+        null
+      : nse?.dayOpen ?? live?.dayOpen ?? null;
   const period = computeTimeframeReturn(
     ohlc.bars,
     timeframe.id,
     price,
     sessionOpen
   );
-  const change = period?.change ?? live?.change ?? 0;
-  const changePercent = period?.changePercent ?? live?.changePercent ?? 0;
+  // 1D headline matches Zerodha / NSE: change vs previous close (not session open).
+  const previousClose = nse?.previousClose ?? live?.previousClose ?? null;
+  const usePrevClose =
+    timeframe.id === "1D" &&
+    previousClose != null &&
+    Number.isFinite(previousClose) &&
+    previousClose > 0;
+  const change = usePrevClose
+    ? nse?.change ?? price - previousClose
+    : (period?.change ?? live?.change ?? 0);
+  const changePercent = usePrevClose
+    ? nse?.changePercent ?? ((price - previousClose) / previousClose) * 100
+    : (period?.changePercent ?? live?.changePercent ?? 0);
+  // Open line stays on session open; headline % uses previousClose when usePrevClose.
+  const reference = period?.reference ?? sessionOpen ?? null;
+  const basis = usePrevClose
+    ? ("prev_close" as const)
+    : (period?.basis ?? "day_open");
+  const marketTime = nse?.marketTime ?? live?.marketTime ?? lastBar.time;
 
   return jsonDynamic({
     indexId: index.id,
@@ -117,12 +148,13 @@ export async function GET(req: Request) {
       price,
       change,
       changePercent,
-      reference: period?.reference ?? sessionOpen ?? null,
-      basis: period?.basis ?? "day_open",
+      reference,
+      basis,
       dayOpen: sessionOpen,
-      time: live?.marketTime ?? lastBar.time,
+      previousClose,
+      time: marketTime,
       /** False when the feed still shows a prior IST day (e.g. Sensex lag). */
-      sessionPrinted: hasTodaySessionPrint(live?.marketTime ?? lastBar.time),
+      sessionPrinted: hasTodaySessionPrint(marketTime),
     },
     asOf: new Date().toISOString(),
   });

@@ -232,6 +232,7 @@ export function LiveCharts() {
                   change: liveQuote.change,
                   changePercent: liveQuote.changePercent,
                   dayOpen: liveQuote.dayOpen,
+                  previousClose: liveQuote.previousClose,
                   marketTime: liveQuote.marketTime,
                   sessionPrinted: liveQuote.sessionPrinted,
                 }

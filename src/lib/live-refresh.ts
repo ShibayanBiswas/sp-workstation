@@ -1,5 +1,5 @@
-/** Live markets + chart polling interval while session is open (1 minute). */
-export const LIVE_REFRESH_MS = 60_000;
+/** Live markets + chart polling while session is open (~Zerodha-feel refresh). */
+export const LIVE_REFRESH_MS = 15_000;
 
 /** Poll much less often when markets are closed / weekend. */
 export const CLOSED_REFRESH_MS = 15 * 60_000;

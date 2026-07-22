@@ -61,10 +61,11 @@ type ThemeMode = "light" | "dark";
 
 type SyncedQuote = {
   price: number | null;
-  /** Day change vs today's open from /api/markets (Snapshot / tape). */
+  /** Day change vs previous close from /api/markets (Snapshot / tape). */
   change?: number | null;
   changePercent?: number | null;
   dayOpen?: number | null;
+  previousClose?: number | null;
   marketTime?: number;
   sessionPrinted?: boolean;
 };
@@ -330,7 +331,7 @@ export function CandlestickChart({
           ? formatMarketPrice(fallbackPrice, indexId)
           : "—";
 
-  // Prefer Snapshot/tape for 1D (both vs today open). Other TFs use period open.
+  // Prefer Snapshot/tape for 1D (Zerodha-style vs prev close). Other TFs use period open.
   const livePeriod =
     timeframe === "1D" &&
     syncedQuote?.price != null &&
@@ -359,9 +360,9 @@ export function CandlestickChart({
   const displayChangePct = livePeriod
     ? formatMarketChangePercent(livePeriod.changePercent)
     : header.changePercent;
-  // "vs today open" only when this instrument already printed today.
+  // "vs prev close" on 1D when live with today's print (Zerodha-compatible).
   const basisHint = instrumentLive
-    ? returnBasisLabel(timeframe === "1D" ? "day_open" : returnBasis)
+    ? returnBasisLabel(timeframe === "1D" ? "prev_close" : returnBasis)
     : awaitingPrint && timeframe === "1D"
       ? "last session"
       : "";
@@ -907,6 +908,7 @@ export function CandlestickChart({
             }
           } else if (
             last.basis === "day_open" ||
+            last.basis === "prev_close" ||
             last.basis === "week_open" ||
             last.basis === "month_open" ||
             last.basis === "lookback_open"
@@ -930,17 +932,24 @@ export function CandlestickChart({
           );
 
           const period =
-            price != null && reference != null && reference !== 0
+            last.basis === "prev_close" &&
+            typeof last.change === "number" &&
+            Number.isFinite(last.change)
               ? {
-                  change: price - reference,
-                  changePercent: ((price - reference) / reference) * 100,
+                  change: last.change as number,
+                  changePercent: (last.changePercent as number) ?? 0,
                 }
-              : last.change != null
+              : price != null && reference != null && reference !== 0
                 ? {
-                    change: last.change as number,
-                    changePercent: (last.changePercent as number) ?? 0,
+                    change: price - reference,
+                    changePercent: ((price - reference) / reference) * 100,
                   }
-                : null;
+                : last.change != null
+                  ? {
+                      change: last.change as number,
+                      changePercent: (last.changePercent as number) ?? 0,
+                    }
+                  : null;
 
           const up = period ? period.change >= 0 : true;
 

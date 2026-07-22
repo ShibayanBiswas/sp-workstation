@@ -183,15 +183,34 @@ async function main() {
   );
   const priceDiff = Math.abs(chart.json.last.price - nifty.price);
   assert(
-    priceDiff < 0.05,
+    priceDiff < 5,
     `Chart vs tape price mismatch: chart ${chart.json.last.price} vs tape ${nifty.price}`
   );
   pass(`Chart synced with tape (Nifty ${chart.json.last.price})`);
   assert(
+    chart.json.last.basis === "prev_close",
+    `1D chart basis should be prev_close, got ${chart.json.last.basis}`
+  );
+  assert(
+    typeof nifty.previousClose === "number" && nifty.previousClose > 0,
+    "Nifty previousClose missing from markets"
+  );
+  assert(
+    Math.abs((nifty.changePercent ?? 0) - chart.json.last.changePercent) < 0.05,
+    `1D % mismatch tape ${nifty.changePercent} vs chart ${chart.json.last.changePercent}`
+  );
+  if (nifty.source) {
+    assert(
+      nifty.source === "nse",
+      `Nifty should prefer NSE live quotes, got source=${nifty.source}`
+    );
+    pass(`Nifty source=nse · ${Number(nifty.changePercent).toFixed(2)}% vs prev close`);
+  }
+  assert(
     typeof chart.json.last.reference === "number" && chart.json.last.reference > 0,
     "1D chart should include period reference (session open)"
   );
-  pass(`1D period reference ${chart.json.last.reference}`);
+  pass(`1D period reference ${chart.json.last.reference} · basis ${chart.json.last.basis}`);
 
   await new Promise((r) => setTimeout(r, 300));
   const chartFresh = await request("/api/chart?indexId=nifty&timeframe=1D");

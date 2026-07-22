@@ -4,8 +4,10 @@ export type NormalizedQuote = {
   price: number;
   change: number;
   changePercent: number;
-  /** Today's (session) open — Snapshot / 1D return basis. */
+  /** Today's session open (sparklines / chart open line). */
   dayOpen: number;
+  /** Previous session close — Zerodha / NSE day-change basis. */
+  previousClose: number;
   marketTime?: number;
 };
 
@@ -19,22 +21,29 @@ function roundTo(n: number, digits: number): number {
   return Math.round(n * factor) / factor;
 }
 
-/** Recompute change/return from price vs today's session open. */
+/**
+ * Day P&L vs previous close (Zerodha Kite default / NSE headline %).
+ * `dayOpen` is kept for sparklines and the chart Open reference line.
+ */
 export function normalizeLiveQuote(raw: {
   price: number;
   dayOpen: number;
+  previousClose: number;
   marketTime?: number;
 }): NormalizedQuote {
   const price = raw.price;
   const dayOpen = raw.dayOpen;
-  const change = price - dayOpen;
-  const changePercent = dayOpen !== 0 ? (change / dayOpen) * 100 : 0;
+  const previousClose = raw.previousClose;
+  const change = price - previousClose;
+  const changePercent =
+    previousClose !== 0 ? (change / previousClose) * 100 : 0;
 
   return {
     price,
     change,
     changePercent,
     dayOpen,
+    previousClose,
     marketTime: raw.marketTime,
   };
 }

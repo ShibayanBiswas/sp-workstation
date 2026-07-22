@@ -4,6 +4,7 @@ import type { OhlcBar } from "@/lib/yahoo-ohlc";
 
 export type ReturnBasis =
   | "day_open"
+  | "prev_close"
   | "week_open"
   | "month_open"
   | "lookback_open";
@@ -28,6 +29,7 @@ const LOOKBACK_SEC: Record<
 
 const BASIS_LABEL: Record<ReturnBasis, string> = {
   day_open: "vs today open",
+  prev_close: "vs prev close",
   week_open: "vs week open",
   month_open: "vs month open",
   lookback_open: "vs period open",
@@ -80,13 +82,13 @@ function buildReturn(
 
 /**
  * Timeframe return vs period open (start → now):
- * - 1D → today's session open
+ * - 1D → today's session open (Open line / sparklines; headline % uses prev close)
  * - 1W → open of first bar in the current IST week
  * - 1M → open of first bar in the current IST calendar month
  * - 3M+ → open of first bar at/after lookback cutoff
  *
- * Optional `dayOpen` (from the live quote) is preferred for 1D so Snapshot
- * and chart headers stay aligned.
+ * Optional `dayOpen` (from the live quote) is preferred for 1D so the chart
+ * Open reference matches Snapshot sparklines.
  */
 export function computeTimeframeReturn(
   bars: OhlcBar[],

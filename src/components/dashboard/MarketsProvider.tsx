@@ -40,11 +40,13 @@ export type MarketQuote = {
   change: number | null;
   changePercent: number | null;
   dayOpen?: number | null;
+  previousClose?: number | null;
   sparkline: number[];
   group: IndianIndexGroup;
   marketTime?: number;
   /** True when marketTime is on today's IST calendar day. */
   sessionPrinted?: boolean;
+  source?: "nse" | "yahoo";
 };
 
 type MarketsContextValue = {

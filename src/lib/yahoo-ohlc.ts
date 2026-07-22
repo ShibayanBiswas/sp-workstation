@@ -22,8 +22,10 @@ export type YahooLiveQuote = {
   price: number;
   change: number;
   changePercent: number;
-  /** Today's session open — Snapshot / 1D return basis. */
+  /** Today's session open — sparklines / chart Open line. */
   dayOpen: number;
+  /** Previous close — Zerodha / NSE day-change basis. */
+  previousClose: number;
   marketTime?: number;
 };
 
@@ -41,12 +43,14 @@ const FETCH_HEADERS = {
 
 type CacheEntry<T> = { at: number; value: T };
 const cache = new Map<string, CacheEntry<unknown>>();
-/** Align server cache with client poll cadence so each minute gets fresh quotes. */
-const CACHE_MS = LIVE_REFRESH_MS - 5_000;
+/** Live LTP cache — slightly under the client poll so each tick can refresh. */
+const QUOTE_CACHE_MS = Math.max(LIVE_REFRESH_MS - 5_000, 5_000);
+/** OHLC/sparklines — longer TTL; shape changes slowly vs LTP. */
+const OHLC_CACHE_MS = 60_000;
 
-function getCached<T>(key: string): T | null {
+function getCached<T>(key: string, ttlMs: number): T | null {
   const hit = cache.get(key);
-  if (!hit || Date.now() - hit.at > CACHE_MS) return null;
+  if (!hit || Date.now() - hit.at > ttlMs) return null;
   return hit.value as T;
 }
 
@@ -151,46 +155,50 @@ function parseYahooPayload(
   };
 }
 
-/** Fast live quote from Yahoo meta — more reliable than parsing full OHLC. */
+/** Fast live quote — 1m LTP when available, day change vs previous close. */
 export async function fetchYahooLiveQuote(
   yahooSymbol: string,
   opts?: { fresh?: boolean }
 ): Promise<YahooLiveQuote | null> {
   const cacheKey = `quote:${yahooSymbol}`;
   if (!opts?.fresh) {
-    const cached = getCached<YahooLiveQuote>(cacheKey);
+    const cached = getCached<YahooLiveQuote>(cacheKey, QUOTE_CACHE_MS);
     if (cached) return cached;
   }
 
-  const path = `/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d&includePrePost=false`;
-  const data = await fetchYahooJson(path);
-  if (!data) return null;
+  // Parallel: 1m for fresher LTP, daily meta for official open / previous close.
+  const [intra, daily] = await Promise.all([
+    fetchYahooJson(
+      `/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1m&range=1d&includePrePost=false`
+    ),
+    fetchYahooJson(
+      `/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d&includePrePost=false`
+    ),
+  ]);
 
-  const result = (
-    data as {
-      chart?: {
-        result?: Array<{
-          meta?: Record<string, number>;
-          timestamp?: number[];
-          indicators?: {
-            quote?: Array<{
-              open?: Array<number | null>;
-              close?: Array<number | null>;
-            }>;
-          };
-        }>;
-      };
-    }
-  )?.chart?.result?.[0];
-  const meta = result?.meta;
+  type ChartResult = {
+    meta?: Record<string, number>;
+    timestamp?: number[];
+    indicators?: {
+      quote?: Array<{
+        open?: Array<number | null>;
+        close?: Array<number | null>;
+      }>;
+    };
+  };
+
+  const intraResult = (intra as { chart?: { result?: ChartResult[] } } | null)
+    ?.chart?.result?.[0];
+  const dailyResult = (daily as { chart?: { result?: ChartResult[] } } | null)
+    ?.chart?.result?.[0];
+  const meta = dailyResult?.meta ?? intraResult?.meta;
   if (!meta) return null;
 
-  const quoteBars = result?.indicators?.quote?.[0];
-  const timestamps = result?.timestamp ?? [];
+  const quoteBars = dailyResult?.indicators?.quote?.[0];
+  const timestamps = dailyResult?.timestamp ?? [];
   const opens = quoteBars?.open ?? [];
   const closes = quoteBars?.close ?? [];
 
-  // Latest daily session with a real open (skips holiday null bars).
   let barDayOpen: number | null = null;
   let barLastClose: number | null = null;
   for (let i = timestamps.length - 1; i >= 0; i--) {
@@ -214,10 +222,26 @@ export async function fetchYahooLiveQuote(
     if (barDayOpen != null && barLastClose != null) break;
   }
 
-  const price = meta.regularMarketPrice ?? barLastClose;
+  // Prefer last 1m close when present (reduces Yahoo daily-meta lag).
+  const intraCloses = intraResult?.indicators?.quote?.[0]?.close ?? [];
+  let intraLast: number | null = null;
+  for (let i = intraCloses.length - 1; i >= 0; i--) {
+    const c = intraCloses[i];
+    if (typeof c === "number" && Number.isFinite(c)) {
+      intraLast = c;
+      break;
+    }
+  }
+  const intraTimes = intraResult?.timestamp ?? [];
+  const intraTime =
+    intraTimes.length > 0 ? intraTimes[intraTimes.length - 1] : undefined;
+
+  const price =
+    intraLast ??
+    meta.regularMarketPrice ??
+    barLastClose;
   if (price == null || Number.isNaN(price)) return null;
 
-  // Day P&L vs today's session open — never previous close / chartPreviousClose.
   const dayOpen =
     (typeof meta.regularMarketOpen === "number" && meta.regularMarketOpen > 0
       ? meta.regularMarketOpen
@@ -225,10 +249,23 @@ export async function fetchYahooLiveQuote(
     barDayOpen ??
     price;
 
+  const previousClose =
+    (typeof meta.chartPreviousClose === "number" &&
+    meta.chartPreviousClose > 0
+      ? meta.chartPreviousClose
+      : null) ??
+    (typeof meta.previousClose === "number" && meta.previousClose > 0
+      ? meta.previousClose
+      : null) ??
+    dayOpen;
+
   const normalized = normalizeLiveQuote({
     price,
     dayOpen,
-    marketTime: meta.regularMarketTime,
+    previousClose,
+    marketTime:
+      (typeof intraTime === "number" ? intraTime : undefined) ??
+      meta.regularMarketTime,
   });
 
   const quote: YahooLiveQuote = {
@@ -287,7 +324,7 @@ export async function fetchYahooOhlc(
 ): Promise<OhlcResult | null> {
   const scope = opts?.inception ? "full" : "default";
   const cacheKey = `ohlc:${yahooSymbol}:${timeframe.id}:${scope}`;
-  const cached = getCached<OhlcResult>(cacheKey);
+  const cached = getCached<OhlcResult>(cacheKey, OHLC_CACHE_MS);
   if (cached) return cached;
 
   for (const candidate of timeframeCandidates(timeframe, opts)) {
@@ -316,7 +353,7 @@ export async function fetchYahooOhlcBefore(
   const period2 = Math.max(beforeUnix - 1, 0);
   const period1 = Math.max(period2 - timeframe.historyChunkSec, 0);
   const cacheKey = `ohlc:${yahooSymbol}:${timeframe.id}:before:${period1}:${period2}`;
-  const cached = getCached<OhlcResult>(cacheKey);
+  const cached = getCached<OhlcResult>(cacheKey, OHLC_CACHE_MS);
   if (cached) return cached;
 
   const data = await fetchYahooJson(

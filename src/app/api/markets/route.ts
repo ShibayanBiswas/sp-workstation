@@ -14,6 +14,10 @@ import { sparklineSeries } from "@/lib/sparkline";
 import { normalizeLiveQuote } from "@/lib/market-quote";
 import { getTimeframe } from "@/lib/chart-timeframes";
 import { jsonDynamic } from "@/lib/json-dynamic";
+import {
+  fetchNseIndexQuotes,
+  nseIndexNameForId,
+} from "@/lib/nse-indices";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -24,20 +28,23 @@ export type MarketQuote = {
   price: number | null;
   change: number | null;
   changePercent: number | null;
-  /** Today's session open — same basis as tape / Snapshot / 1D chart. */
+  /** Today's session open — sparklines / chart Open line. */
   dayOpen: number | null;
+  /** Previous close — tape / Snapshot % (Zerodha-compatible). */
+  previousClose: number | null;
   sparkline: number[];
   group: (typeof INDIAN_MARKET_INDICES)[number]["group"];
   marketTime?: number;
   /** True when marketTime falls on today's IST calendar day. */
   sessionPrinted: boolean;
+  /** Quote vendor used for LTP / day change. */
+  source?: "nse" | "yahoo";
 };
 
 async function yahooQuote(
   index: (typeof INDIAN_MARKET_INDICES)[number]
 ): Promise<MarketQuote | null> {
   try {
-    // Parallel: live print + 1D 5m path (same feed as Live Chart Zoom Off).
     const [live, ohlc] = await Promise.all([
       fetchYahooLiveQuote(index.yahoo, { fresh: true }),
       fetchYahooOhlc(index.yahoo, getTimeframe("1D")),
@@ -48,17 +55,16 @@ async function yahooQuote(
       ? sessionSparkPath(ohlc.bars)
       : null;
 
-    // Prefer the 5m session open so sparklines and % share one baseline.
     const dayOpen = sparkPath?.sessionOpen ?? live.dayOpen;
     const priced = normalizeLiveQuote({
       price: live.price,
       dayOpen,
+      previousClose: live.previousClose,
       marketTime: live.marketTime,
     });
 
     let sparkline: number[] = [];
     if (sparkPath && sparkPath.prices.length >= 2) {
-      // Keep last point nailed to the live print so tape/chart stay locked.
       const prices = sparkPath.prices.slice();
       prices[prices.length - 1] = live.price;
       sparkline = sparklineSeries(prices, dayOpen);
@@ -73,10 +79,12 @@ async function yahooQuote(
       change: priced.change,
       changePercent: priced.changePercent,
       dayOpen: priced.dayOpen,
+      previousClose: priced.previousClose,
       sparkline,
       group: index.group,
       marketTime: priced.marketTime,
       sessionPrinted: hasTodaySessionPrint(priced.marketTime),
+      source: "yahoo",
     };
   } catch {
     return null;
@@ -89,7 +97,56 @@ export async function GET() {
     return jsonDynamic({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const results = await mapPool(INDIAN_MARKET_INDICES, yahooQuote, 4);
+  // One NSE pull for all cash indices (matches Zerodha prev-close %).
+  const nseMap = await fetchNseIndexQuotes({ fresh: true });
+
+  const results = await mapPool(
+    INDIAN_MARKET_INDICES,
+    async (index) => {
+      if (nseIndexNameForId(index.id)) {
+        const nse = nseMap.get(index.id);
+        if (nse) {
+          // Sparklines still from Yahoo 5m when possible (shape vs session open).
+          let sparkline: number[] = [];
+          try {
+            const ohlc = await fetchYahooOhlc(index.yahoo, getTimeframe("1D"));
+            const sparkPath = ohlc?.bars.length
+              ? sessionSparkPath(ohlc.bars)
+              : null;
+            if (sparkPath && sparkPath.prices.length >= 2) {
+              const prices = sparkPath.prices.slice();
+              prices[prices.length - 1] = nse.price;
+              sparkline = sparklineSeries(prices, sparkPath.sessionOpen);
+            } else {
+              sparkline = sparklineSeries(
+                [nse.dayOpen, nse.price],
+                nse.dayOpen
+              );
+            }
+          } catch {
+            sparkline = sparklineSeries([nse.dayOpen, nse.price], nse.dayOpen);
+          }
+
+          return {
+            id: index.id,
+            name: index.name,
+            price: nse.price,
+            change: nse.change,
+            changePercent: nse.changePercent,
+            dayOpen: nse.dayOpen,
+            previousClose: nse.previousClose,
+            sparkline,
+            group: index.group,
+            marketTime: nse.marketTime,
+            sessionPrinted: hasTodaySessionPrint(nse.marketTime),
+            source: "nse" as const,
+          } satisfies MarketQuote;
+        }
+      }
+      return yahooQuote(index);
+    },
+    4
+  );
 
   const seen = new Set<string>();
   const quotes = sortByDisplayOrder(
@@ -112,6 +169,7 @@ export async function GET() {
               change: null,
               changePercent: null,
               dayOpen: null,
+              previousClose: null,
               sparkline: [],
               group: index.group,
               sessionPrinted: false,
