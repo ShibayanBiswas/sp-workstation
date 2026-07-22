@@ -46,7 +46,7 @@ export type MarketQuote = {
   marketTime?: number;
   /** True when marketTime is on today's IST calendar day. */
   sessionPrinted?: boolean;
-  source?: "nse" | "yahoo";
+  source?: "nse" | "bse" | "yahoo";
 };
 
 type MarketsContextValue = {

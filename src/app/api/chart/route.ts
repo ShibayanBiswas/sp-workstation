@@ -15,6 +15,7 @@ import {
   fetchNseIndexQuotes,
   nseIndexNameForId,
 } from "@/lib/nse-indices";
+import { fetchBseSensexQuote } from "@/lib/bse-sensex";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -92,48 +93,53 @@ export async function GET(req: Request) {
     });
   }
 
-  // Prefer NSE LTP / prev-close % (Zerodha) when the index is on NSE.
+  // Prefer NSE / BSE LTP + prev-close % (Zerodha) over Yahoo when available.
   const nse =
     timeframe.id === "1D" && nseIndexNameForId(index.id)
       ? (await fetchNseIndexQuotes({ fresh: true })).get(index.id)
       : undefined;
-  const live = nse
+  const bse =
+    timeframe.id === "1D" && index.id === "sensex"
+      ? await fetchBseSensexQuote({ fresh: true })
+      : undefined;
+  const venue = bse ?? nse;
+  const live = venue
     ? null
     : await fetchYahooLiveQuote(index.yahoo, { fresh: true });
-  const price = nse?.price ?? live?.price ?? lastBar.close;
+  const price = venue?.price ?? live?.price ?? lastBar.close;
   // Open line / sparklines still use session open; headline % uses prev close.
   const sessionOpen =
     timeframe.id === "1D"
       ? sessionSparkPath(ohlc.bars)?.sessionOpen ??
-        nse?.dayOpen ??
+        venue?.dayOpen ??
         live?.dayOpen ??
         null
-      : nse?.dayOpen ?? live?.dayOpen ?? null;
+      : venue?.dayOpen ?? live?.dayOpen ?? null;
   const period = computeTimeframeReturn(
     ohlc.bars,
     timeframe.id,
     price,
     sessionOpen
   );
-  // 1D headline matches Zerodha / NSE: change vs previous close (not session open).
-  const previousClose = nse?.previousClose ?? live?.previousClose ?? null;
+  // 1D headline matches Zerodha / exchange: change vs previous close (not session open).
+  const previousClose = venue?.previousClose ?? live?.previousClose ?? null;
   const usePrevClose =
     timeframe.id === "1D" &&
     previousClose != null &&
     Number.isFinite(previousClose) &&
     previousClose > 0;
   const change = usePrevClose
-    ? nse?.change ?? price - previousClose
+    ? venue?.change ?? price - previousClose
     : (period?.change ?? live?.change ?? 0);
   const changePercent = usePrevClose
-    ? nse?.changePercent ?? ((price - previousClose) / previousClose) * 100
+    ? venue?.changePercent ?? ((price - previousClose) / previousClose) * 100
     : (period?.changePercent ?? live?.changePercent ?? 0);
   // Open line stays on session open; headline % uses previousClose when usePrevClose.
   const reference = period?.reference ?? sessionOpen ?? null;
   const basis = usePrevClose
     ? ("prev_close" as const)
     : (period?.basis ?? "day_open");
-  const marketTime = nse?.marketTime ?? live?.marketTime ?? lastBar.time;
+  const marketTime = venue?.marketTime ?? live?.marketTime ?? lastBar.time;
 
   return jsonDynamic({
     indexId: index.id,

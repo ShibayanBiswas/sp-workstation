@@ -240,6 +240,13 @@ async function main() {
       `Sensex sessionPrinted=${sensexPrinted} (awaiting open when false during live session)`
     );
   }
+  if (sensex.source) {
+    assert(
+      sensex.source === "bse" || sensex.source === "yahoo",
+      `Sensex source unexpected: ${sensex.source}`
+    );
+    pass(`Sensex source=${sensex.source} · ${Number(sensex.changePercent).toFixed(2)}% vs prev close`);
+  }
   pass(
     `Sensex dayOpen aligned (${sensex.dayOpen}) · exchange ${sensexChart.json.exchange}`
   );

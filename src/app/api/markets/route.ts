@@ -18,6 +18,7 @@ import {
   fetchNseIndexQuotes,
   nseIndexNameForId,
 } from "@/lib/nse-indices";
+import { fetchBseSensexQuote } from "@/lib/bse-sensex";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -38,7 +39,7 @@ export type MarketQuote = {
   /** True when marketTime falls on today's IST calendar day. */
   sessionPrinted: boolean;
   /** Quote vendor used for LTP / day change. */
-  source?: "nse" | "yahoo";
+  source?: "nse" | "bse" | "yahoo";
 };
 
 async function yahooQuote(
@@ -97,12 +98,57 @@ export async function GET() {
     return jsonDynamic({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // One NSE pull for all cash indices (matches Zerodha prev-close %).
-  const nseMap = await fetchNseIndexQuotes({ fresh: true });
+  // NSE cash indices + BSE Sensex (Zerodha prev-close %). Yahoo for FX / fallback.
+  const [nseMap, bseSensex] = await Promise.all([
+    fetchNseIndexQuotes({ fresh: true }),
+    fetchBseSensexQuote({ fresh: true }),
+  ]);
 
   const results = await mapPool(
     INDIAN_MARKET_INDICES,
     async (index) => {
+      if (index.id === "sensex" && bseSensex) {
+        let sparkline: number[] = [];
+        let dayOpen = bseSensex.dayOpen;
+        try {
+          const ohlc = await fetchYahooOhlc(index.yahoo, getTimeframe("1D"));
+          const sparkPath = ohlc?.bars.length
+            ? sessionSparkPath(ohlc.bars)
+            : null;
+          if (sparkPath && sparkPath.prices.length >= 2) {
+            dayOpen = sparkPath.sessionOpen;
+            const prices = sparkPath.prices.slice();
+            prices[prices.length - 1] = bseSensex.price;
+            sparkline = sparklineSeries(prices, sparkPath.sessionOpen);
+          } else {
+            sparkline = sparklineSeries(
+              [bseSensex.dayOpen, bseSensex.price],
+              bseSensex.dayOpen
+            );
+          }
+        } catch {
+          sparkline = sparklineSeries(
+            [bseSensex.dayOpen, bseSensex.price],
+            bseSensex.dayOpen
+          );
+        }
+
+        return {
+          id: index.id,
+          name: index.name,
+          price: bseSensex.price,
+          change: bseSensex.change,
+          changePercent: bseSensex.changePercent,
+          dayOpen,
+          previousClose: bseSensex.previousClose,
+          sparkline,
+          group: index.group,
+          marketTime: bseSensex.marketTime,
+          sessionPrinted: hasTodaySessionPrint(bseSensex.marketTime),
+          source: "bse" as const,
+        } satisfies MarketQuote;
+      }
+
       if (nseIndexNameForId(index.id)) {
         const nse = nseMap.get(index.id);
         if (nse) {
