@@ -108,6 +108,76 @@ function dedupeAndSortBars(bars: OhlcBar[]): OhlcBar[] {
   return [...byTime.values()].sort((a, b) => a.time - b.time);
 }
 
+/** Yahoo interval string → seconds (e.g. 5m → 300). */
+export function yahooIntervalSeconds(interval: string): number | null {
+  const m = interval.trim().match(/^(\d+)(m|h|d|wk)$/i);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const unit = m[2]!.toLowerCase();
+  if (unit === "m") return n * 60;
+  if (unit === "h") return n * 3600;
+  if (unit === "d") return n * 86_400;
+  if (unit === "wk") return n * 7 * 86_400;
+  return null;
+}
+
+/**
+ * Floor bar times into fixed interval buckets and merge OHLC.
+ * Stops Yahoo’s advancing “live tip” timestamps from stacking as orphan flats.
+ */
+export function coalesceBarsToInterval(
+  bars: OhlcBar[],
+  intervalSec: number
+): OhlcBar[] {
+  if (bars.length === 0 || !Number.isFinite(intervalSec) || intervalSec <= 0) {
+    return bars;
+  }
+  const byBucket = new Map<number, OhlcBar>();
+  for (const bar of bars) {
+    const time = Math.floor(bar.time / intervalSec) * intervalSec;
+    const prev = byBucket.get(time);
+    if (!prev) {
+      byBucket.set(time, { ...bar, time });
+      continue;
+    }
+    byBucket.set(time, {
+      time,
+      open: prev.open,
+      high: Math.max(prev.high, bar.high),
+      low: Math.min(prev.low, bar.low),
+      close: bar.close,
+      ...(bar.volume != null || prev.volume != null
+        ? { volume: (prev.volume ?? 0) + (bar.volume ?? 0) }
+        : {}),
+    });
+  }
+  return [...byBucket.values()].sort((a, b) => a.time - b.time);
+}
+
+/** Patch the forming candle so chart close tracks exchange LTP. */
+export function applyLiveCloseToBars(
+  bars: OhlcBar[],
+  livePrice: number
+): OhlcBar[] {
+  if (
+    bars.length === 0 ||
+    !Number.isFinite(livePrice) ||
+    livePrice <= 0
+  ) {
+    return bars;
+  }
+  const out = bars.slice();
+  const last = out[out.length - 1]!;
+  out[out.length - 1] = {
+    ...last,
+    close: livePrice,
+    high: Math.max(last.high, livePrice),
+    low: Math.min(last.low, livePrice),
+  };
+  return out;
+}
+
 function parseYahooPayload(
   data: unknown,
   intraday: boolean,
@@ -319,7 +389,18 @@ async function fetchOhlcCandidate(
 ): Promise<OhlcResult | null> {
   const data = await fetchYahooJson(ohlcPath(yahooSymbol, interval, range));
   if (!data) return null;
-  return parseYahooPayload(data, intraday, yahooSymbol);
+  const parsed = parseYahooPayload(data, intraday, yahooSymbol);
+  if (!parsed?.bars.length) return null;
+
+  // Only snap intraday tips (5m/15m/30m/1h). Daily/weekly already stable.
+  const intervalSec = yahooIntervalSeconds(interval);
+  if (intraday && intervalSec != null && intervalSec < 86_400) {
+    return {
+      ...parsed,
+      bars: coalesceBarsToInterval(parsed.bars, intervalSec),
+    };
+  }
+  return parsed;
 }
 
 export async function fetchYahooOhlc(
@@ -385,7 +466,21 @@ export async function fetchYahooOhlcBefore(
       if (parsed?.bars.length) break;
     }
   }
-  if (parsed) setCached(cacheKey, parsed);
+
+  if (parsed?.bars.length) {
+    const intervalSec = yahooIntervalSeconds(timeframe.interval);
+    if (
+      timeframe.intraday &&
+      intervalSec != null &&
+      intervalSec < 86_400
+    ) {
+      parsed = {
+        ...parsed,
+        bars: coalesceBarsToInterval(parsed.bars, intervalSec),
+      };
+    }
+    setCached(cacheKey, parsed);
+  }
   return parsed;
 }
 

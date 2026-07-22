@@ -9,6 +9,9 @@ import {
   fetchYahooOhlcBefore,
   fetchYahooLiveQuote,
   sessionSparkPath,
+  applyLiveCloseToBars,
+  yahooIntervalSeconds,
+  coalesceBarsToInterval,
 } from "@/lib/yahoo-ohlc";
 import { INDIAN_MARKET_INDICES, getIndexById } from "@/data/indian-markets";
 import {
@@ -59,15 +62,17 @@ export async function GET(req: Request) {
   const inception =
     parsed.data.full === "1" || parsed.data.full === "true";
   const isHistory = parsed.data.before != null;
+  // Budget must cover sequential Yahoo host attempts (8s each) + fallbacks.
+  const ohlcBudgetMs = inception || isHistory ? 22_000 : 18_000;
   const ohlc = isHistory
     ? await withTimeout(
         fetchYahooOhlcBefore(index.yahoo, timeframe, parsed.data.before!),
-        12_000,
+        ohlcBudgetMs,
         null
       )
     : await withTimeout(
         fetchYahooOhlc(index.yahoo, timeframe, { inception }),
-        12_000,
+        ohlcBudgetMs,
         null
       );
 
@@ -82,12 +87,19 @@ export async function GET(req: Request) {
     );
   }
 
-  const lastBar = ohlc.bars[ohlc.bars.length - 1];
-  const earliest = ohlc.bars[0].time;
+  // Re-assert interval buckets (history path / cache may predate snap).
+  const intervalSec = yahooIntervalSeconds(timeframe.interval);
+  let bars =
+    timeframe.intraday && intervalSec != null && intervalSec < 86_400
+      ? coalesceBarsToInterval(ohlc.bars, intervalSec)
+      : ohlc.bars.slice();
+
+  const lastBar = bars[bars.length - 1]!;
+  const earliest = bars[0]!.time;
   const nowSec = Math.floor(Date.now() / 1000);
   const MIN_HISTORY_UNIX = 946_684_800; // 2000-01-01 UTC
   const hasMore = isHistory
-    ? ohlc.bars.length > 0 && earliest > MIN_HISTORY_UNIX
+    ? bars.length > 0 && earliest > MIN_HISTORY_UNIX
     : nowSec - earliest > 86_400;
 
   if (isHistory) {
@@ -95,7 +107,7 @@ export async function GET(req: Request) {
       indexId: index.id,
       name: index.name,
       timeframe: timeframe.id,
-      bars: ohlc.bars,
+      bars,
       hasMore,
       earliestTime: earliest,
       asOf: new Date().toISOString(),
@@ -116,16 +128,18 @@ export async function GET(req: Request) {
     ? null
     : await fetchYahooLiveQuote(index.yahoo, { fresh: true });
   const price = venue?.price ?? live?.price ?? lastBar.close;
+  // Candle pane must track exchange LTP — not a lagged Yahoo close.
+  bars = applyLiveCloseToBars(bars, price);
   // Prefer exchange session open for Open line when NSE/BSE LTP is used.
   const sessionOpen =
     timeframe.id === "1D"
       ? venue?.dayOpen ??
-        sessionSparkPath(ohlc.bars)?.sessionOpen ??
+        sessionSparkPath(bars)?.sessionOpen ??
         live?.dayOpen ??
         null
       : venue?.dayOpen ?? live?.dayOpen ?? null;
   const period = computeTimeframeReturn(
-    ohlc.bars,
+    bars,
     timeframe.id,
     price,
     sessionOpen
@@ -154,7 +168,7 @@ export async function GET(req: Request) {
     indexId: index.id,
     name: index.name,
     timeframe: timeframe.id,
-    bars: ohlc.bars,
+    bars,
     hasMore,
     earliestTime: earliest,
     currency: ohlc.currency,

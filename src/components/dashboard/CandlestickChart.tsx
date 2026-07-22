@@ -34,7 +34,13 @@ import {
   findPeriodExtremes,
   formatVolumeShort,
 } from "@/lib/chart-indicators";
-import { buildChartSeries } from "@/lib/chart-series";
+import { buildChartSeries, barToChartTime } from "@/lib/chart-series";
+import {
+  applyLiveCloseToBars,
+  coalesceBarsToInterval,
+  yahooIntervalSeconds,
+  type OhlcBar,
+} from "@/lib/yahoo-ohlc";
 import { refreshIntervalForStatus } from "@/lib/live-refresh";
 import { CLIENT_API_TIMEOUT_MS } from "@/lib/fetch-timeout";
 import {
@@ -56,7 +62,6 @@ import {
   formatIstSyncTime,
 } from "@/lib/market-quote";
 import { lastSessionPhrase } from "@/data/indian-markets";
-import type { OhlcBar } from "@/lib/yahoo-ohlc";
 
 type ThemeMode = "light" | "dark";
 
@@ -213,11 +218,20 @@ function showRecentWindow(
   });
 }
 
-function mergeBars(existing: OhlcBar[], incoming: OhlcBar[]): OhlcBar[] {
+function mergeBars(
+  existing: OhlcBar[],
+  incoming: OhlcBar[],
+  intervalSec?: number | null
+): OhlcBar[] {
+  // Incoming wins on same timestamp so live OHLC refreshes aren't stuck stale.
   const byTime = new Map<number, OhlcBar>();
-  for (const bar of incoming) byTime.set(bar.time, bar);
   for (const bar of existing) byTime.set(bar.time, bar);
-  return [...byTime.values()].sort((a, b) => a.time - b.time);
+  for (const bar of incoming) byTime.set(bar.time, bar);
+  let bars = [...byTime.values()].sort((a, b) => a.time - b.time);
+  if (intervalSec != null && intervalSec > 0 && intervalSec < 86_400) {
+    bars = coalesceBarsToInterval(bars, intervalSec);
+  }
+  return bars;
 }
 
 function syncPriceLine(
@@ -380,7 +394,24 @@ export function CandlestickChart({
       setTimeout(() => setPriceFlash(false), 700);
     }
     prevPriceRef.current = newPrice;
-  }, [syncedQuote]);
+
+    // Keep the forming candle glued to tape LTP between chart polls.
+    if (timeframe !== "1D") return;
+    const series = candleRef.current;
+    const bars = barsRef.current;
+    if (!series || bars.length === 0) return;
+    const patched = applyLiveCloseToBars(bars, newPrice);
+    barsRef.current = patched;
+    const last = patched[patched.length - 1]!;
+    const tf = getTimeframe(timeframe);
+    series.update({
+      time: barToChartTime(last, tf.intraday),
+      open: last.open,
+      high: last.high,
+      low: last.low,
+      close: last.close,
+    });
+  }, [syncedQuote, timeframe]);
 
   useEffect(() => {
     zoomRef.current = zoomEnabled;
@@ -746,7 +777,8 @@ export function CandlestickChart({
         }
 
         const older = data.bars as OhlcBar[];
-        const merged = mergeBars(barsRef.current, older);
+        const intervalSec = yahooIntervalSeconds(tf.interval);
+        const merged = mergeBars(barsRef.current, older, intervalSec);
         const added = merged.length - barsRef.current.length;
         if (added <= 0) {
           hasMoreRef.current = Boolean(data.hasMore);
@@ -857,10 +889,22 @@ export function CandlestickChart({
         }
 
         hasMoreRef.current = data.hasMore !== false;
-        const incoming = data.bars as OhlcBar[];
+        const intervalSec = yahooIntervalSeconds(tf.interval);
+        let incoming = data.bars as OhlcBar[];
+        if (intervalSec != null && tf.intraday && intervalSec < 86_400) {
+          incoming = coalesceBarsToInterval(incoming, intervalSec);
+        }
+        const livePrice =
+          typeof data.last?.price === "number" &&
+          Number.isFinite(data.last.price)
+            ? (data.last.price as number)
+            : null;
+        if (livePrice != null) {
+          incoming = applyLiveCloseToBars(incoming, livePrice);
+        }
 
         if (silent && barsRef.current.length > 0) {
-          const merged = mergeBars(barsRef.current, incoming);
+          const merged = mergeBars(barsRef.current, incoming, intervalSec);
           const lastIncoming = incoming[incoming.length - 1];
           const prevLast = barsRef.current[barsRef.current.length - 1];
 
