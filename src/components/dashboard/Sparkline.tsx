@@ -12,6 +12,8 @@ type Props = {
   strokeWidth?: number;
   /** Draw a horizontal open/zero baseline (data is % vs open). */
   showOpenLevel?: boolean;
+  /** Stretch to parent width (keeps viewBox aspect for the stroke). */
+  fluid?: boolean;
 };
 
 export function Sparkline({
@@ -23,6 +25,7 @@ export function Sparkline({
   showArea = true,
   strokeWidth = 1.75,
   showOpenLevel = true,
+  fluid = false,
 }: Props) {
   const gradientId = useId().replace(/:/g, "");
   const points =
@@ -56,10 +59,11 @@ export function Sparkline({
 
   return (
     <svg
-      width={width}
+      width={fluid ? "100%" : width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
-      className={className}
+      preserveAspectRatio={fluid ? "none" : "xMidYMid meet"}
+      className={`block max-w-full ${className}`}
       role="img"
       aria-hidden
     >

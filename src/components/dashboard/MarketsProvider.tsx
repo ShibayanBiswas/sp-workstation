@@ -253,29 +253,34 @@ export function IndianMarketTape() {
       <div
         key={`tape-${q.id}`}
         style={{ animationDelay: `${index * 60}ms` }}
-        className={`tape-chip tape-chip-7 tape-chip-animate inline-flex shrink-0 items-stretch gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 ${flash ? "price-flash" : ""}`}
+        className={`tape-chip tape-chip-7 tape-chip-animate flex shrink-0 flex-col justify-between gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2.5 py-2 sm:px-3 sm:py-2.5 ${flash ? "price-flash" : ""}`}
       >
-        <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
-          <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-[var(--fg)]">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <p className="truncate text-[10px] font-semibold leading-tight text-[var(--fg)] sm:text-[11px]">
             {q.name}
           </p>
-          <p className="tv-num text-sm font-semibold leading-none text-[var(--fg)]">
-            {formatMarketPrice(q.price, q.id)}
-          </p>
-          <p
-            className={`tv-num text-[11px] font-semibold leading-tight ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
-          >
-            {up ? "▲" : "▼"} {formatMarketChangePercent(q.changePercent)}
-          </p>
+          <div className="flex min-w-0 items-baseline justify-between gap-2">
+            <p className="tv-num truncate text-[13px] font-semibold leading-none text-[var(--fg)] sm:text-sm">
+              {formatMarketPrice(q.price, q.id)}
+            </p>
+            <p
+              className={`tv-num shrink-0 text-[10px] font-semibold leading-none sm:text-[11px] ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+            >
+              {up ? "▲" : "▼"} {formatMarketChangePercent(q.changePercent)}
+            </p>
+          </div>
         </div>
-        <Sparkline
-          data={spark}
-          up={up}
-          width={76}
-          height={52}
-          showArea
-          className="shrink-0 self-center"
-        />
+        <div className="tape-spark mt-0.5 w-full min-w-0">
+          <Sparkline
+            data={spark}
+            up={up}
+            width={120}
+            height={28}
+            showArea
+            fluid
+            className="h-7 w-full"
+          />
+        </div>
       </div>
     );
   });
@@ -298,19 +303,19 @@ export function IndianMarketTape() {
         />
       </div>
       <div
-        className={`tape-viewport relative min-h-[104px] overflow-hidden py-1 ${!sessionActive ? "tape-viewport-paused" : ""}`}
+        className={`tape-viewport relative min-h-[108px] overflow-hidden py-1 ${!sessionActive ? "tape-viewport-paused" : ""}`}
       >
         {loading && quotes.length === 0 ? (
-          <div className="flex h-[92px] items-center gap-2 px-3">
+          <div className="flex h-[96px] items-center gap-2 px-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="tape-chip-7 h-[92px] flex-1 animate-shimmer rounded-lg bg-[var(--bg-muted)]"
+                className="tape-chip-7 h-[96px] flex-1 animate-shimmer rounded-lg bg-[var(--bg-muted)]"
               />
             ))}
           </div>
         ) : (
-          <div className="tape-track flex min-h-[92px] items-center gap-2 px-3">
+          <div className="tape-track flex min-h-[96px] items-center gap-2 px-3">
             {chips}
             {sessionActive ? chips : null}
           </div>
@@ -387,31 +392,20 @@ export function IndianMarketCards() {
                         .getElementById("live-chart")
                         ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
                     }}
-                    className={`market-card market-card-animate snapshot-card-5 shrink-0 rounded-xl border p-4 text-left ${
+                    className={`market-card market-card-animate snapshot-card-5 flex shrink-0 flex-col rounded-xl border p-3 text-left sm:p-3.5 md:p-4 ${
                       active
                         ? "market-card-active border-[color-mix(in_srgb,var(--gold)_45%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_10%,var(--bg-muted))]"
                         : "border-[var(--border)] bg-[var(--bg-elevated)]"
                     } ${flash ? "price-flash" : ""} ${awaitingPrint ? "opacity-90" : ""}`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="line-clamp-2 min-h-[2rem] text-[10px] font-bold leading-tight tracking-[0.1em] text-[var(--fg-subtle)]">
-                        {q.name.toUpperCase()}
-                      </p>
-                      <Sparkline
-                        data={spark}
-                        up={up}
-                        width={80}
-                        height={36}
-                        showArea={false}
-                        strokeWidth={1.5}
-                        className="shrink-0 opacity-90"
-                      />
-                    </div>
-                    <p className="tv-num mt-2 text-[1.65rem] font-semibold leading-none text-[var(--fg)]">
+                    <p className="truncate text-[10px] font-bold leading-tight tracking-[0.08em] text-[var(--fg-subtle)]">
+                      {q.name.toUpperCase()}
+                    </p>
+                    <p className="tv-num mt-1.5 truncate text-[1.35rem] font-semibold leading-none text-[var(--fg)] sm:mt-2 sm:text-[1.5rem] md:text-[1.65rem]">
                       {formatMarketPrice(q.price, q.id)}
                     </p>
                     <p
-                      className={`tv-num mt-2 text-xs font-medium ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+                      className={`tv-num mt-1.5 truncate text-[11px] font-medium sm:mt-2 sm:text-xs ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
                     >
                       {formatMarketChange(q.change, q.id)} (
                       {formatMarketChangePercent(q.changePercent)})
@@ -421,14 +415,26 @@ export function IndianMarketCards() {
                         </span>
                       ) : null}
                     </p>
+                    <div className="market-card-spark mt-auto w-full min-w-0 pt-2.5 sm:pt-3">
+                      <Sparkline
+                        data={spark}
+                        up={up}
+                        width={160}
+                        height={32}
+                        showArea={false}
+                        strokeWidth={1.5}
+                        fluid
+                        className="h-8 w-full opacity-90"
+                      />
+                    </div>
                     {cardStamp ? (
-                      <p className="mt-2 text-[10px] text-[var(--fg-subtle)]">
+                      <p className="mt-2 truncate text-[10px] leading-tight text-[var(--fg-subtle)]">
                         {awaitingPrint
                           ? `Awaiting open · ${cardStamp} IST`
                           : `${cardStamp} IST`}
                       </p>
                     ) : awaitingPrint ? (
-                      <p className="mt-2 text-[10px] text-[var(--fg-subtle)]">
+                      <p className="mt-2 truncate text-[10px] leading-tight text-[var(--fg-subtle)]">
                         Awaiting today&apos;s print
                       </p>
                     ) : null}
