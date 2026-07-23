@@ -118,6 +118,43 @@ export function cashQuoteMarketTime(
   return lastCashSessionCloseUnix(now);
 }
 
+/**
+ * USD/INR (and similar) trade nearly 24×5. Treat Sat + early Sun IST as weekend;
+ * otherwise FX is open even when NSE cash is closed.
+ */
+export function getFxMarketStatus(now = new Date()): "open" | "weekend" {
+  const { day, minutes } = istMinutesOfDay(now);
+  if (day === 6) return "weekend"; // Saturday
+  if (day === 0 && minutes < 18 * 60) return "weekend"; // Sunday before ~18:00 IST
+  return "open";
+}
+
+/** Prefer exchange print; fall back to now while FX is open. */
+export function fxQuoteMarketTime(
+  feedTime: number | null | undefined,
+  now = new Date()
+): number | undefined {
+  if (feedTime != null && Number.isFinite(feedTime) && feedTime > 0) {
+    return feedTime;
+  }
+  if (getFxMarketStatus(now) === "open") {
+    return Math.floor(now.getTime() / 1000);
+  }
+  return undefined;
+}
+
+/** FX is live when the 24×5 window is open and we have a fresh-enough print. */
+export function isFxInstrumentLive(
+  marketTime: number | null | undefined,
+  now = new Date()
+): boolean {
+  if (getFxMarketStatus(now) !== "open") return false;
+  if (marketTime == null || !Number.isFinite(marketTime)) return false;
+  const ageSec = Math.floor(now.getTime() / 1000) - marketTime;
+  // Yahoo FX can lag a few minutes; allow a generous freshness window.
+  return ageSec >= 0 && ageSec <= 30 * 60;
+}
+
 /** True while cash market is trading (or in pre-open). */
 export function isMarketSessionActive(status: MarketStatus): boolean {
   return status === "open" || status === "pre-open";

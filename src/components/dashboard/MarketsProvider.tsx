@@ -16,13 +16,16 @@ import {
   sortByDisplayOrder,
   type IndianIndexGroup,
 } from "@/data/indian-markets";
-import { refreshIntervalForStatus } from "@/lib/live-refresh";
+import { refreshIntervalForTape } from "@/lib/live-refresh";
 import { CLIENT_API_TIMEOUT_MS } from "@/lib/fetch-timeout";
 import {
+  getFxMarketStatus,
   getNseMarketStatus,
   hasTodaySessionPrint,
+  isFxInstrumentLive,
   isMarketLive,
   isMarketSessionActive,
+  lastCashSessionCloseUnix,
   type MarketStatus,
 } from "@/lib/market-hours";
 import {
@@ -109,22 +112,20 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       const next = dedupeQuotes(data.quotes || []);
       const changed = new Set<string>();
-      // Only flash ticks while the cash session is live.
-      if (isMarketLive(status)) {
-        for (const q of next) {
-          if (q.price == null) continue;
-          const prev = prevPrices.current.get(q.id);
-          if (prev != null && prev !== q.price) changed.add(q.id);
-          prevPrices.current.set(q.id, q.price);
-        }
-        if (changed.size > 0) {
-          setFlashIds(changed);
-          setTimeout(() => setFlashIds(new Set()), 700);
-        }
-      } else {
-        for (const q of next) {
-          if (q.price != null) prevPrices.current.set(q.id, q.price);
-        }
+      const cashLive = isMarketLive(status);
+      const fxOpen = getFxMarketStatus() === "open";
+      // Flash cash ticks in the NSE session; FX can flash overnight too.
+      for (const q of next) {
+        if (q.price == null) continue;
+        const prev = prevPrices.current.get(q.id);
+        const flashOk =
+          q.group === "fx" ? fxOpen : cashLive;
+        if (flashOk && prev != null && prev !== q.price) changed.add(q.id);
+        prevPrices.current.set(q.id, q.price);
+      }
+      if (changed.size > 0) {
+        setFlashIds(changed);
+        setTimeout(() => setFlashIds(new Set()), 700);
       }
       setQuotes(sortByDisplayOrder(next));
       setAsOf(data.asOf || new Date().toISOString());
@@ -147,7 +148,7 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       const status = getNseMarketStatus();
       setMarketStatus(status);
-      const delay = refreshIntervalForStatus(status);
+      const delay = refreshIntervalForTape();
       timeoutId = window.setTimeout(() => {
         void refresh().finally(() => {
           if (!cancelled) scheduleNext();
@@ -178,8 +179,13 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
     [quotes]
   );
 
-  /** Latest NSE/BSE cash-session print (excludes FX overnight stamps). */
+  /** Latest cash-session print for closed-tape chrome (excludes FX). */
   const lastMarketTime = useMemo(() => {
+    // When cash is not in continuous trading, always show the canonical
+    // 15:30 IST close — never a vendor quirk (e.g. BSE 4:00 pm) or FX stamp.
+    if (!isMarketLive(marketStatus)) {
+      return lastCashSessionCloseUnix();
+    }
     let max = 0;
     let niftyTime: number | null = null;
     for (const q of quotes) {
@@ -188,10 +194,9 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
       if (q.id === "nifty") niftyTime = q.marketTime;
       if (q.marketTime > max) max = q.marketTime;
     }
-    // Prefer Nifty when it is within 15 minutes of the latest cash print.
     if (niftyTime != null && max - niftyTime < 15 * 60) return niftyTime;
     return max > 0 ? max : null;
-  }, [quotes]);
+  }, [quotes, marketStatus]);
 
   const value = useMemo(
     () => ({
@@ -376,10 +381,15 @@ export function IndianMarketCards() {
                 const flash = flashIds.has(q.id);
                 const printToday =
                   q.sessionPrinted ?? hasTodaySessionPrint(q.marketTime);
-                const awaitingPrint = sessionActive && !printToday;
+                const awaitingPrint =
+                  q.group !== "fx" && sessionActive && !printToday;
+                const fxLive =
+                  q.group === "fx" && isFxInstrumentLive(q.marketTime);
                 const cardStamp = formatIstSessionStamp(q.marketTime, {
                   forceDate:
-                    !sessionActive || awaitingPrint || q.group === "fx",
+                    q.group === "fx"
+                      ? !fxLive
+                      : !sessionActive || awaitingPrint,
                 });
                 return (
                   <button
@@ -429,9 +439,13 @@ export function IndianMarketCards() {
                     </div>
                     {cardStamp ? (
                       <p className="mt-2 truncate text-[10px] leading-tight text-[var(--fg-subtle)]">
-                        {awaitingPrint
-                          ? `Awaiting open · ${cardStamp} IST`
-                          : `${cardStamp} IST`}
+                        {q.group === "fx"
+                          ? fxLive
+                            ? `FX live · ${cardStamp} IST`
+                            : `FX · ${cardStamp} IST`
+                          : awaitingPrint
+                            ? `Awaiting open · ${cardStamp} IST`
+                            : `${cardStamp} IST`}
                       </p>
                     ) : awaitingPrint ? (
                       <p className="mt-2 truncate text-[10px] leading-tight text-[var(--fg-subtle)]">

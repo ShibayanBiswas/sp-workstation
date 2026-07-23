@@ -3,7 +3,10 @@ import { getSession } from "@/lib/auth";
 import { computeTimeframeReturn } from "@/lib/chart-period-return";
 import { getTimeframe } from "@/lib/chart-timeframes";
 import { jsonDynamic } from "@/lib/json-dynamic";
-import { hasTodaySessionPrint } from "@/lib/market-hours";
+import {
+  hasTodaySessionPrint,
+  isFxInstrumentLive,
+} from "@/lib/market-hours";
 import {
   fetchYahooOhlc,
   fetchYahooOhlcBefore,
@@ -163,6 +166,10 @@ export async function GET(req: Request) {
     ? ("prev_close" as const)
     : (period?.basis ?? "day_open");
   const marketTime = venue?.marketTime ?? live?.marketTime ?? lastBar.time;
+  const sessionPrinted =
+    index.group === "fx"
+      ? hasTodaySessionPrint(marketTime) || isFxInstrumentLive(marketTime)
+      : hasTodaySessionPrint(marketTime);
 
   return jsonDynamic({
     indexId: index.id,
@@ -183,7 +190,7 @@ export async function GET(req: Request) {
       previousClose,
       time: marketTime,
       /** False when the feed still shows a prior IST day (e.g. Sensex lag). */
-      sessionPrinted: hasTodaySessionPrint(marketTime),
+      sessionPrinted,
     },
     asOf: new Date().toISOString(),
   });

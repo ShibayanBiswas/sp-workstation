@@ -88,9 +88,14 @@ function parseSensex(data: unknown): BseSensexQuote | null {
     num(r.perchg) ?? (change / previousClose) * 100;
 
   const stamped = parseBseStamp(r.dttm);
-  // Prefer BSE's own dttm; if missing/unparseable, use last cash close — not "now"
-  // (which wrongly showed Thursday morning as the last session).
-  const marketTime = stamped ?? cashQuoteMarketTime(getNseMarketStatus());
+  const status = getNseMarketStatus();
+  // While cash is live, prefer BSE's dttm. When closed/pre-open/weekend, always
+  // use the canonical 15:30 IST cash close so Sensex doesn't show 4:00 pm while
+  // NSE cards show 3:30 pm.
+  const marketTime =
+    status === "open"
+      ? (stamped ?? cashQuoteMarketTime(status))
+      : cashQuoteMarketTime(status);
 
   return {
     price,

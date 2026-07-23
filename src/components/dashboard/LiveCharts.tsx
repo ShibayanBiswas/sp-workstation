@@ -12,7 +12,9 @@ import {
 } from "@/lib/chart-timeframes";
 import {
   isAwaitingTodayPrint,
+  isFxInstrumentLive,
   isInstrumentSessionLive,
+  getFxMarketStatus,
   marketStatusLabel,
   type MarketStatus,
 } from "@/lib/market-hours";
@@ -79,14 +81,24 @@ export function LiveCharts() {
     INDIAN_MARKET_INDICES[0];
 
   const liveQuote = quoteFor(selectedIndexId);
-  const instrumentLive = isInstrumentSessionLive(
-    marketStatus,
-    liveQuote?.marketTime
-  );
-  const awaitingPrint = isAwaitingTodayPrint(
-    marketStatus,
-    liveQuote?.marketTime
-  );
+  const isFx = active.group === "fx";
+  const fxLive = isFx && isFxInstrumentLive(liveQuote?.marketTime);
+  const instrumentLive = isFx
+    ? fxLive
+    : isInstrumentSessionLive(marketStatus, liveQuote?.marketTime);
+  const awaitingPrint = isFx
+    ? false
+    : isAwaitingTodayPrint(marketStatus, liveQuote?.marketTime);
+  // Chart chrome: FX can be live overnight while cash is closed.
+  const chartStatus: MarketStatus = isFx
+    ? getFxMarketStatus() === "open"
+      ? "open"
+      : "weekend"
+    : marketStatus;
+  const chartSyncStatus = chartStatus;
+  const chartLastMarketTime = isFx
+    ? (liveQuote?.marketTime ?? null)
+    : (liveQuote?.marketTime ?? lastMarketTime);
 
   const benchmarks = indicesByGroup("benchmark");
   const sectors = indicesByGroup("sector");
@@ -195,17 +207,22 @@ export function LiveCharts() {
           <LiveSyncIndicator
             syncing={syncing}
             lastSyncedAt={asOf}
-            lastMarketTime={liveQuote?.marketTime ?? lastMarketTime}
-            marketStatus={marketStatus}
+            lastMarketTime={chartLastMarketTime}
+            marketStatus={chartSyncStatus}
             awaitingTodayPrint={awaitingPrint}
+            venue={isFx ? "fx" : "cash"}
             compact
           />
           <span
-            className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${marketBadgeClass(marketStatus, awaitingPrint)}`}
+            className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${marketBadgeClass(chartStatus, awaitingPrint)}`}
           >
             {awaitingPrint
               ? "Awaiting open · IST"
-              : `${marketStatusLabel(marketStatus)} · IST`}
+              : isFx
+                ? getFxMarketStatus() === "open"
+                  ? "FX Open · IST"
+                  : "FX Weekend · IST"
+                : `${marketStatusLabel(marketStatus)} · IST`}
           </span>
         </div>
         {zoomEnabled ? (
@@ -223,7 +240,7 @@ export function LiveCharts() {
           theme={theme}
           name={active.name}
           zoomEnabled={zoomEnabled}
-          marketStatus={marketStatus}
+          marketStatus={chartStatus}
           fallbackPrice={liveQuote?.price}
           syncedQuote={
             liveQuote

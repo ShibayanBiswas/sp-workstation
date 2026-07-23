@@ -508,8 +508,8 @@ export function closesFromOhlc(bars: OhlcBar[], maxPoints = 24): number[] {
 }
 
 /**
- * Today's IST session price path for sparklines — same 5m session the Live Chart
- * uses on 1D. Starts at the session open so the line reads open → high → low → now.
+ * Today's IST price path for cash sparklines, or — for FX — the latest IST
+ * calendar day available in the bars (USD/INR prints overnight).
  */
 export function sessionSparkPath(
   bars: OhlcBar[],
@@ -517,13 +517,17 @@ export function sessionSparkPath(
 ): { prices: number[]; sessionOpen: number } | null {
   if (bars.length === 0) return null;
   const lastDay = istDateString(bars[bars.length - 1].time);
-  const dayBars = bars.filter((b) => istDateString(b.time) === lastDay);
+  let dayBars = bars.filter((b) => istDateString(b.time) === lastDay);
+  // FX can be sparse just after IST midnight — fall back to last ~24h of bars.
+  if (dayBars.length < 4 && bars.length >= 4) {
+    const cutoff = bars[bars.length - 1]!.time - 24 * 3600;
+    dayBars = bars.filter((b) => b.time >= cutoff);
+  }
   if (dayBars.length === 0) return null;
 
-  const sessionOpen = dayBars[0].open;
+  const sessionOpen = dayBars[0]!.open;
   if (!Number.isFinite(sessionOpen) || sessionOpen === 0) return null;
 
-  // Open first, then every close — matches “opened, ran up, fell through open”.
   const prices: number[] = [sessionOpen];
   for (const bar of dayBars) {
     if (Number.isFinite(bar.close)) prices.push(bar.close);
@@ -535,11 +539,11 @@ export function sessionSparkPath(
   }
 
   const step = Math.ceil((prices.length - 1) / (maxPoints - 1));
-  const sampled: number[] = [prices[0]];
+  const sampled: number[] = [prices[0]!];
   for (let i = step; i < prices.length - 1; i += step) {
-    sampled.push(prices[i]);
+    sampled.push(prices[i]!);
   }
-  sampled.push(prices[prices.length - 1]);
+  sampled.push(prices[prices.length - 1]!);
   return { prices: sampled, sessionOpen };
 }
 

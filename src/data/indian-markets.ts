@@ -65,9 +65,10 @@ export function cashExchangeLabel(
   return "NSE";
 }
 
-/** e.g. "Last BSE session" / "Last NSE session" / "Last session". */
+/** e.g. "Last BSE session" / "Last NSE session" / "Last FX print" / "Last session". */
 export function lastSessionPhrase(indexId?: string | null): string {
   if (!indexId) return "Last session";
+  if (indexId === "usdinr") return "Last FX print";
   const ex = cashExchangeLabel(indexId);
   return ex ? `Last ${ex} session` : "Last session";
 }

@@ -43,9 +43,11 @@ import {
 } from "@/lib/yahoo-ohlc";
 import { refreshIntervalForStatus } from "@/lib/live-refresh";
 import { CLIENT_API_TIMEOUT_MS } from "@/lib/fetch-timeout";
+import { getIndexById, lastSessionPhrase } from "@/data/indian-markets";
 import {
   getNseMarketStatus,
   isAwaitingTodayPrint,
+  isFxInstrumentLive,
   isInstrumentSessionLive,
   type MarketStatus,
 } from "@/lib/market-hours";
@@ -61,7 +63,6 @@ import {
   formatIstSessionStamp,
   formatIstSyncTime,
 } from "@/lib/market-quote";
-import { lastSessionPhrase } from "@/data/indian-markets";
 
 type ThemeMode = "light" | "dark";
 
@@ -317,14 +318,13 @@ export function CandlestickChart({
     getNseMarketStatus()
   );
   const marketStatus = marketStatusProp ?? clockStatus;
-  const instrumentLive = isInstrumentSessionLive(
-    marketStatus,
-    syncedQuote?.marketTime
-  );
-  const awaitingPrint = isAwaitingTodayPrint(
-    marketStatus,
-    syncedQuote?.marketTime
-  );
+  const isFx = getIndexById(indexId)?.group === "fx";
+  const instrumentLive = isFx
+    ? isFxInstrumentLive(syncedQuote?.marketTime)
+    : isInstrumentSessionLive(marketStatus, syncedQuote?.marketTime);
+  const awaitingPrint = isFx
+    ? false
+    : isAwaitingTodayPrint(marketStatus, syncedQuote?.marketTime);
   const marketStatusRef = useRef(marketStatus);
 
   useEffect(() => {

@@ -2,6 +2,8 @@ import { getSession } from "@/lib/auth";
 import {
   getNseMarketStatus,
   hasTodaySessionPrint,
+  fxQuoteMarketTime,
+  isFxInstrumentLive,
 } from "@/lib/market-hours";
 import { INDIAN_MARKET_INDICES, sortByDisplayOrder } from "@/data/indian-markets";
 import {
@@ -89,11 +91,21 @@ async function yahooQuote(
       live.price,
       live.dayOpen
     );
+
+    const isFx = index.group === "fx";
+    const marketTime = isFx
+      ? fxQuoteMarketTime(live.marketTime)
+      : live.marketTime;
+    const sessionPrinted = isFx
+      ? marketTime != null &&
+        (hasTodaySessionPrint(marketTime) || isFxInstrumentLive(marketTime))
+      : hasTodaySessionPrint(marketTime);
+
     const priced = normalizeLiveQuote({
       price: live.price,
       dayOpen: spark.dayOpen,
       previousClose: live.previousClose,
-      marketTime: live.marketTime,
+      marketTime,
     });
 
     return {
@@ -107,7 +119,7 @@ async function yahooQuote(
       sparkline: spark.sparkline,
       group: index.group,
       marketTime: priced.marketTime,
-      sessionPrinted: hasTodaySessionPrint(priced.marketTime),
+      sessionPrinted,
       source: "yahoo",
     };
   } catch {

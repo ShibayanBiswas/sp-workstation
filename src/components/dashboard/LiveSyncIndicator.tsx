@@ -25,6 +25,8 @@ type Props = {
    * session is open (feed lag / not yet opened on this symbol).
    */
   awaitingTodayPrint?: boolean;
+  /** Cash (NSE/BSE) vs FX (USD/INR) chrome copy. */
+  venue?: "cash" | "fx";
 };
 
 function secondsUntilRefresh(lastSyncedAt: string, now: number): number {
@@ -40,6 +42,7 @@ export function LiveSyncIndicator({
   compact = false,
   marketStatus: statusProp,
   awaitingTodayPrint = false,
+  venue = "cash",
 }: Props) {
   const [now, setNow] = useState(0);
   const [clockStatus, setClockStatus] = useState<MarketStatus>(() =>
@@ -80,27 +83,54 @@ export function LiveSyncIndicator({
       : "Awaiting today's print";
   } else if (sessionActive) {
     if (syncing) {
-      label = live ? "Syncing markets…" : "Updating quotes…";
+      label =
+        venue === "fx"
+          ? "Syncing FX…"
+          : live
+            ? "Syncing markets…"
+            : "Updating quotes…";
     } else if (stamp) {
-      label = live ? `Live · ${stamp} IST` : `Pre-open · ${stamp} IST`;
+      label =
+        venue === "fx"
+          ? `FX live · ${stamp} IST`
+          : live
+            ? `Live · ${stamp} IST`
+            : `Pre-open · ${stamp} IST`;
     } else {
-      label = live ? "Live · connecting…" : "Pre-open · connecting…";
+      label =
+        venue === "fx"
+          ? "FX live · connecting…"
+          : live
+            ? "Live · connecting…"
+            : "Pre-open · connecting…";
     }
   } else if (status === "weekend") {
     label = stamp
-      ? `Weekend · last session ${stamp} IST`
-      : "Weekend · markets closed";
+      ? venue === "fx"
+        ? `FX weekend · last print ${stamp} IST`
+        : `Weekend · last session ${stamp} IST`
+      : venue === "fx"
+        ? "FX weekend"
+        : "Weekend · markets closed";
   } else {
     label = stamp
-      ? `Closed · last session ${stamp} IST`
-      : "Markets closed";
+      ? venue === "fx"
+        ? `FX · last print ${stamp} IST`
+        : `Closed · last session ${stamp} IST`
+      : venue === "fx"
+        ? "FX closed"
+        : "Markets closed";
   }
 
   const title = awaitingTodayPrint
     ? "This index has no print for today's IST session yet — showing the last available session"
     : sessionActive
-      ? "Prices refresh automatically during the market session"
-      : "NSE/BSE cash markets are closed — showing the last session print";
+      ? venue === "fx"
+        ? "USD/INR refreshes while the FX window is open (nearly 24×5)"
+        : "Prices refresh automatically during the market session"
+      : venue === "fx"
+        ? "FX weekend — showing the last available USD/INR print"
+        : "NSE/BSE cash markets are closed — showing the last session print";
 
   return (
     <div
