@@ -147,26 +147,18 @@ export async function GET(req: Request) {
     price,
     sessionOpen
   );
-  // 1D headline matches Zerodha / exchange: change vs previous close (not session open).
   const previousClose = venue?.previousClose ?? live?.previousClose ?? null;
-  const usePrevClose =
-    timeframe.id === "1D" &&
-    previousClose != null &&
-    Number.isFinite(previousClose) &&
-    previousClose > 0;
-  const change = usePrevClose
-    ? venue?.change ?? price - previousClose
-    : (period?.change ?? live?.change ?? 0);
-  const changePercent = usePrevClose
-    ? venue?.changePercent ?? ((price - previousClose) / previousClose) * 100
-    : (period?.changePercent ?? live?.changePercent ?? 0);
-  // Open line stays on session open; day P&L reference / headline % use previous close.
-  const reference = usePrevClose
-    ? previousClose
-    : (period?.reference ?? sessionOpen ?? null);
-  const basis = usePrevClose
-    ? ("prev_close" as const)
-    : (period?.basis ?? "day_open");
+  // Prefer exchange day-% vs open on 1D so chart matches tape/Snapshot.
+  const change =
+    timeframe.id === "1D" && venue != null
+      ? venue.change
+      : (period?.change ?? live?.change ?? 0);
+  const changePercent =
+    timeframe.id === "1D" && venue != null
+      ? venue.changePercent
+      : (period?.changePercent ?? live?.changePercent ?? 0);
+  const reference = period?.reference ?? sessionOpen ?? null;
+  const basis = period?.basis ?? "day_open";
   const marketTime = venue?.marketTime ?? live?.marketTime ?? lastBar.time;
   const sessionPrinted =
     index.group === "fx"

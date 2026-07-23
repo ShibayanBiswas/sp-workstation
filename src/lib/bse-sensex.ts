@@ -1,5 +1,5 @@
 /**
- * BSE India live Sensex — same previous-close basis as Zerodha Kite.
+ * BSE India live Sensex — day % vs today's session open.
  * RealTimeBseIndiaAPI/GetSensexData (official BSE print).
  */
 
@@ -81,11 +81,11 @@ function parseSensex(data: unknown): BseSensexQuote | null {
   const price = num(r.ltp);
   const previousClose = num(r.Prev_Close);
   const dayOpen = num(r.I_open) ?? previousClose;
-  if (price == null || previousClose == null || previousClose === 0) return null;
+  if (price == null || dayOpen == null || dayOpen === 0) return null;
 
-  const change = num(r.chg) ?? price - previousClose;
-  const changePercent =
-    num(r.perchg) ?? (change / previousClose) * 100;
+  // Day % vs today's open (matches sparklines / 1D Open line).
+  const change = price - dayOpen;
+  const changePercent = (change / dayOpen) * 100;
 
   const stamped = parseBseStamp(r.dttm);
   const status = getNseMarketStatus();
@@ -101,13 +101,13 @@ function parseSensex(data: unknown): BseSensexQuote | null {
     price,
     change,
     changePercent,
-    dayOpen: dayOpen ?? previousClose,
-    previousClose,
+    dayOpen,
+    previousClose: previousClose ?? dayOpen,
     ...(marketTime != null ? { marketTime } : {}),
   };
 }
 
-/** Live Sensex quote from BSE (Zerodha-compatible %). */
+/** Live Sensex quote from BSE (day % vs today's open). */
 export async function fetchBseSensexQuote(opts?: {
   fresh?: boolean;
 }): Promise<BseSensexQuote | null> {

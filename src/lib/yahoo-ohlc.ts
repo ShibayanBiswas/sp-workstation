@@ -25,7 +25,7 @@ export type YahooLiveQuote = {
   changePercent: number;
   /** Today's session open — sparklines / chart Open line. */
   dayOpen: number;
-  /** Previous close — Zerodha / NSE day-change basis. */
+  /** Previous close (context only; day % uses open). */
   previousClose: number;
   marketTime?: number;
 };
@@ -247,7 +247,7 @@ function parseYahooPayload(
   };
 }
 
-/** Fast live quote — 1m LTP when available, day change vs previous close. */
+/** Fast live quote — 1m LTP when available, day change vs today's open. */
 export async function fetchYahooLiveQuote(
   yahooSymbol: string,
   opts?: { fresh?: boolean }

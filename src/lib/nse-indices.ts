@@ -1,5 +1,5 @@
 /**
- * NSE India live indices — same previous-close basis as Zerodha Kite.
+ * NSE India live indices — day % vs today's session open.
  * Warm a cookie session, then pull /api/allIndices.
  */
 
@@ -138,18 +138,18 @@ function parseAllIndices(data: unknown): Map<string, NseIndexQuote> {
     const price = num(row.last);
     const previousClose = num(row.previousClose);
     const dayOpen = num(row.open) ?? previousClose;
-    if (price == null || previousClose == null || previousClose === 0) continue;
+    if (price == null || dayOpen == null || dayOpen === 0) continue;
 
-    const change = num(row.variation) ?? price - previousClose;
-    const changePercent =
-      num(row.percentChange) ?? (change / previousClose) * 100;
+    // Day % vs today's open (matches sparklines / 1D Open line).
+    const change = price - dayOpen;
+    const changePercent = (change / dayOpen) * 100;
 
     byId.set(id, {
       price,
       change,
       changePercent,
-      dayOpen: dayOpen ?? previousClose,
-      previousClose,
+      dayOpen,
+      previousClose: previousClose ?? dayOpen,
       ...(marketTime != null ? { marketTime } : {}),
     });
   }
@@ -157,7 +157,7 @@ function parseAllIndices(data: unknown): Map<string, NseIndexQuote> {
 }
 
 /**
- * Fresh map of workstation index id → NSE live quote (Zerodha-compatible %).
+ * Fresh map of workstation index id → NSE live quote (day % vs today's open).
  * Short TTL is always honored so /api/markets and /api/chart share one print.
  */
 export async function fetchNseIndexQuotes(opts?: {

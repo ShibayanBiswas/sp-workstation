@@ -6,7 +6,7 @@ export type NormalizedQuote = {
   changePercent: number;
   /** Today's session open (sparklines / chart open line). */
   dayOpen: number;
-  /** Previous session close — Zerodha / NSE day-change basis. */
+  /** Previous session close (kept for context; day % uses open). */
   previousClose: number;
   marketTime?: number;
 };
@@ -22,8 +22,8 @@ function roundTo(n: number, digits: number): number {
 }
 
 /**
- * Day P&L vs previous close (Zerodha / TradingView-style headline %).
- * `dayOpen` is kept for the chart Open guide line only.
+ * Day P&L vs today's session open — same basis as sparklines / 1D Open line.
+ * `previousClose` is retained for reference only (not used for headline %).
  */
 export function normalizeLiveQuote(raw: {
   price: number;
@@ -34,9 +34,8 @@ export function normalizeLiveQuote(raw: {
   const price = raw.price;
   const dayOpen = raw.dayOpen;
   const previousClose = raw.previousClose;
-  const change = price - previousClose;
-  const changePercent =
-    previousClose !== 0 ? (change / previousClose) * 100 : 0;
+  const change = price - dayOpen;
+  const changePercent = dayOpen !== 0 ? (change / dayOpen) * 100 : 0;
 
   return {
     price,

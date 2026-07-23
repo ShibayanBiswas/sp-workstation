@@ -32,9 +32,9 @@ export type MarketQuote = {
   price: number | null;
   change: number | null;
   changePercent: number | null;
-  /** Today's session open — sparklines / chart Open line. */
+  /** Today's session open — tape / Snapshot % and sparklines. */
   dayOpen: number | null;
-  /** Previous close — tape / Snapshot % (Zerodha-compatible). */
+  /** Previous close (context only; day % uses open). */
   previousClose: number | null;
   sparkline: number[];
   group: (typeof INDIAN_MARKET_INDICES)[number]["group"];
@@ -46,42 +46,41 @@ export type MarketQuote = {
 };
 
 /** Fallback only when intraday OHLC is unavailable. */
-function quickSpark(previousClose: number, price: number): number[] {
-  return sparklineSeries([previousClose, price], previousClose);
+function quickSpark(dayOpen: number, price: number): number[] {
+  return sparklineSeries([dayOpen, price], dayOpen);
 }
 
 /**
- * Real session spark from Yahoo 5m path (cached ~60s). Anchored to previous
- * close so shape + color agree with day % (not “up from open” on a down day).
- * Timed so a slow Yahoo host never blocks the tape.
+ * Real session spark from Yahoo 5m path (cached ~60s). Anchored to the
+ * exchange session open (`fallbackOpen`) so shape + % agree. Timed so a slow
+ * Yahoo host never blocks the tape.
  */
 async function sessionSparkline(
   yahooSymbol: string,
   price: number,
-  fallbackOpen: number,
-  previousClose: number
+  fallbackOpen: number
 ): Promise<{ sparkline: number[]; dayOpen: number }> {
-  const anchor =
-    Number.isFinite(previousClose) && previousClose > 0
-      ? previousClose
-      : fallbackOpen;
   const ohlc = await withTimeout(
     fetchYahooOhlc(yahooSymbol, getTimeframe("1D")),
     3_500,
     null
   );
   const path = ohlc?.bars.length ? sessionSparkPath(ohlc.bars) : null;
+  const dayOpen =
+    Number.isFinite(fallbackOpen) && fallbackOpen > 0
+      ? fallbackOpen
+      : (path?.sessionOpen ?? fallbackOpen);
   if (!path || path.prices.length < 2) {
     return {
-      sparkline: quickSpark(anchor, price),
-      dayOpen: fallbackOpen,
+      sparkline: quickSpark(dayOpen, price),
+      dayOpen,
     };
   }
   const prices = path.prices.slice();
   prices[prices.length - 1] = price;
   return {
-    sparkline: sparklineSeries(prices, anchor),
-    dayOpen: path.sessionOpen,
+    sparkline: sparklineSeries(prices, dayOpen),
+    dayOpen,
   };
 }
 
@@ -95,8 +94,7 @@ async function yahooQuote(
     const spark = await sessionSparkline(
       index.yahoo,
       live.price,
-      live.dayOpen,
-      live.previousClose
+      live.dayOpen
     );
 
     const isFx = index.group === "fx";
@@ -152,8 +150,7 @@ export async function GET() {
         const spark = await sessionSparkline(
           index.yahoo,
           bseSensex.price,
-          bseSensex.dayOpen,
-          bseSensex.previousClose
+          bseSensex.dayOpen
         );
         return {
           id: index.id,
@@ -177,8 +174,7 @@ export async function GET() {
           const spark = await sessionSparkline(
             index.yahoo,
             nse.price,
-            nse.dayOpen,
-            nse.previousClose
+            nse.dayOpen
           );
           return {
             id: index.id,

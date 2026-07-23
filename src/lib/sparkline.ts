@@ -1,7 +1,6 @@
 /**
- * Normalize closes to % move from the day-change anchor (previous close) so
- * sparklines match tape / Snapshot / TradingView-style headline %:
- * value 0 = previous close; negative path = down day.
+ * Normalize closes to % move from today's session open so sparklines match
+ * tape / Snapshot / 1D Open: value 0 = open; above open = up from open.
  */
 export function sparklineSeries(
   closes: number[],
