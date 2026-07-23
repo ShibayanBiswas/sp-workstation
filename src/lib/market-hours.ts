@@ -70,6 +70,54 @@ export function getNseMarketStatus(now = new Date()): MarketStatus {
   return "closed";
 }
 
+const CASH_CLOSE_MINUTES = 15 * 60 + 30; // 15:30 IST
+
+function subtractIstCalendarDays(yyyyMmDd: string, days: number): string {
+  const base = new Date(`${yyyyMmDd}T12:00:00+05:30`);
+  base.setUTCDate(base.getUTCDate() - days);
+  return istCalendarDate(base);
+}
+
+/**
+ * Unix seconds for the most recent completed NSE/BSE cash close (15:30 IST).
+ * Used for closed / pre-open / weekend “last session” stamps when the feed
+ * has no print timestamp (NSE) or the stamp is missing (BSE fallback).
+ */
+export function lastCashSessionCloseUnix(now = new Date()): number {
+  const { day, minutes } = istMinutesOfDay(now);
+  const today = istCalendarDate(now);
+
+  let daysBack = 0;
+  if (day === 0) {
+    daysBack = 2; // Sunday → Friday
+  } else if (day === 6) {
+    daysBack = 1; // Saturday → Friday
+  } else if (minutes < CASH_CLOSE_MINUTES) {
+    // Before today's close — last completed session is the previous weekday.
+    daysBack = day === 1 ? 3 : 1; // Monday → Friday
+  }
+
+  const sessionDay = daysBack === 0 ? today : subtractIstCalendarDays(today, daysBack);
+  return Math.floor(
+    new Date(`${sessionDay}T15:30:00+05:30`).getTime() / 1000
+  );
+}
+
+/**
+ * Best-effort print time for cash quotes:
+ * - live open session → now
+ * - otherwise → last cash close (never the page-load clock before open)
+ */
+export function cashQuoteMarketTime(
+  status: MarketStatus = getNseMarketStatus(),
+  now = new Date()
+): number {
+  if (status === "open") {
+    return Math.floor(now.getTime() / 1000);
+  }
+  return lastCashSessionCloseUnix(now);
+}
+
 /** True while cash market is trading (or in pre-open). */
 export function isMarketSessionActive(status: MarketStatus): boolean {
   return status === "open" || status === "pre-open";

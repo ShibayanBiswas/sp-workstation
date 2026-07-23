@@ -3,7 +3,10 @@
  * Warm a cookie session, then pull /api/allIndices.
  */
 
-import { getNseMarketStatus } from "@/lib/market-hours";
+import {
+  cashQuoteMarketTime,
+  getNseMarketStatus,
+} from "@/lib/market-hours";
 import { fetchWithTimeout, UPSTREAM_TIMEOUT_MS } from "@/lib/fetch-timeout";
 
 export type NseIndexQuote = {
@@ -125,11 +128,9 @@ function parseAllIndices(data: unknown): Map<string, NseIndexQuote> {
     if (name) byName.set(name, row);
   }
 
-  // NSE omits print timestamps. On weekdays use fetch time (open or after close).
-  // On weekends omit it so we don't fake a Saturday/Sunday session print.
-  const status = getNseMarketStatus();
-  const marketTime =
-    status === "weekend" ? undefined : Math.floor(Date.now() / 1000);
+  // NSE omits print timestamps. During the live session use "now"; otherwise
+  // stamp the last cash close (15:30 IST) — never the pre-open fetch clock.
+  const marketTime = cashQuoteMarketTime(getNseMarketStatus());
 
   for (const [id, nseName] of Object.entries(NSE_INDEX_BY_ID)) {
     const row = byName.get(nseName);

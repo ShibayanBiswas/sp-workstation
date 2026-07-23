@@ -3,7 +3,10 @@
  * RealTimeBseIndiaAPI/GetSensexData (official BSE print).
  */
 
-import { getNseMarketStatus } from "@/lib/market-hours";
+import {
+  cashQuoteMarketTime,
+  getNseMarketStatus,
+} from "@/lib/market-hours";
 import { fetchWithTimeout, UPSTREAM_TIMEOUT_MS } from "@/lib/fetch-timeout";
 
 export type BseSensexQuote = {
@@ -85,10 +88,9 @@ function parseSensex(data: unknown): BseSensexQuote | null {
     num(r.perchg) ?? (change / previousClose) * 100;
 
   const stamped = parseBseStamp(r.dttm);
-  const status = getNseMarketStatus();
-  const marketTime =
-    stamped ??
-    (status === "weekend" ? undefined : Math.floor(Date.now() / 1000));
+  // Prefer BSE's own dttm; if missing/unparseable, use last cash close — not "now"
+  // (which wrongly showed Thursday morning as the last session).
+  const marketTime = stamped ?? cashQuoteMarketTime(getNseMarketStatus());
 
   return {
     price,
