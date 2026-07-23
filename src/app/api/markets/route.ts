@@ -46,19 +46,25 @@ export type MarketQuote = {
 };
 
 /** Fallback only when intraday OHLC is unavailable. */
-function quickSpark(dayOpen: number, price: number): number[] {
-  return sparklineSeries([dayOpen, price], dayOpen);
+function quickSpark(previousClose: number, price: number): number[] {
+  return sparklineSeries([previousClose, price], previousClose);
 }
 
 /**
- * Real session spark from Yahoo 5m path (cached ~60s). Timed so a slow Yahoo
- * host never blocks the tape — falls back to open→LTP.
+ * Real session spark from Yahoo 5m path (cached ~60s). Anchored to previous
+ * close so shape + color agree with day % (not “up from open” on a down day).
+ * Timed so a slow Yahoo host never blocks the tape.
  */
 async function sessionSparkline(
   yahooSymbol: string,
   price: number,
-  fallbackOpen: number
+  fallbackOpen: number,
+  previousClose: number
 ): Promise<{ sparkline: number[]; dayOpen: number }> {
+  const anchor =
+    Number.isFinite(previousClose) && previousClose > 0
+      ? previousClose
+      : fallbackOpen;
   const ohlc = await withTimeout(
     fetchYahooOhlc(yahooSymbol, getTimeframe("1D")),
     3_500,
@@ -67,14 +73,14 @@ async function sessionSparkline(
   const path = ohlc?.bars.length ? sessionSparkPath(ohlc.bars) : null;
   if (!path || path.prices.length < 2) {
     return {
-      sparkline: quickSpark(fallbackOpen, price),
+      sparkline: quickSpark(anchor, price),
       dayOpen: fallbackOpen,
     };
   }
   const prices = path.prices.slice();
   prices[prices.length - 1] = price;
   return {
-    sparkline: sparklineSeries(prices, path.sessionOpen),
+    sparkline: sparklineSeries(prices, anchor),
     dayOpen: path.sessionOpen,
   };
 }
@@ -89,7 +95,8 @@ async function yahooQuote(
     const spark = await sessionSparkline(
       index.yahoo,
       live.price,
-      live.dayOpen
+      live.dayOpen,
+      live.previousClose
     );
 
     const isFx = index.group === "fx";
@@ -145,7 +152,8 @@ export async function GET() {
         const spark = await sessionSparkline(
           index.yahoo,
           bseSensex.price,
-          bseSensex.dayOpen
+          bseSensex.dayOpen,
+          bseSensex.previousClose
         );
         return {
           id: index.id,
@@ -169,7 +177,8 @@ export async function GET() {
           const spark = await sessionSparkline(
             index.yahoo,
             nse.price,
-            nse.dayOpen
+            nse.dayOpen,
+            nse.previousClose
           );
           return {
             id: index.id,

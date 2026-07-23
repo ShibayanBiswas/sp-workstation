@@ -1,6 +1,7 @@
 /**
- * Normalize closes to % move from session open (anchor) so sparklines match
- * the Live Chart 1D path: open → intraday → now. Value 0 = open level.
+ * Normalize closes to % move from the day-change anchor (previous close) so
+ * sparklines match tape / Snapshot / TradingView-style headline %:
+ * value 0 = previous close; negative path = down day.
  */
 export function sparklineSeries(
   closes: number[],

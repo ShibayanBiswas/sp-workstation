@@ -22,8 +22,8 @@ function roundTo(n: number, digits: number): number {
 }
 
 /**
- * Day P&L vs previous close (Zerodha Kite default / NSE headline %).
- * `dayOpen` is kept for sparklines and the chart Open reference line.
+ * Day P&L vs previous close (Zerodha / TradingView-style headline %).
+ * `dayOpen` is kept for the chart Open guide line only.
  */
 export function normalizeLiveQuote(raw: {
   price: number;

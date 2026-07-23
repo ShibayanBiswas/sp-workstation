@@ -565,9 +565,12 @@ export function CandlestickChart({
     let lastUnix = 0;
     let lastBarIndex = -1;
     let referenceLine: IPriceLine | null = null;
+    let openLine: IPriceLine | null = null;
     let highLine: IPriceLine | null = null;
     let lowLine: IPriceLine | null = null;
     let referencePrice: number | null = null;
+    /** Session open — drawn only when day P&L line is previous close. */
+    let sessionOpenPrice: number | null = null;
     let referenceTitle = "Open";
 
     const renderLegend = (
@@ -661,6 +664,24 @@ export function CandlestickChart({
           color: colors.refLine,
           title: referenceTitle,
           lineStyle: LineStyle.Dashed,
+        }
+      );
+      // When day % is vs previous close, keep Open as a secondary guide so the
+      // path vs open isn't mistaken for the headline P&L.
+      const showOpenGuide =
+        referenceTitle === "Prev close" &&
+        sessionOpenPrice != null &&
+        referencePrice != null &&
+        Math.abs(sessionOpenPrice - referencePrice) >
+          Math.max(Math.abs(referencePrice) * 1e-6, 0.01);
+      openLine = syncPriceLine(
+        candleSeries,
+        openLine,
+        showOpenGuide ? sessionOpenPrice : null,
+        {
+          color: colors.muted,
+          title: "Open",
+          lineStyle: LineStyle.Dotted,
         }
       );
 
@@ -949,15 +970,25 @@ export function CandlestickChart({
 
           // Client-side fallback if older responses omit reference.
           if (reference == null && price != null && barsRef.current.length > 0) {
-            const computed = computeTimeframeReturn(
-              barsRef.current,
-              tf.id,
-              price,
-              typeof last.dayOpen === "number" ? last.dayOpen : null
-            );
-            if (computed) {
-              reference = computed.reference;
-              setReturnBasis(computed.basis);
+            if (
+              tf.id === "1D" &&
+              typeof last.previousClose === "number" &&
+              Number.isFinite(last.previousClose) &&
+              last.previousClose > 0
+            ) {
+              reference = last.previousClose as number;
+              setReturnBasis("prev_close");
+            } else {
+              const computed = computeTimeframeReturn(
+                barsRef.current,
+                tf.id,
+                price,
+                typeof last.dayOpen === "number" ? last.dayOpen : null
+              );
+              if (computed) {
+                reference = computed.reference;
+                setReturnBasis(computed.basis);
+              }
             }
           } else if (
             last.basis === "day_open" ||
@@ -971,8 +1002,21 @@ export function CandlestickChart({
 
           if (reference != null) setPeriodReference(reference);
 
+          sessionOpenPrice =
+            typeof last.dayOpen === "number" && Number.isFinite(last.dayOpen)
+              ? (last.dayOpen as number)
+              : null;
           referencePrice = reference;
-          referenceTitle = "Open";
+          referenceTitle =
+            last.basis === "prev_close"
+              ? "Prev close"
+              : last.basis === "week_open"
+                ? "Week open"
+                : last.basis === "month_open"
+                  ? "Month open"
+                  : last.basis === "lookback_open"
+                    ? "Period open"
+                    : "Open";
           referenceLine = syncPriceLine(
             candleSeries,
             referenceLine,
@@ -981,6 +1025,22 @@ export function CandlestickChart({
               color: colors.refLine,
               title: referenceTitle,
               lineStyle: LineStyle.Dashed,
+            }
+          );
+          const showOpenGuide =
+            referenceTitle === "Prev close" &&
+            sessionOpenPrice != null &&
+            referencePrice != null &&
+            Math.abs(sessionOpenPrice - referencePrice) >
+              Math.max(Math.abs(referencePrice) * 1e-6, 0.01);
+          openLine = syncPriceLine(
+            candleSeries,
+            openLine,
+            showOpenGuide ? sessionOpenPrice : null,
+            {
+              color: colors.muted,
+              title: "Open",
+              lineStyle: LineStyle.Dotted,
             }
           );
 

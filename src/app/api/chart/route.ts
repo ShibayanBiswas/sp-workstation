@@ -160,8 +160,10 @@ export async function GET(req: Request) {
   const changePercent = usePrevClose
     ? venue?.changePercent ?? ((price - previousClose) / previousClose) * 100
     : (period?.changePercent ?? live?.changePercent ?? 0);
-  // Open line stays on session open; headline % uses previousClose when usePrevClose.
-  const reference = period?.reference ?? sessionOpen ?? null;
+  // Open line stays on session open; day P&L reference / headline % use previous close.
+  const reference = usePrevClose
+    ? previousClose
+    : (period?.reference ?? sessionOpen ?? null);
   const basis = usePrevClose
     ? ("prev_close" as const)
     : (period?.basis ?? "day_open");

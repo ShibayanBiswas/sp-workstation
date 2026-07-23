@@ -82,13 +82,13 @@ function buildReturn(
 
 /**
  * Timeframe return vs period open (start → now):
- * - 1D → today's session open (Open line / sparklines; headline % uses prev close)
+ * - 1D → today's session open (Open guide line; headline % uses prev close)
  * - 1W → open of first bar in the current IST week
  * - 1M → open of first bar in the current IST calendar month
  * - 3M+ → open of first bar at/after lookback cutoff
  *
  * Optional `dayOpen` (from the live quote) is preferred for 1D so the chart
- * Open reference matches Snapshot sparklines.
+ * Open guide matches the exchange session open.
  */
 export function computeTimeframeReturn(
   bars: OhlcBar[],
