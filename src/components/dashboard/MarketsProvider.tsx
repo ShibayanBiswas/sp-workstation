@@ -431,7 +431,7 @@ export function IndianMarketCards() {
                         up={up}
                         width={160}
                         height={32}
-                        showArea={false}
+                        showArea
                         strokeWidth={1.5}
                         fluid
                         className="h-8 w-full opacity-90"
