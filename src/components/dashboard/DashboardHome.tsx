@@ -23,16 +23,16 @@ export function DashboardHome({ name }: Props) {
             <Greeting name={name} />
           </div>
 
-          <div className="animate-rise-delay-1 space-y-4">
+          <div className="home-scroll-section animate-rise-delay-1 space-y-4">
             <IndianMarketTape />
             <IndianMarketCards />
           </div>
 
-          <div className="animate-rise-delay-2 panel-enter-glow">
+          <div className="home-scroll-section-chart animate-rise-delay-2 panel-enter-glow">
             <LiveCharts />
           </div>
 
-          <footer className="animate-rise-delay-3 footer-alive border-t border-[var(--border)] pt-2 pb-0 text-center text-[10px] tracking-[0.2em] text-[var(--fg-subtle)]">
+          <footer className="animate-rise-delay-3 border-t border-[var(--border)] pt-2 pb-0 text-center text-[10px] tracking-[0.2em] text-[var(--fg-subtle)]">
             ANAND RATHI WEALTH · STRUCTURED PRODUCTS WORKSTATION
           </footer>
         </div>

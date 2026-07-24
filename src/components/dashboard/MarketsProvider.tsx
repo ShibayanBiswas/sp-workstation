@@ -249,6 +249,21 @@ export function IndianMarketTape() {
     marketStatus,
   } = useMarkets();
   const sessionActive = isMarketSessionActive(marketStatus);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [tapeInView, setTapeInView] = useState(true);
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        setTapeInView(entry?.isIntersecting ?? true);
+      },
+      { root: null, threshold: 0.08, rootMargin: "48px 0px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const chips = quotes.map((q, index) => {
     const up = (q.change ?? 0) >= 0;
@@ -290,6 +305,8 @@ export function IndianMarketTape() {
     );
   });
 
+  const pauseTape = !sessionActive || !tapeInView;
+
   return (
     <section className="panel-stable panel-luxe overflow-hidden rounded-2xl">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-2.5 md:px-5">
@@ -308,7 +325,8 @@ export function IndianMarketTape() {
         />
       </div>
       <div
-        className={`tape-viewport relative min-h-[108px] overflow-hidden py-1 ${!sessionActive ? "tape-viewport-paused" : ""}`}
+        ref={viewportRef}
+        className={`tape-viewport relative min-h-[108px] overflow-hidden py-1 ${pauseTape ? "tape-viewport-paused" : ""}`}
       >
         {loading && quotes.length === 0 ? (
           <div className="flex h-[96px] items-center gap-2 px-3">
@@ -365,7 +383,7 @@ export function IndianMarketCards() {
           />
         </div>
       </div>
-      <div className="snapshot-viewport overflow-x-auto p-3 scrollbar-thin md:p-4">
+      <div className="snapshot-viewport overflow-x-auto overscroll-x-contain p-3 scrollbar-thin md:p-4">
         <div className="flex w-max min-w-full gap-2">
           {loading && quotes.length === 0
             ? Array.from({ length: 5 }).map((_, i) => (
