@@ -1,5 +1,5 @@
 /**
- * BSE India live Sensex — day % vs today's session open.
+ * BSE India live Sensex — LTP + session open from BSE (day % applied upstream).
  * RealTimeBseIndiaAPI/GetSensexData (official BSE print).
  */
 

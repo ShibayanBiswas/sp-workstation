@@ -17,6 +17,12 @@ import {
   yahooIntervalSeconds,
 } from "@/lib/yahoo-ohlc";
 import { tradingSessionBars } from "@/lib/chart-ist";
+import {
+  changeVersusSessionOpen,
+  ohlcSessionOpen,
+  resolveSessionOpen,
+  sessionBarsAreToday,
+} from "@/lib/session-open";
 import { INDIAN_MARKET_INDICES, getIndexById } from "@/data/indian-markets";
 import {
   fetchNseIndexQuotes,
@@ -137,7 +143,7 @@ export async function GET(req: Request) {
     });
   }
 
-  // Prefer NSE / BSE LTP + prev-close % (Zerodha) over Yahoo when available.
+  // Prefer per-venue LTP (NSE / BSE / Yahoo FX) over lagged Yahoo closes.
   const nse =
     timeframe.id === "1D" && nseIndexNameForId(index.id)
       ? (await fetchNseIndexQuotes({ fresh: true })).get(index.id)
@@ -153,14 +159,32 @@ export async function GET(req: Request) {
   const price = venue?.price ?? live?.price ?? lastBar.close;
   // Candle pane must track exchange LTP — not a lagged Yahoo close.
   bars = applyLiveCloseToBars(bars, price);
-  // Prefer exchange session open for Open line when NSE/BSE LTP is used.
+
+  const isFx = index.group === "fx";
+  const ohlcOpen =
+    timeframe.id === "1D"
+      ? ohlcSessionOpen(bars, { fx: isFx }) ??
+        sessionSparkPath(bars, 96, { fx: isFx })?.sessionOpen ??
+        null
+      : null;
+  const sessionIsToday =
+    timeframe.id === "1D" ? sessionBarsAreToday(bars) : true;
+  const venueIsToday =
+    sessionIsToday ||
+    hasTodaySessionPrint(venue?.marketTime ?? live?.marketTime) ||
+    (isFx && isFxInstrumentLive(venue?.marketTime ?? live?.marketTime));
+
+  // Day % / Open line = venue session open while today; else last session OHLC open.
   const sessionOpen =
     timeframe.id === "1D"
-      ? venue?.dayOpen ??
-        sessionSparkPath(bars)?.sessionOpen ??
-        live?.dayOpen ??
-        null
-      : venue?.dayOpen ?? live?.dayOpen ?? null;
+      ? resolveSessionOpen({
+          venueOpen: venue?.dayOpen ?? live?.dayOpen ?? null,
+          ohlcSessionOpen: ohlcOpen,
+          sessionIsToday,
+          venueIsToday,
+        })
+      : (venue?.dayOpen ?? live?.dayOpen ?? null);
+
   const period = computeTimeframeReturn(
     bars,
     timeframe.id,
@@ -168,22 +192,30 @@ export async function GET(req: Request) {
     sessionOpen
   );
   const previousClose = venue?.previousClose ?? live?.previousClose ?? null;
-  // Prefer exchange day-% vs open on 1D so chart matches tape/Snapshot.
-  const change =
-    timeframe.id === "1D" && venue != null
-      ? venue.change
-      : (period?.change ?? live?.change ?? 0);
-  const changePercent =
-    timeframe.id === "1D" && venue != null
-      ? venue.changePercent
-      : (period?.changePercent ?? live?.changePercent ?? 0);
-  const reference = period?.reference ?? sessionOpen ?? null;
-  const basis = period?.basis ?? "day_open";
+
+  let change: number;
+  let changePercent: number;
+  let reference: number | null;
+  let basis: "day_open" | "prev_close" | "week_open" | "month_open" | "lookback_open";
+
+  if (timeframe.id === "1D" && sessionOpen != null && sessionOpen > 0) {
+    const vsOpen = changeVersusSessionOpen(price, sessionOpen);
+    change = vsOpen.change;
+    changePercent = vsOpen.changePercent;
+    reference = sessionOpen;
+    basis = "day_open";
+  } else {
+    change = period?.change ?? live?.change ?? venue?.change ?? 0;
+    changePercent =
+      period?.changePercent ?? live?.changePercent ?? venue?.changePercent ?? 0;
+    reference = period?.reference ?? sessionOpen ?? null;
+    basis = period?.basis ?? "day_open";
+  }
+
   const marketTime = venue?.marketTime ?? live?.marketTime ?? lastBar.time;
-  const sessionPrinted =
-    index.group === "fx"
-      ? hasTodaySessionPrint(marketTime) || isFxInstrumentLive(marketTime)
-      : hasTodaySessionPrint(marketTime);
+  const sessionPrinted = isFx
+    ? hasTodaySessionPrint(marketTime) || isFxInstrumentLive(marketTime)
+    : hasTodaySessionPrint(marketTime);
 
   return jsonDynamic({
     indexId: index.id,
@@ -203,7 +235,6 @@ export async function GET(req: Request) {
       dayOpen: sessionOpen,
       previousClose,
       time: marketTime,
-      /** False when the feed still shows a prior IST day (e.g. Sensex lag). */
       sessionPrinted,
     },
     asOf: new Date().toISOString(),

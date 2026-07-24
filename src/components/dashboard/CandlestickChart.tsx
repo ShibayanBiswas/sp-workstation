@@ -378,12 +378,13 @@ export function CandlestickChart({
   const displayChangePct = livePeriod
     ? formatMarketChangePercent(livePeriod.changePercent)
     : header.changePercent;
-  // "vs today open" on 1D when live with today's print.
-  const basisHint = instrumentLive
-    ? returnBasisLabel(timeframe === "1D" ? "day_open" : returnBasis)
-    : awaitingPrint && timeframe === "1D"
-      ? "last session"
-      : "";
+  // 1D headline always vs session open (today or last trading day).
+  const basisHint =
+    timeframe !== "1D"
+      ? returnBasisLabel(returnBasis)
+      : awaitingPrint
+        ? "last session"
+        : returnBasisLabel("day_open");
   const sessionPhrase = lastSessionPhrase(indexId);
 
   useEffect(() => {

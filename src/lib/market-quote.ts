@@ -22,8 +22,8 @@ function roundTo(n: number, digits: number): number {
 }
 
 /**
- * Day P&L vs today's session open — same basis as sparklines / 1D Open line.
- * `previousClose` is retained for reference only (not used for headline %).
+ * Day P&L vs session open (today's open, or last trading day's open on
+ * holiday / weekend / pre-open). `previousClose` is retained for context only.
  */
 export function normalizeLiveQuote(raw: {
   price: number;

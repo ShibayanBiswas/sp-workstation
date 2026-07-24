@@ -14,6 +14,13 @@ import {
 } from "@/lib/yahoo-ohlc";
 import { sparklineSeries } from "@/lib/sparkline";
 import { normalizeLiveQuote } from "@/lib/market-quote";
+import {
+  changeVersusSessionOpen,
+  ohlcSessionOpen,
+  resolveSessionOpen,
+  sessionBarsAreToday,
+} from "@/lib/session-open";
+import { tradingSessionBars } from "@/lib/chart-ist";
 import { getTimeframe } from "@/lib/chart-timeframes";
 import { jsonDynamic } from "@/lib/json-dynamic";
 import {
@@ -32,9 +39,9 @@ export type MarketQuote = {
   price: number | null;
   change: number | null;
   changePercent: number | null;
-  /** Today's session open — tape / Snapshot % and sparklines. */
+  /** Session open used for day % (today, or last trading day). */
   dayOpen: number | null;
-  /** Previous close (context only; day % uses open). */
+  /** Previous close (context only; day % uses session open). */
   previousClose: number | null;
   sparkline: number[];
   group: (typeof INDIAN_MARKET_INDICES)[number]["group"];
@@ -45,46 +52,123 @@ export type MarketQuote = {
   source?: "nse" | "bse" | "yahoo";
 };
 
-/** Fallback only when intraday OHLC is unavailable. */
 function quickSpark(dayOpen: number, price: number): number[] {
   return sparklineSeries([dayOpen, price], dayOpen);
 }
 
+type SparkResult = {
+  /** Raw session path prices (open first, then closes), tip = live LTP. */
+  prices: number[];
+  ohlcOpen: number | null;
+  sessionIsToday: boolean;
+};
+
 /**
- * Real session spark from Yahoo OHLC. Cash uses today's IST path; FX uses a
- * rolling 24h window so USD/INR isn't a flat stub on sparse IST mornings.
+ * Yahoo OHLC path for the active trading session only.
+ * Cash → NSE hours day; FX → IST calendar day.
  */
 async function sessionSparkline(
   yahooSymbol: string,
   price: number,
-  fallbackOpen: number,
   opts?: { fx?: boolean }
-): Promise<{ sparkline: number[]; dayOpen: number }> {
+): Promise<SparkResult> {
   const isFx = opts?.fx === true;
   const ohlc = await withTimeout(
     fetchYahooOhlc(yahooSymbol, getTimeframe("1D")),
     isFx ? 8_000 : 3_500,
     null
   );
-  const path = ohlc?.bars.length
-    ? sessionSparkPath(ohlc.bars, 96, { fx: isFx })
-    : null;
-  const dayOpen =
-    Number.isFinite(fallbackOpen) && fallbackOpen > 0
-      ? fallbackOpen
-      : (path?.sessionOpen ?? fallbackOpen);
+  if (!ohlc?.bars.length) {
+    return { prices: [], ohlcOpen: null, sessionIsToday: false };
+  }
+  const sessionBars = tradingSessionBars(ohlc.bars, { fx: isFx });
+  const path = sessionSparkPath(ohlc.bars, 96, { fx: isFx });
+  const ohlcOpen =
+    path?.sessionOpen ?? ohlcSessionOpen(ohlc.bars, { fx: isFx });
+  const sessionIsToday = sessionBarsAreToday(sessionBars);
   if (!path || path.prices.length < 2) {
     return {
-      sparkline: quickSpark(dayOpen, price),
-      dayOpen,
+      prices: ohlcOpen != null ? [ohlcOpen, price] : [],
+      ohlcOpen,
+      sessionIsToday,
     };
   }
   const prices = path.prices.slice();
   prices[prices.length - 1] = price;
-  // FX: keep enough points even when day-% anchor is today's open (tip matches %).
+  return { prices, ohlcOpen, sessionIsToday };
+}
+
+/**
+ * One open basis per index: venue open while that session is today;
+ * last trading day's OHLC open on holiday / weekend / empty morning.
+ * Day % and spark always share that open.
+ */
+function finalizeQuote(args: {
+  index: (typeof INDIAN_MARKET_INDICES)[number];
+  price: number;
+  venueOpen: number | null;
+  previousClose: number;
+  marketTime?: number;
+  spark: SparkResult;
+  source: "nse" | "bse" | "yahoo";
+}): MarketQuote {
+  const { index, price, venueOpen, previousClose, marketTime, spark, source } =
+    args;
+  const isFx = index.group === "fx";
+  const venueIsToday =
+    spark.sessionIsToday ||
+    hasTodaySessionPrint(marketTime) ||
+    (isFx && isFxInstrumentLive(marketTime));
+
+  const sessionOpen = resolveSessionOpen({
+    venueOpen,
+    ohlcSessionOpen: spark.ohlcOpen,
+    sessionIsToday: spark.sessionIsToday,
+    venueIsToday,
+  });
+  const open =
+    sessionOpen ??
+    (venueOpen != null && venueOpen > 0 ? venueOpen : null) ??
+    (previousClose > 0 ? previousClose : price);
+
+  const { change, changePercent } = changeVersusSessionOpen(price, open);
+
+  let sparkline: number[];
+  if (spark.prices.length >= 2) {
+    // Rebuild % path vs the same open used for the headline number.
+    const prices = spark.prices.slice();
+    prices[0] = open;
+    prices[prices.length - 1] = price;
+    sparkline = sparklineSeries(prices, open);
+  } else {
+    sparkline = quickSpark(open, price);
+  }
+
+  const priced = normalizeLiveQuote({
+    price,
+    dayOpen: open,
+    previousClose,
+    marketTime,
+  });
+
+  const sessionPrinted = isFx
+    ? marketTime != null &&
+      (hasTodaySessionPrint(marketTime) || isFxInstrumentLive(marketTime))
+    : hasTodaySessionPrint(marketTime);
+
   return {
-    sparkline: sparklineSeries(prices, dayOpen),
-    dayOpen,
+    id: index.id,
+    name: index.name,
+    price: priced.price,
+    change,
+    changePercent,
+    dayOpen: open,
+    previousClose: priced.previousClose,
+    sparkline,
+    group: index.group,
+    marketTime: priced.marketTime,
+    sessionPrinted,
+    source,
   };
 }
 
@@ -95,43 +179,21 @@ async function yahooQuote(
     const live = await fetchYahooLiveQuote(index.yahoo, { fresh: true });
     if (!live) return null;
 
-    const spark = await sessionSparkline(
-      index.yahoo,
-      live.price,
-      live.dayOpen,
-      { fx: index.group === "fx" }
-    );
-
     const isFx = index.group === "fx";
+    const spark = await sessionSparkline(index.yahoo, live.price, { fx: isFx });
     const marketTime = isFx
       ? fxQuoteMarketTime(live.marketTime)
       : live.marketTime;
-    const sessionPrinted = isFx
-      ? marketTime != null &&
-        (hasTodaySessionPrint(marketTime) || isFxInstrumentLive(marketTime))
-      : hasTodaySessionPrint(marketTime);
 
-    const priced = normalizeLiveQuote({
+    return finalizeQuote({
+      index,
       price: live.price,
-      dayOpen: spark.dayOpen,
+      venueOpen: live.dayOpen,
       previousClose: live.previousClose,
       marketTime,
-    });
-
-    return {
-      id: index.id,
-      name: index.name,
-      price: priced.price,
-      change: priced.change,
-      changePercent: priced.changePercent,
-      dayOpen: priced.dayOpen,
-      previousClose: priced.previousClose,
-      sparkline: spark.sparkline,
-      group: index.group,
-      marketTime: priced.marketTime,
-      sessionPrinted,
+      spark,
       source: "yahoo",
-    };
+    });
   } catch {
     return null;
   }
@@ -151,53 +213,38 @@ export async function GET() {
   const results = await mapPool(
     INDIAN_MARKET_INDICES,
     async (index) => {
+      // Sensex — BSE open / LTP only.
       if (index.id === "sensex" && bseSensex) {
-        const spark = await sessionSparkline(
-          index.yahoo,
-          bseSensex.price,
-          bseSensex.dayOpen
-        );
-        return {
-          id: index.id,
-          name: index.name,
+        const spark = await sessionSparkline(index.yahoo, bseSensex.price);
+        return finalizeQuote({
+          index,
           price: bseSensex.price,
-          change: bseSensex.change,
-          changePercent: bseSensex.changePercent,
-          dayOpen: bseSensex.dayOpen,
+          venueOpen: bseSensex.dayOpen,
           previousClose: bseSensex.previousClose,
-          sparkline: spark.sparkline,
-          group: index.group,
           marketTime: bseSensex.marketTime,
-          sessionPrinted: hasTodaySessionPrint(bseSensex.marketTime),
-          source: "bse" as const,
-        } satisfies MarketQuote;
+          spark,
+          source: "bse",
+        });
       }
 
+      // NSE cash indices — each symbol's own NSE open / LTP.
       if (nseIndexNameForId(index.id)) {
         const nse = nseMap.get(index.id);
         if (nse) {
-          const spark = await sessionSparkline(
-            index.yahoo,
-            nse.price,
-            nse.dayOpen
-          );
-          return {
-            id: index.id,
-            name: index.name,
+          const spark = await sessionSparkline(index.yahoo, nse.price);
+          return finalizeQuote({
+            index,
             price: nse.price,
-            change: nse.change,
-            changePercent: nse.changePercent,
-            dayOpen: nse.dayOpen,
+            venueOpen: nse.dayOpen,
             previousClose: nse.previousClose,
-            sparkline: spark.sparkline,
-            group: index.group,
             marketTime: nse.marketTime,
-            sessionPrinted: hasTodaySessionPrint(nse.marketTime),
-            source: "nse" as const,
-          } satisfies MarketQuote;
+            spark,
+            source: "nse",
+          });
         }
       }
 
+      // USD/INR (FX) + any venue miss — Yahoo, still vs session open.
       return withTimeout(yahooQuote(index), 10_000, null);
     },
     4

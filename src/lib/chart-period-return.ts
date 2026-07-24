@@ -28,7 +28,7 @@ const LOOKBACK_SEC: Record<
 };
 
 const BASIS_LABEL: Record<ReturnBasis, string> = {
-  day_open: "vs today open",
+  day_open: "vs session open",
   prev_close: "vs prev close",
   week_open: "vs week open",
   month_open: "vs month open",

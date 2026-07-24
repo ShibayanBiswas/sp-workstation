@@ -7,6 +7,10 @@ import {
   istDateString,
   tradingSessionBars,
 } from "../src/lib/chart-ist";
+import {
+  changeVersusSessionOpen,
+  resolveSessionOpen,
+} from "../src/lib/session-open";
 import { sessionSparkPath, type OhlcBar } from "../src/lib/yahoo-ohlc";
 
 function bar(istLocal: string, open: number, close = open): OhlcBar {
@@ -115,6 +119,34 @@ const all = [...wed, ...thu, ...friMid];
   const session = tradingSessionBars([...wed, ...thu], { now });
   assert(firstStamp(session).includes("09:15"), "must not start at 10:15");
   assert(!firstStamp(session).includes("10:15"), "first stamp is not 10:15");
+}
+
+// resolveSessionOpen — holiday prefers OHLC last-session open.
+{
+  const holiday = resolveSessionOpen({
+    venueOpen: 999,
+    ohlcSessionOpen: 23650,
+    sessionIsToday: false,
+    venueIsToday: false,
+  });
+  assert(holiday === 23650, "holiday uses last session OHLC open");
+  const live = resolveSessionOpen({
+    venueOpen: 23674.4,
+    ohlcSessionOpen: 23670,
+    sessionIsToday: true,
+    venueIsToday: true,
+  });
+  assert(live === 23674.4, "live prefers venue open");
+  // BSE live today but Yahoo OHLC still on yesterday — venue wins.
+  const laggedOhlc = resolveSessionOpen({
+    venueOpen: 75708.19,
+    ohlcSessionOpen: 76470.05,
+    sessionIsToday: false,
+    venueIsToday: true,
+  });
+  assert(laggedOhlc === 75708.19, "venue today beats lagged Yahoo OHLC");
+  const vs = changeVersusSessionOpen(23700, 23674.4);
+  assert(vs.change > 0 && vs.changePercent > 0, "vs open positive");
 }
 
 console.log("ok — trading session day boundaries");

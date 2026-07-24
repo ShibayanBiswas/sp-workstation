@@ -1,5 +1,5 @@
 /**
- * NSE India live indices — day % vs today's session open.
+ * NSE India live indices — LTP + session open from NSE (day % applied upstream).
  * Warm a cookie session, then pull /api/allIndices.
  */
 
