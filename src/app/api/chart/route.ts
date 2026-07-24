@@ -16,6 +16,7 @@ import {
   snapFormingBarTip,
   yahooIntervalSeconds,
 } from "@/lib/yahoo-ohlc";
+import { tradingSessionBars } from "@/lib/chart-ist";
 import { INDIAN_MARKET_INDICES, getIndexById } from "@/data/indian-markets";
 import {
   fetchNseIndexQuotes,
@@ -97,13 +98,32 @@ export async function GET(req: Request) {
       ? snapFormingBarTip(ohlc.bars, intervalSec)
       : ohlc.bars.slice();
 
+  // Default 1D view = one trading session from that day's first print.
+  // Zoom/history (`full` / `before`) keep multi-day intraday history.
+  if (timeframe.id === "1D" && !inception && !isHistory) {
+    bars = tradingSessionBars(bars, { fx: index.group === "fx" });
+  }
+
+  if (bars.length === 0) {
+    return jsonDynamic(
+      {
+        error: isHistory ? "No older history" : "Chart data unavailable",
+        bars: [],
+        hasMore: false,
+      },
+      { status: isHistory ? 200 : 503 }
+    );
+  }
+
   const lastBar = bars[bars.length - 1]!;
   const earliest = bars[0]!.time;
   const nowSec = Math.floor(Date.now() / 1000);
   const MIN_HISTORY_UNIX = 946_684_800; // 2000-01-01 UTC
   const hasMore = isHistory
     ? bars.length > 0 && earliest > MIN_HISTORY_UNIX
-    : nowSec - earliest > 86_400;
+    : inception || timeframe.id !== "1D"
+      ? nowSec - earliest > 86_400
+      : false;
 
   if (isHistory) {
     return jsonDynamic({

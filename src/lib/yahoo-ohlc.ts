@@ -1,5 +1,5 @@
 import type { ChartTimeframe } from "@/lib/chart-timeframes";
-import { filterNseSessionBars, istDateString } from "@/lib/chart-ist";
+import { filterNseSessionBars, istDateString, tradingSessionBars } from "@/lib/chart-ist";
 import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
 import { normalizeLiveQuote } from "@/lib/market-quote";
 import { fetchWithTimeout, UPSTREAM_TIMEOUT_MS } from "@/lib/fetch-timeout";
@@ -508,35 +508,21 @@ export function closesFromOhlc(bars: OhlcBar[], maxPoints = 24): number[] {
 }
 
 /**
- * Session price path for sparklines.
- * - Cash: today's IST calendar day (falls back to ~24h if the day is sparse).
- * - FX (`rollingHours`): always use a rolling window — USD/INR prints overnight
- *   and "today IST" alone is often too thin for a readable spark.
+ * Single trading-day price path for sparklines — always starts at that day's
+ * first print (cash ≈09:15 IST; FX = first IST print). Never stitches yesterday
+ * onto today when the morning feed is still thin.
  */
 export function sessionSparkPath(
   bars: OhlcBar[],
   maxPoints = 96,
-  opts?: { rollingHours?: number; minDayBars?: number }
+  opts?: { fx?: boolean; now?: Date | number }
 ): { prices: number[]; sessionOpen: number } | null {
   if (bars.length === 0) return null;
 
-  const last = bars[bars.length - 1]!;
-  let dayBars: OhlcBar[];
-
-  if (opts?.rollingHours != null && opts.rollingHours > 0) {
-    const cutoff = last.time - opts.rollingHours * 3600;
-    dayBars = bars.filter((b) => b.time >= cutoff);
-  } else {
-    const lastDay = istDateString(last.time);
-    dayBars = bars.filter((b) => istDateString(b.time) === lastDay);
-    const minDayBars = opts?.minDayBars ?? 4;
-    // Sparse morning / post-midnight — fall back to last ~24h of bars.
-    if (dayBars.length < minDayBars && bars.length >= minDayBars) {
-      const cutoff = last.time - 24 * 3600;
-      dayBars = bars.filter((b) => b.time >= cutoff);
-    }
-  }
-
+  const dayBars = tradingSessionBars(bars, {
+    fx: opts?.fx,
+    now: opts?.now,
+  });
   if (dayBars.length === 0) return null;
 
   const sessionOpen = dayBars[0]!.open;
@@ -545,6 +531,10 @@ export function sessionSparkPath(
   const prices: number[] = [sessionOpen];
   for (const bar of dayBars) {
     if (Number.isFinite(bar.close)) prices.push(bar.close);
+  }
+  if (prices.length < 2) {
+    // Single bar so far (just opened) — still draw open → LTP tip later.
+    prices.push(dayBars[0]!.close);
   }
   if (prices.length < 2) return null;
 

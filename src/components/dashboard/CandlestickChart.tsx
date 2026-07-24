@@ -26,6 +26,7 @@ import {
   formatIstHeaderTime,
   istDateString,
   timeToUnix,
+  tradingSessionBars,
 } from "@/lib/chart-ist";
 import {
   buildHighLowMarkers,
@@ -98,8 +99,10 @@ const SMA_SLOW = 50;
 
 function shouldShowRecentWindow(zoomEnabled: boolean, tf: ChartTimeframe) {
   // Zoom On → show full loaded history (toward inception).
-  // Zoom Off → for intraday keep a recent trading window; daily+ fit what loaded.
+  // 1D Zoom Off → one session from open — fit the whole day, never clip into yesterday.
+  // Other intraday (1W) → recent trading window.
   if (zoomEnabled) return false;
+  if (tf.id === "1D") return false;
   return tf.intraday;
 }
 
@@ -821,6 +824,17 @@ export function CandlestickChart({
       const count = barCountRef.current;
       if (count <= 0) return;
 
+      // Leaving zoom on 1D: clip back to this trading session from open.
+      if (!enabled && tf.id === "1D") {
+        const session = tradingSessionBars(barsRef.current, {
+          fx: getIndexById(indexId)?.group === "fx",
+        });
+        if (session.length > 0) {
+          applyBars(session);
+          return;
+        }
+      }
+
       if (shouldShowRecentWindow(enabled, tf)) {
         showRecentWindow(chart, count, tf);
         return;
@@ -902,9 +916,20 @@ export function CandlestickChart({
         if (livePrice != null) {
           incoming = applyLiveCloseToBars(incoming, livePrice);
         }
+        // Client guard: 1D Zoom Off is always one session from that day's open.
+        if (tf.id === "1D" && !zoomRef.current) {
+          incoming = tradingSessionBars(incoming, {
+            fx: getIndexById(indexId)?.group === "fx",
+          });
+        }
 
         if (silent && barsRef.current.length > 0) {
-          const merged = mergeBars(barsRef.current, incoming, intervalSec);
+          let merged = mergeBars(barsRef.current, incoming, intervalSec);
+          if (tf.id === "1D" && !zoomRef.current) {
+            merged = tradingSessionBars(merged, {
+              fx: getIndexById(indexId)?.group === "fx",
+            });
+          }
           const lastIncoming = incoming[incoming.length - 1];
           const prevLast = barsRef.current[barsRef.current.length - 1];
 

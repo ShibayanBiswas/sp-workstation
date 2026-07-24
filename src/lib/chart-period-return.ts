@@ -1,4 +1,4 @@
-import { istDateString } from "@/lib/chart-ist";
+import { istDateString, tradingSessionBars } from "@/lib/chart-ist";
 import type { ChartTimeframeId } from "@/lib/chart-timeframes";
 import type { OhlcBar } from "@/lib/yahoo-ohlc";
 
@@ -60,11 +60,10 @@ function firstBarAtOrAfter(bars: OhlcBar[], cutoffUnix: number): OhlcBar {
   return bars.find((b) => b.time >= cutoffUnix) ?? bars[0];
 }
 
-/** Open of the first bar on the latest session day (IST). */
+/** Open of the active / last completed trading session. */
 function sessionDayOpen(bars: OhlcBar[]): number | null {
   if (bars.length === 0) return null;
-  const lastDay = istDateString(bars[bars.length - 1].time);
-  const dayBars = bars.filter((b) => istDateString(b.time) === lastDay);
+  const dayBars = tradingSessionBars(bars);
   const open = (dayBars[0] ?? bars[bars.length - 1]).open;
   return Number.isFinite(open) && open !== 0 ? open : null;
 }

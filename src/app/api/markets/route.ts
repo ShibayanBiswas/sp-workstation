@@ -67,11 +67,7 @@ async function sessionSparkline(
     null
   );
   const path = ohlc?.bars.length
-    ? sessionSparkPath(
-        ohlc.bars,
-        96,
-        isFx ? { rollingHours: 24 } : { minDayBars: 4 }
-      )
+    ? sessionSparkPath(ohlc.bars, 96, { fx: isFx })
     : null;
   const dayOpen =
     Number.isFinite(fallbackOpen) && fallbackOpen > 0
