@@ -49,9 +49,14 @@ const OPTION_CHAIN_ARCHIVE_BASE =
   process.env.NEXT_PUBLIC_OPTION_CHAIN_ARCHIVE_URL ??
   "https://option-data-fetcher.vercel.app";
 
+const GIFT_CITY_AIF_BASE =
+  process.env.NEXT_PUBLIC_GIFT_CITY_AIF_URL ??
+  "https://gift-city-aif-backtester.vercel.app";
+
 export const SP_DASHBOARD_BASE = SP_BASE;
 export const OPTIONS_LAB_EMBED_BASE = OPTIONS_LAB_BASE;
 export const OPTION_CHAIN_ARCHIVE_EMBED_BASE = OPTION_CHAIN_ARCHIVE_BASE;
+export const GIFT_CITY_AIF_EMBED_BASE = GIFT_CITY_AIF_BASE;
 
 const PRIMARY_LEAVES: SubModule[] = [
   {
@@ -175,6 +180,16 @@ const OPTION_CHAIN_LEAVES: SubModule[] = [
   },
 ];
 
+const GIFT_CITY_AIF_LEAVES: SubModule[] = [
+  {
+    id: "gift-city-aif-home",
+    label: "Backtester",
+    description: "Category III AIF structured units backtester",
+    path: "/dashboard/module/gift-city-aif",
+    spPath: "/",
+  },
+];
+
 function leafFrom(list: SubModule[], id: string): NavItem {
   const sub = list.find((s) => s.id === id)!;
   return {
@@ -230,6 +245,34 @@ export const MODULES: ModuleGroup[] = [
       primaryLeaf("upload"),
     ],
     submodules: PRIMARY_LEAVES,
+  },
+  {
+    id: "gift-city-aif",
+    label: "Gift City AIF",
+    description:
+      "GIFT City Category III AIF structured units backtester — rolling paths since 2001",
+    icon: "layers",
+    href: "/dashboard/module/gift-city-aif",
+    routeSlug: "gift-city-aif",
+    embedBase: GIFT_CITY_AIF_BASE,
+    frameTitle: "GIFT CITY AIF · BACKTESTER",
+    nav: [
+      {
+        id: "gift-city-aif-nav",
+        label: "Cat-III AIF Backtester",
+        description: "Structured units desk engine on every Nifty trading day",
+        path: "/dashboard/module/gift-city-aif",
+        children: [
+          {
+            id: "gift-city-aif-home",
+            label: "Backtester",
+            description: "Category III AIF structured units backtester",
+            path: "/dashboard/module/gift-city-aif",
+          },
+        ],
+      },
+    ],
+    submodules: GIFT_CITY_AIF_LEAVES,
   },
   {
     id: "lnd",

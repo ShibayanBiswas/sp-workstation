@@ -508,21 +508,35 @@ export function closesFromOhlc(bars: OhlcBar[], maxPoints = 24): number[] {
 }
 
 /**
- * Today's IST price path for cash sparklines, or — for FX — the latest IST
- * calendar day available in the bars (USD/INR prints overnight).
+ * Session price path for sparklines.
+ * - Cash: today's IST calendar day (falls back to ~24h if the day is sparse).
+ * - FX (`rollingHours`): always use a rolling window — USD/INR prints overnight
+ *   and "today IST" alone is often too thin for a readable spark.
  */
 export function sessionSparkPath(
   bars: OhlcBar[],
-  maxPoints = 96
+  maxPoints = 96,
+  opts?: { rollingHours?: number; minDayBars?: number }
 ): { prices: number[]; sessionOpen: number } | null {
   if (bars.length === 0) return null;
-  const lastDay = istDateString(bars[bars.length - 1].time);
-  let dayBars = bars.filter((b) => istDateString(b.time) === lastDay);
-  // FX can be sparse just after IST midnight — fall back to last ~24h of bars.
-  if (dayBars.length < 4 && bars.length >= 4) {
-    const cutoff = bars[bars.length - 1]!.time - 24 * 3600;
+
+  const last = bars[bars.length - 1]!;
+  let dayBars: OhlcBar[];
+
+  if (opts?.rollingHours != null && opts.rollingHours > 0) {
+    const cutoff = last.time - opts.rollingHours * 3600;
     dayBars = bars.filter((b) => b.time >= cutoff);
+  } else {
+    const lastDay = istDateString(last.time);
+    dayBars = bars.filter((b) => istDateString(b.time) === lastDay);
+    const minDayBars = opts?.minDayBars ?? 4;
+    // Sparse morning / post-midnight — fall back to last ~24h of bars.
+    if (dayBars.length < minDayBars && bars.length >= minDayBars) {
+      const cutoff = last.time - 24 * 3600;
+      dayBars = bars.filter((b) => b.time >= cutoff);
+    }
   }
+
   if (dayBars.length === 0) return null;
 
   const sessionOpen = dayBars[0]!.open;

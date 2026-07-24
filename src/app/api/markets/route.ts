@@ -51,21 +51,28 @@ function quickSpark(dayOpen: number, price: number): number[] {
 }
 
 /**
- * Real session spark from Yahoo 5m path (cached ~60s). Anchored to the
- * exchange session open (`fallbackOpen`) so shape + % agree. Timed so a slow
- * Yahoo host never blocks the tape.
+ * Real session spark from Yahoo OHLC. Cash uses today's IST path; FX uses a
+ * rolling 24h window so USD/INR isn't a flat stub on sparse IST mornings.
  */
 async function sessionSparkline(
   yahooSymbol: string,
   price: number,
-  fallbackOpen: number
+  fallbackOpen: number,
+  opts?: { fx?: boolean }
 ): Promise<{ sparkline: number[]; dayOpen: number }> {
+  const isFx = opts?.fx === true;
   const ohlc = await withTimeout(
     fetchYahooOhlc(yahooSymbol, getTimeframe("1D")),
-    3_500,
+    isFx ? 8_000 : 3_500,
     null
   );
-  const path = ohlc?.bars.length ? sessionSparkPath(ohlc.bars) : null;
+  const path = ohlc?.bars.length
+    ? sessionSparkPath(
+        ohlc.bars,
+        96,
+        isFx ? { rollingHours: 24 } : { minDayBars: 4 }
+      )
+    : null;
   const dayOpen =
     Number.isFinite(fallbackOpen) && fallbackOpen > 0
       ? fallbackOpen
@@ -78,6 +85,7 @@ async function sessionSparkline(
   }
   const prices = path.prices.slice();
   prices[prices.length - 1] = price;
+  // FX: keep enough points even when day-% anchor is today's open (tip matches %).
   return {
     sparkline: sparklineSeries(prices, dayOpen),
     dayOpen,
@@ -94,7 +102,8 @@ async function yahooQuote(
     const spark = await sessionSparkline(
       index.yahoo,
       live.price,
-      live.dayOpen
+      live.dayOpen,
+      { fx: index.group === "fx" }
     );
 
     const isFx = index.group === "fx";
