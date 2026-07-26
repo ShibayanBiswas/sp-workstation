@@ -23,7 +23,7 @@ export const TEAM_MEMBERS: TeamMemberSeed[] = [
     role: "admin",
   },
   {
-    name: "Sammedhi Shah",
+    name: "Sammdi Shan",
     email: "sammedishah@rathi.com",
     role: "member",
   },

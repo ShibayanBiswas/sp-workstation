@@ -182,11 +182,60 @@ const OPTION_CHAIN_LEAVES: SubModule[] = [
 
 const GIFT_CITY_AIF_LEAVES: SubModule[] = [
   {
-    id: "gift-city-aif-home",
-    label: "Backtester",
-    description: "Category III AIF structured units backtester",
+    id: "gift-home",
+    label: "Home",
+    description: "GIFT City Cat-III AIF backtester home",
     path: "/dashboard/module/gift-city-aif",
     spPath: "/",
+  },
+  {
+    id: "gift-analytics",
+    label: "Analytics",
+    description: "Rolling path analytics since 2001",
+    path: "/dashboard/module/gift-city-aif/analytics",
+    spPath: "/analytics",
+  },
+  {
+    id: "gift-product",
+    label: "Product",
+    description: "Structured units product sheet",
+    path: "/dashboard/module/gift-city-aif/product",
+    spPath: "/product",
+  },
+  {
+    id: "gift-paths",
+    label: "Paths",
+    description: "Path calendar & frequency windows",
+    path: "/dashboard/module/gift-city-aif/paths",
+    spPath: "/paths",
+  },
+  {
+    id: "gift-hedging",
+    label: "Hedging Sheet",
+    description: "Hedging sheet for structured units",
+    path: "/dashboard/module/gift-city-aif/hedging",
+    spPath: "/hedging",
+  },
+  {
+    id: "gift-computation",
+    label: "Computation",
+    description: "Desk computation engine",
+    path: "/dashboard/module/gift-city-aif/computation",
+    spPath: "/computation",
+  },
+  {
+    id: "gift-ledger",
+    label: "Daily Ledger",
+    description: "Daily ledger under computation",
+    path: "/dashboard/module/gift-city-aif/computation/ledger",
+    spPath: "/computation/ledger",
+  },
+  {
+    id: "gift-intel",
+    label: "Intel",
+    description: "GIFT City AIF intelligence surface",
+    path: "/dashboard/module/gift-city-aif/intel",
+    spPath: "/intel",
   },
 ];
 
@@ -202,6 +251,10 @@ function leafFrom(list: SubModule[], id: string): NavItem {
 
 function primaryLeaf(id: string): NavItem {
   return leafFrom(PRIMARY_LEAVES, id);
+}
+
+function giftCityLeaf(id: string): NavItem {
+  return leafFrom(GIFT_CITY_AIF_LEAVES, id);
 }
 
 function optionsLabLeaf(id: string): NavItem {
@@ -256,21 +309,24 @@ export const MODULES: ModuleGroup[] = [
     routeSlug: "gift-city-aif",
     embedBase: GIFT_CITY_AIF_BASE,
     frameTitle: "GIFT CITY AIF · BACKTESTER",
+    // Same top-level order as Primary SP: Home → Analytics → Desk → Intel
     nav: [
+      giftCityLeaf("gift-home"),
+      giftCityLeaf("gift-analytics"),
       {
-        id: "gift-city-aif-nav",
-        label: "Cat-III AIF Backtester",
-        description: "Structured units desk engine on every Nifty trading day",
-        path: "/dashboard/module/gift-city-aif",
+        id: "gift-desk-group",
+        label: "Desk",
+        description: "Product, paths, hedging & computation",
+        path: "/dashboard/module/gift-city-aif/product",
         children: [
-          {
-            id: "gift-city-aif-home",
-            label: "Backtester",
-            description: "Category III AIF structured units backtester",
-            path: "/dashboard/module/gift-city-aif",
-          },
+          giftCityLeaf("gift-product"),
+          giftCityLeaf("gift-paths"),
+          giftCityLeaf("gift-hedging"),
+          giftCityLeaf("gift-computation"),
+          giftCityLeaf("gift-ledger"),
         ],
       },
+      giftCityLeaf("gift-intel"),
     ],
     submodules: GIFT_CITY_AIF_LEAVES,
   },
