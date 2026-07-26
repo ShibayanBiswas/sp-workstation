@@ -80,7 +80,7 @@ last price. On **1D**, change/% match Snapshot (vs previous close). On 1W / 1M /
 … the chart shows period returns (vs week / month / lookback open), labeled in
 the header.
 
-Index display order: main benchmarks → sectors → India VIX → USD/INR.
+Index display order: main benchmarks → sectors → India VIX.
 
 ## Rendering model
 

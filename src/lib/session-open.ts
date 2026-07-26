@@ -71,7 +71,7 @@ export function resolveSessionOpen(opts: {
 /** Open of the trading session represented by these OHLC bars. */
 export function ohlcSessionOpen(
   bars: OhlcBar[],
-  opts?: { fx?: boolean; now?: Date | number }
+  opts?: { now?: Date | number }
 ): number | null {
   const session = tradingSessionBars(bars, opts);
   if (session.length === 0) return null;

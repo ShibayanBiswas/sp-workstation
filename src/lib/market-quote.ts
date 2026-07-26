@@ -11,8 +11,7 @@ export type NormalizedQuote = {
   marketTime?: number;
 };
 
-export function priceDigitsForIndex(indexId: string): number {
-  if (indexId === "usdinr") return 4;
+export function priceDigitsForIndex(_indexId: string): number {
   return 2;
 }
 

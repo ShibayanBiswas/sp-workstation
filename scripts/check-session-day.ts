@@ -100,19 +100,6 @@ const all = [...wed, ...thu, ...friMid];
   assert(daysIn(session).join() === "2026-07-24", "pre-open / holiday → last session");
 }
 
-// FX: IST calendar day, including overnight prints before cash open.
-{
-  const fx = [
-    bar("2026-07-23T18:00:00", 96.4),
-    bar("2026-07-24T00:20:00", 96.5),
-    bar("2026-07-24T09:15:00", 96.55),
-  ];
-  const now = new Date("2026-07-24T09:17:00+05:30");
-  const session = tradingSessionBars(fx, { fx: true, now });
-  assert(daysIn(session).join() === "2026-07-24", "FX today IST only");
-  assert(firstStamp(session).includes("00:20"), `FX from first IST print got ${firstStamp(session)}`);
-}
-
 // Never starts at 10:15 when 09:15 exists.
 {
   const now = new Date("2026-07-23T14:00:00+05:30");

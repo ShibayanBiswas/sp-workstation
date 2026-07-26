@@ -19,10 +19,8 @@ import {
 import { refreshIntervalForTape } from "@/lib/live-refresh";
 import { CLIENT_API_TIMEOUT_MS } from "@/lib/fetch-timeout";
 import {
-  getFxMarketStatus,
   getNseMarketStatus,
   hasTodaySessionPrint,
-  isFxInstrumentLive,
   isMarketLive,
   isMarketSessionActive,
   lastCashSessionCloseUnix,
@@ -113,14 +111,11 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
       const next = dedupeQuotes(data.quotes || []);
       const changed = new Set<string>();
       const cashLive = isMarketLive(status);
-      const fxOpen = getFxMarketStatus() === "open";
-      // Flash cash ticks in the NSE session; FX can flash overnight too.
+      // Flash cash ticks only while the NSE/BSE session is open.
       for (const q of next) {
         if (q.price == null) continue;
         const prev = prevPrices.current.get(q.id);
-        const flashOk =
-          q.group === "fx" ? fxOpen : cashLive;
-        if (flashOk && prev != null && prev !== q.price) changed.add(q.id);
+        if (cashLive && prev != null && prev !== q.price) changed.add(q.id);
         prevPrices.current.set(q.id, q.price);
       }
       if (changed.size > 0) {
@@ -399,15 +394,9 @@ export function IndianMarketCards() {
                 const flash = flashIds.has(q.id);
                 const printToday =
                   q.sessionPrinted ?? hasTodaySessionPrint(q.marketTime);
-                const awaitingPrint =
-                  q.group !== "fx" && sessionActive && !printToday;
-                const fxLive =
-                  q.group === "fx" && isFxInstrumentLive(q.marketTime);
+                const awaitingPrint = sessionActive && !printToday;
                 const cardStamp = formatIstSessionStamp(q.marketTime, {
-                  forceDate:
-                    q.group === "fx"
-                      ? !fxLive
-                      : !sessionActive || awaitingPrint,
+                  forceDate: !sessionActive || awaitingPrint,
                 });
                 return (
                   <button
@@ -457,13 +446,9 @@ export function IndianMarketCards() {
                     </div>
                     {cardStamp ? (
                       <p className="mt-2 truncate text-[10px] leading-tight text-[var(--fg-subtle)]">
-                        {q.group === "fx"
-                          ? fxLive
-                            ? `FX live · ${cardStamp} IST`
-                            : `FX · ${cardStamp} IST`
-                          : awaitingPrint
-                            ? `Awaiting open · ${cardStamp} IST`
-                            : `${cardStamp} IST`}
+                        {awaitingPrint
+                          ? `Awaiting open · ${cardStamp} IST`
+                          : `${cardStamp} IST`}
                       </p>
                     ) : awaitingPrint ? (
                       <p className="mt-2 truncate text-[10px] leading-tight text-[var(--fg-subtle)]">

@@ -3,10 +3,7 @@ import { getSession } from "@/lib/auth";
 import { computeTimeframeReturn } from "@/lib/chart-period-return";
 import { getTimeframe } from "@/lib/chart-timeframes";
 import { jsonDynamic } from "@/lib/json-dynamic";
-import {
-  hasTodaySessionPrint,
-  isFxInstrumentLive,
-} from "@/lib/market-hours";
+import { hasTodaySessionPrint } from "@/lib/market-hours";
 import {
   fetchYahooOhlc,
   fetchYahooOhlcBefore,
@@ -107,7 +104,7 @@ export async function GET(req: Request) {
   // Default 1D view = one trading session from that day's first print.
   // Zoom/history (`full` / `before`) keep multi-day intraday history.
   if (timeframe.id === "1D" && !inception && !isHistory) {
-    bars = tradingSessionBars(bars, { fx: index.group === "fx" });
+    bars = tradingSessionBars(bars);
   }
 
   if (bars.length === 0) {
@@ -143,7 +140,7 @@ export async function GET(req: Request) {
     });
   }
 
-  // Prefer per-venue LTP (NSE / BSE / Yahoo FX) over lagged Yahoo closes.
+  // Prefer per-venue LTP (NSE / BSE) over lagged Yahoo closes.
   const nse =
     timeframe.id === "1D" && nseIndexNameForId(index.id)
       ? (await fetchNseIndexQuotes({ fresh: true })).get(index.id)
@@ -160,19 +157,17 @@ export async function GET(req: Request) {
   // Candle pane must track exchange LTP — not a lagged Yahoo close.
   bars = applyLiveCloseToBars(bars, price);
 
-  const isFx = index.group === "fx";
   const ohlcOpen =
     timeframe.id === "1D"
-      ? ohlcSessionOpen(bars, { fx: isFx }) ??
-        sessionSparkPath(bars, 96, { fx: isFx })?.sessionOpen ??
+      ? ohlcSessionOpen(bars) ??
+        sessionSparkPath(bars, 96)?.sessionOpen ??
         null
       : null;
   const sessionIsToday =
     timeframe.id === "1D" ? sessionBarsAreToday(bars) : true;
   const venueIsToday =
     sessionIsToday ||
-    hasTodaySessionPrint(venue?.marketTime ?? live?.marketTime) ||
-    (isFx && isFxInstrumentLive(venue?.marketTime ?? live?.marketTime));
+    hasTodaySessionPrint(venue?.marketTime ?? live?.marketTime);
 
   // Day % / Open line = venue session open while today; else last session OHLC open.
   const sessionOpen =
@@ -213,9 +208,7 @@ export async function GET(req: Request) {
   }
 
   const marketTime = venue?.marketTime ?? live?.marketTime ?? lastBar.time;
-  const sessionPrinted = isFx
-    ? hasTodaySessionPrint(marketTime) || isFxInstrumentLive(marketTime)
-    : hasTodaySessionPrint(marketTime);
+  const sessionPrinted = hasTodaySessionPrint(marketTime);
 
   return jsonDynamic({
     indexId: index.id,

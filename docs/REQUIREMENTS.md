@@ -28,7 +28,7 @@ unless noted.
 |---|---|---|
 | Kaplpesh Koradia | kalpeshkoradia@rathi.com | ✅ `src/data/team.ts` |
 | Vinay Rathi | vinayrathi@rathi.com | ✅ |
-| Sammdi Shan | sammedishah@rathi.com | ✅ |
+| Sammedi Shan | sammedishah@rathi.com | ✅ |
 | Parth Parekh | parthparekh@rathi.com | ✅ |
 | Nishchay Soni | nishchaysoni@rathi.com | ✅ |
 | Subhendu Maji | subhendumaji@rathi.com | ✅ |
@@ -59,7 +59,7 @@ Passwords: `scripts/seed-passwords.local.json` or `SEED_DEFAULT_PASSWORD_MAP`.
 | Candlestick chart | ✅ | `CandlestickChart` + `lightweight-charts` |
 | Default timeframe 1D | ✅ | `LiveCharts.tsx` |
 | IST time axis | ✅ | `src/lib/chart-ist.ts` |
-| Index order | ✅ | Benchmarks → sectors → VIX → USD/INR |
+| Index order | ✅ | Benchmarks → sectors → VIX |
 | No raw Yahoo tickers in UI | ✅ | Names only (e.g. "Nifty 50") |
 | 30s live refresh | ✅ | **60s** unified refresh (`LIVE_REFRESH_MS`) |
 | Live sync indicator | ✅ | `LiveSyncIndicator` in header, tape, cards, chart |
@@ -69,7 +69,7 @@ Passwords: `scripts/seed-passwords.local.json` or `SEED_DEFAULT_PASSWORD_MAP`.
 ### Indices covered
 
 Nifty 50, Sensex, Bank Nifty, Midcap, Next 50, sector indices (IT, Auto,
-FMCG, Metal, Pharma, Energy, Fin Service), India VIX, USD/INR.
+FMCG, Metal, Pharma, Energy, Fin Service), India VIX.
 
 ## 6. Sidebar modules
 

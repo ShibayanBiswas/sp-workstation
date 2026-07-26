@@ -509,18 +509,17 @@ export function closesFromOhlc(bars: OhlcBar[], maxPoints = 24): number[] {
 
 /**
  * Single trading-day price path for sparklines — always starts at that day's
- * first print (cash ≈09:15 IST; FX = first IST print). Never stitches yesterday
- * onto today when the morning feed is still thin.
+ * first print (≈09:15 IST). Never stitches yesterday onto today when the
+ * morning feed is still thin.
  */
 export function sessionSparkPath(
   bars: OhlcBar[],
   maxPoints = 96,
-  opts?: { fx?: boolean; now?: Date | number }
+  opts?: { now?: Date | number }
 ): { prices: number[]; sessionOpen: number } | null {
   if (bars.length === 0) return null;
 
   const dayBars = tradingSessionBars(bars, {
-    fx: opts?.fx,
     now: opts?.now,
   });
   if (dayBars.length === 0) return null;

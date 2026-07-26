@@ -12,9 +12,7 @@ import {
 } from "@/lib/chart-timeframes";
 import {
   isAwaitingTodayPrint,
-  isFxInstrumentLive,
   isInstrumentSessionLive,
-  getFxMarketStatus,
   marketStatusLabel,
   type MarketStatus,
 } from "@/lib/market-hours";
@@ -81,29 +79,21 @@ export function LiveCharts() {
     INDIAN_MARKET_INDICES[0];
 
   const liveQuote = quoteFor(selectedIndexId);
-  const isFx = active.group === "fx";
-  const fxLive = isFx && isFxInstrumentLive(liveQuote?.marketTime);
-  const instrumentLive = isFx
-    ? fxLive
-    : isInstrumentSessionLive(marketStatus, liveQuote?.marketTime);
-  const awaitingPrint = isFx
-    ? false
-    : isAwaitingTodayPrint(marketStatus, liveQuote?.marketTime);
-  // Chart chrome: FX can be live overnight while cash is closed.
-  const chartStatus: MarketStatus = isFx
-    ? getFxMarketStatus() === "open"
-      ? "open"
-      : "weekend"
-    : marketStatus;
+  const instrumentLive = isInstrumentSessionLive(
+    marketStatus,
+    liveQuote?.marketTime
+  );
+  const awaitingPrint = isAwaitingTodayPrint(
+    marketStatus,
+    liveQuote?.marketTime
+  );
+  const chartStatus = marketStatus;
   const chartSyncStatus = chartStatus;
-  const chartLastMarketTime = isFx
-    ? (liveQuote?.marketTime ?? null)
-    : (liveQuote?.marketTime ?? lastMarketTime);
+  const chartLastMarketTime = liveQuote?.marketTime ?? lastMarketTime;
 
   const benchmarks = indicesByGroup("benchmark");
   const sectors = indicesByGroup("sector");
   const volatility = indicesByGroup("volatility");
-  const fx = indicesByGroup("fx");
 
   return (
     <section
@@ -147,13 +137,6 @@ export function LiveCharts() {
             </optgroup>
             <optgroup label="Volatility">
               {volatility.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.name}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="FX">
-              {fx.map((i) => (
                 <option key={i.id} value={i.id}>
                   {i.name}
                 </option>
@@ -210,7 +193,6 @@ export function LiveCharts() {
             lastMarketTime={chartLastMarketTime}
             marketStatus={chartSyncStatus}
             awaitingTodayPrint={awaitingPrint}
-            venue={isFx ? "fx" : "cash"}
             compact
           />
           <span
@@ -218,11 +200,7 @@ export function LiveCharts() {
           >
             {awaitingPrint
               ? "Awaiting open · IST"
-              : isFx
-                ? getFxMarketStatus() === "open"
-                  ? "FX Open · IST"
-                  : "FX Weekend · IST"
-                : `${marketStatusLabel(marketStatus)} · IST`}
+              : `${marketStatusLabel(marketStatus)} · IST`}
           </span>
         </div>
         {zoomEnabled ? (

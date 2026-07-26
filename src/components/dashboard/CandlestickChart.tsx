@@ -44,11 +44,10 @@ import {
 } from "@/lib/yahoo-ohlc";
 import { refreshIntervalForStatus } from "@/lib/live-refresh";
 import { CLIENT_API_TIMEOUT_MS } from "@/lib/fetch-timeout";
-import { getIndexById, lastSessionPhrase } from "@/data/indian-markets";
+import { lastSessionPhrase } from "@/data/indian-markets";
 import {
   getNseMarketStatus,
   isAwaitingTodayPrint,
-  isFxInstrumentLive,
   isInstrumentSessionLive,
   type MarketStatus,
 } from "@/lib/market-hours";
@@ -321,13 +320,14 @@ export function CandlestickChart({
     getNseMarketStatus()
   );
   const marketStatus = marketStatusProp ?? clockStatus;
-  const isFx = getIndexById(indexId)?.group === "fx";
-  const instrumentLive = isFx
-    ? isFxInstrumentLive(syncedQuote?.marketTime)
-    : isInstrumentSessionLive(marketStatus, syncedQuote?.marketTime);
-  const awaitingPrint = isFx
-    ? false
-    : isAwaitingTodayPrint(marketStatus, syncedQuote?.marketTime);
+  const instrumentLive = isInstrumentSessionLive(
+    marketStatus,
+    syncedQuote?.marketTime
+  );
+  const awaitingPrint = isAwaitingTodayPrint(
+    marketStatus,
+    syncedQuote?.marketTime
+  );
   const marketStatusRef = useRef(marketStatus);
 
   useEffect(() => {
@@ -827,9 +827,7 @@ export function CandlestickChart({
 
       // Leaving zoom on 1D: clip back to this trading session from open.
       if (!enabled && tf.id === "1D") {
-        const session = tradingSessionBars(barsRef.current, {
-          fx: getIndexById(indexId)?.group === "fx",
-        });
+        const session = tradingSessionBars(barsRef.current);
         if (session.length > 0) {
           applyBars(session);
           return;
@@ -919,17 +917,13 @@ export function CandlestickChart({
         }
         // Client guard: 1D Zoom Off is always one session from that day's open.
         if (tf.id === "1D" && !zoomRef.current) {
-          incoming = tradingSessionBars(incoming, {
-            fx: getIndexById(indexId)?.group === "fx",
-          });
+          incoming = tradingSessionBars(incoming);
         }
 
         if (silent && barsRef.current.length > 0) {
           let merged = mergeBars(barsRef.current, incoming, intervalSec);
           if (tf.id === "1D" && !zoomRef.current) {
-            merged = tradingSessionBars(merged, {
-              fx: getIndexById(indexId)?.group === "fx",
-            });
+            merged = tradingSessionBars(merged);
           }
           const lastIncoming = incoming[incoming.length - 1];
           const prevLast = barsRef.current[barsRef.current.length - 1];

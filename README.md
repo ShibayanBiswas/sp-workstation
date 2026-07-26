@@ -82,4 +82,3 @@ Live tape and snapshot cards follow the order in `src/data/indian-markets.ts`:
 1. Main benchmarks (Nifty 50, Sensex, Bank Nifty, Midcap, Next 50)
 2. Sector indices
 3. India VIX
-4. USD/INR

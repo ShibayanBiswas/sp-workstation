@@ -1,4 +1,4 @@
-import { getFxMarketStatus, getNseMarketStatus } from "@/lib/market-hours";
+import { getNseMarketStatus } from "@/lib/market-hours";
 
 /** Live markets + chart polling while session is open (~Zerodha-feel refresh). */
 export const LIVE_REFRESH_MS = 15_000;
@@ -14,13 +14,7 @@ export function refreshIntervalForStatus(
     : CLOSED_REFRESH_MS;
 }
 
-/**
- * Tape poll cadence: keep refreshing while cash OR FX is open so USD/INR
- * stays live overnight even when NSE/BSE cash is closed.
- */
+/** Tape poll cadence: refresh while NSE/BSE cash is open or in pre-open. */
 export function refreshIntervalForTape(now = new Date()): number {
-  const cash = getNseMarketStatus(now);
-  if (cash === "open" || cash === "pre-open") return LIVE_REFRESH_MS;
-  if (getFxMarketStatus(now) === "open") return LIVE_REFRESH_MS;
-  return CLOSED_REFRESH_MS;
+  return refreshIntervalForStatus(getNseMarketStatus(now));
 }

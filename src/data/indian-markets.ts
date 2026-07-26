@@ -1,4 +1,4 @@
-export type IndianIndexGroup = "benchmark" | "sector" | "volatility" | "fx";
+export type IndianIndexGroup = "benchmark" | "sector" | "volatility";
 
 export type IndianIndex = {
   id: string;
@@ -8,7 +8,7 @@ export type IndianIndex = {
 };
 
 /**
- * Display order: main benchmarks → sector indices → India VIX → USD/INR.
+ * Display order: main benchmarks → sector indices → India VIX.
  * Tape, snapshot cards, and API responses follow this sequence.
  */
 export const INDIAN_MARKET_INDICES: IndianIndex[] = [
@@ -25,7 +25,6 @@ export const INDIAN_MARKET_INDICES: IndianIndex[] = [
   { id: "niftyenergy", name: "Nifty Energy", yahoo: "^CNXENERGY", group: "sector" },
   { id: "niftyfin", name: "Nifty Fin Service", yahoo: "NIFTY_FIN_SERVICE.NS", group: "sector" },
   { id: "vix", name: "India VIX", yahoo: "^INDIAVIX", group: "volatility" },
-  { id: "usdinr", name: "USD/INR", yahoo: "INR=X", group: "fx" },
 ];
 
 const DISPLAY_RANK = new Map(
@@ -50,7 +49,7 @@ export function indicesByGroup(group: IndianIndexGroup): IndianIndex[] {
   return INDIAN_MARKET_INDICES.filter((i) => i.group === group);
 }
 
-/** NSE/BSE cash session instruments — exclude 24x5 FX from “last session” stamps. */
+/** NSE/BSE cash session instruments. */
 export function isCashSessionGroup(group: IndianIndexGroup): boolean {
   return group === "benchmark" || group === "sector" || group === "volatility";
 }
@@ -65,10 +64,9 @@ export function cashExchangeLabel(
   return "NSE";
 }
 
-/** e.g. "Last BSE session" / "Last NSE session" / "Last FX print" / "Last session". */
+/** e.g. "Last BSE session" / "Last NSE session" / "Last session". */
 export function lastSessionPhrase(indexId?: string | null): string {
   if (!indexId) return "Last session";
-  if (indexId === "usdinr") return "Last FX print";
   const ex = cashExchangeLabel(indexId);
   return ex ? `Last ${ex} session` : "Last session";
 }

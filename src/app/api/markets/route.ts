@@ -2,8 +2,6 @@ import { getSession } from "@/lib/auth";
 import {
   getNseMarketStatus,
   hasTodaySessionPrint,
-  fxQuoteMarketTime,
-  isFxInstrumentLive,
 } from "@/lib/market-hours";
 import { INDIAN_MARKET_INDICES, sortByDisplayOrder } from "@/data/indian-markets";
 import {
@@ -64,27 +62,23 @@ type SparkResult = {
 };
 
 /**
- * Yahoo OHLC path for the active trading session only.
- * Cash → NSE hours day; FX → IST calendar day.
+ * Yahoo OHLC path for the active trading session only (NSE/BSE cash hours day).
  */
 async function sessionSparkline(
   yahooSymbol: string,
-  price: number,
-  opts?: { fx?: boolean }
+  price: number
 ): Promise<SparkResult> {
-  const isFx = opts?.fx === true;
   const ohlc = await withTimeout(
     fetchYahooOhlc(yahooSymbol, getTimeframe("1D")),
-    isFx ? 8_000 : 3_500,
+    3_500,
     null
   );
   if (!ohlc?.bars.length) {
     return { prices: [], ohlcOpen: null, sessionIsToday: false };
   }
-  const sessionBars = tradingSessionBars(ohlc.bars, { fx: isFx });
-  const path = sessionSparkPath(ohlc.bars, 96, { fx: isFx });
-  const ohlcOpen =
-    path?.sessionOpen ?? ohlcSessionOpen(ohlc.bars, { fx: isFx });
+  const sessionBars = tradingSessionBars(ohlc.bars);
+  const path = sessionSparkPath(ohlc.bars, 96);
+  const ohlcOpen = path?.sessionOpen ?? ohlcSessionOpen(ohlc.bars);
   const sessionIsToday = sessionBarsAreToday(sessionBars);
   if (!path || path.prices.length < 2) {
     return {
@@ -114,11 +108,8 @@ function finalizeQuote(args: {
 }): MarketQuote {
   const { index, price, venueOpen, previousClose, marketTime, spark, source } =
     args;
-  const isFx = index.group === "fx";
   const venueIsToday =
-    spark.sessionIsToday ||
-    hasTodaySessionPrint(marketTime) ||
-    (isFx && isFxInstrumentLive(marketTime));
+    spark.sessionIsToday || hasTodaySessionPrint(marketTime);
 
   const sessionOpen = resolveSessionOpen({
     venueOpen,
@@ -151,10 +142,7 @@ function finalizeQuote(args: {
     marketTime,
   });
 
-  const sessionPrinted = isFx
-    ? marketTime != null &&
-      (hasTodaySessionPrint(marketTime) || isFxInstrumentLive(marketTime))
-    : hasTodaySessionPrint(marketTime);
+  const sessionPrinted = hasTodaySessionPrint(marketTime);
 
   return {
     id: index.id,
@@ -179,18 +167,14 @@ async function yahooQuote(
     const live = await fetchYahooLiveQuote(index.yahoo, { fresh: true });
     if (!live) return null;
 
-    const isFx = index.group === "fx";
-    const spark = await sessionSparkline(index.yahoo, live.price, { fx: isFx });
-    const marketTime = isFx
-      ? fxQuoteMarketTime(live.marketTime)
-      : live.marketTime;
+    const spark = await sessionSparkline(index.yahoo, live.price);
 
     return finalizeQuote({
       index,
       price: live.price,
       venueOpen: live.dayOpen,
       previousClose: live.previousClose,
-      marketTime,
+      marketTime: live.marketTime,
       spark,
       source: "yahoo",
     });
@@ -244,7 +228,7 @@ export async function GET() {
         }
       }
 
-      // USD/INR (FX) + any venue miss — Yahoo, still vs session open.
+      // Venue miss — Yahoo fallback, still vs session open.
       return withTimeout(yahooQuote(index), 10_000, null);
     },
     4

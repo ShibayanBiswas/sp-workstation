@@ -96,7 +96,7 @@ The endpoint is intended for controlled provisioning, not routine browser use.
 
 ### `GET /api/markets`
 
-Returns live index quotes in display order (benchmarks → sectors → VIX → USD/INR):
+Returns live index quotes in display order (benchmarks → sectors → VIX):
 
 ```json
 {

@@ -25,21 +25,13 @@ export function isNseSessionMinute(unixSec: number): boolean {
   return total >= 9 * 60 + 15 && total <= 15 * 60 + 30;
 }
 
-/** Symbols that trade outside NSE cash hours (keep all intraday bars). */
-const NON_NSE_SESSION_SYMBOLS = new Set(["INR=X"]);
-
-export function isFxYahooSymbol(yahooSymbol?: string): boolean {
-  return Boolean(yahooSymbol && NON_NSE_SESSION_SYMBOLS.has(yahooSymbol));
-}
-
 /** Keep only bars inside Indian cash-market hours for intraday charts. */
 export function filterNseSessionBars(
   bars: OhlcBar[],
   intraday: boolean,
-  yahooSymbol?: string
+  _yahooSymbol?: string
 ): OhlcBar[] {
   if (!intraday) return bars;
-  if (isFxYahooSymbol(yahooSymbol)) return bars;
   const filtered = bars.filter((b) => isNseSessionMinute(b.time));
   return filtered.length > 0 ? filtered : bars;
 }
@@ -51,14 +43,10 @@ export function filterNseSessionBars(
  * - If today IST has any session bars → today from first print (≈09:15)
  * - Else (pre-open, weekend, holiday, empty morning feed) → last day present
  *   in the series (last completed session from open → close)
- *
- * FX (24×5):
- * - Prefer today IST calendar day from first print
- * - Else last IST day present in the series
  */
 export function tradingSessionBars(
   bars: OhlcBar[],
-  opts?: { fx?: boolean; now?: Date | number }
+  opts?: { now?: Date | number }
 ): OhlcBar[] {
   if (bars.length === 0) return [];
 
