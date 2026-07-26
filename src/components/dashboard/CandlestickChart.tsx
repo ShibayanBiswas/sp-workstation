@@ -93,8 +93,7 @@ type Props = {
 const TV_FONT =
   "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif";
 
-const SMA_FAST = 20;
-const SMA_SLOW = 50;
+const SMA_PERIOD = 20;
 
 function shouldShowRecentWindow(zoomEnabled: boolean, tf: ChartTimeframe) {
   // Zoom On → show full loaded history (toward inception).
@@ -120,8 +119,7 @@ function chartColors(theme: ThemeMode) {
       volumeDown: "rgba(239, 83, 80, 0.45)",
       muted: "#787b86",
       watermark: "rgba(255, 255, 255, 0.045)",
-      smaFast: "#5b9cf6",
-      smaSlow: "#f0b90b",
+      sma: "#5b9cf6",
       vwap: "#b388ff",
       refLine: "rgba(229, 207, 148, 0.75)",
       highLine: "rgba(38, 166, 154, 0.55)",
@@ -141,8 +139,7 @@ function chartColors(theme: ThemeMode) {
     volumeDown: "rgba(242, 54, 69, 0.4)",
     muted: "#787b86",
     watermark: "rgba(19, 23, 34, 0.055)",
-    smaFast: "#2962ff",
-    smaSlow: "#ff6d00",
+    sma: "#2962ff",
     vwap: "#7b1fa2",
     refLine: "rgba(180, 148, 72, 0.85)",
     highLine: "rgba(8, 153, 129, 0.55)",
@@ -531,23 +528,14 @@ export function CandlestickChart({
     });
 
     // Overlays after candles so MAs/VWAP paint on top (TradingView-style).
-    const smaFastSeries = chart.addLineSeries({
-      color: colors.smaFast,
+    const smaSeries = chart.addLineSeries({
+      color: colors.sma,
       lineWidth: 1,
       priceLineVisible: false,
       lastValueVisible: false,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 3,
-      title: `SMA ${SMA_FAST}`,
-    });
-    const smaSlowSeries = chart.addLineSeries({
-      color: colors.smaSlow,
-      lineWidth: 1,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      crosshairMarkerVisible: true,
-      crosshairMarkerRadius: 3,
-      title: `SMA ${SMA_SLOW}`,
+      title: `SMA ${SMA_PERIOD}`,
     });
     const vwapSeries = chart.addLineSeries({
       color: colors.vwap,
@@ -580,8 +568,7 @@ export function CandlestickChart({
       extras?: {
         volume?: number | null;
         prevClose?: number | null;
-        smaFast?: number | null;
-        smaSlow?: number | null;
+        sma?: number | null;
         vwap?: number | null;
       }
     ) => {
@@ -607,13 +594,9 @@ export function CandlestickChart({
           ? item("Vol", formatVolumeShort(extras.volume), colors.text)
           : "";
 
-      const smaFastHtml =
-        extras?.smaFast != null
-          ? item(`SMA${SMA_FAST}`, fmt(extras.smaFast), colors.smaFast)
-          : "";
-      const smaSlowHtml =
-        extras?.smaSlow != null
-          ? item(`SMA${SMA_SLOW}`, fmt(extras.smaSlow), colors.smaSlow)
+      const smaHtml =
+        extras?.sma != null
+          ? item(`SMA${SMA_PERIOD}`, fmt(extras.sma), colors.sma)
           : "";
       const vwapHtml =
         extras?.vwap != null
@@ -629,15 +612,13 @@ export function CandlestickChart({
           ${item("C", fmt(bar.close))}
           ${barChangeHtml}
           ${volHtml}
-          ${smaFastHtml}
-          ${smaSlowHtml}
+          ${smaHtml}
           ${vwapHtml}
         </div>`;
     };
 
     const updateOverlayLines = (bars: OhlcBar[]) => {
-      smaFastSeries.setData(computeSmaSeries(bars, SMA_FAST, tf.intraday));
-      smaSlowSeries.setData(computeSmaSeries(bars, SMA_SLOW, tf.intraday));
+      smaSeries.setData(computeSmaSeries(bars, SMA_PERIOD, tf.intraday));
       if (tf.intraday) {
         vwapSeries.applyOptions({ visible: true });
         vwapSeries.setData(computeSessionVwapSeries(bars, true));
@@ -676,8 +657,7 @@ export function CandlestickChart({
     const legendExtrasForBar = (
       barIndex: number,
       seriesExtras?: {
-        smaFast?: number | null;
-        smaSlow?: number | null;
+        sma?: number | null;
         vwap?: number | null;
       }
     ) => {
@@ -686,8 +666,7 @@ export function CandlestickChart({
       return {
         volume: bar?.volume ?? null,
         prevClose: prev?.close ?? null,
-        smaFast: seriesExtras?.smaFast ?? null,
-        smaSlow: seriesExtras?.smaSlow ?? null,
+        sma: seriesExtras?.sma ?? null,
         vwap: seriesExtras?.vwap ?? null,
       };
     };
@@ -735,17 +714,11 @@ export function CandlestickChart({
         lastCandle,
         lastUnix,
         legendExtrasForBar(lastBarIndex, {
-          smaFast:
-            bars.length >= SMA_FAST
+          sma:
+            bars.length >= SMA_PERIOD
               ? bars
-                  .slice(-SMA_FAST)
-                  .reduce((s, b) => s + b.close, 0) / SMA_FAST
-              : null,
-          smaSlow:
-            bars.length >= SMA_SLOW
-              ? bars
-                  .slice(-SMA_SLOW)
-                  .reduce((s, b) => s + b.close, 0) / SMA_SLOW
+                  .slice(-SMA_PERIOD)
+                  .reduce((s, b) => s + b.close, 0) / SMA_PERIOD
               : null,
         })
       );
@@ -1085,10 +1058,7 @@ export function CandlestickChart({
       const candle = param.seriesData.get(candleSeries) as
         | CandlestickData<Time>
         | undefined;
-      const smaFastPt = param.seriesData.get(smaFastSeries) as
-        | LineData<Time>
-        | undefined;
-      const smaSlowPt = param.seriesData.get(smaSlowSeries) as
+      const smaPt = param.seriesData.get(smaSeries) as
         | LineData<Time>
         | undefined;
       const vwapPt = param.seriesData.get(vwapSeries) as
@@ -1108,8 +1078,7 @@ export function CandlestickChart({
 
       renderLegend(candle ?? lastCandle, hoverUnix, {
         ...legendExtrasForBar(barIndex),
-        smaFast: smaFastPt?.value ?? null,
-        smaSlow: smaSlowPt?.value ?? null,
+        sma: smaPt?.value ?? null,
         vwap: vwapPt?.value ?? null,
       });
       setHeader((h) => ({
@@ -1207,7 +1176,7 @@ export function CandlestickChart({
                         ? "Awaiting today's print · chart shows last session · axis in IST"
                         : `Markets closed · showing ${sessionPhrase.toLowerCase()} · axis in IST`}
             {" · "}
-            SMA {SMA_FAST}/{SMA_SLOW}
+            SMA {SMA_PERIOD}
             {timeframe === "1D" ? " · VWAP" : ""}
             {zoomEnabled ? " · double-click resets view" : ""}
           </p>
