@@ -303,8 +303,8 @@ export function IndianMarketTape() {
   const pauseTape = !sessionActive || !tapeInView;
 
   return (
-    <section className="panel-stable overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2 sm:px-4">
+    <section className="panel-stable panel-luxe overflow-hidden rounded-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-2.5 md:px-5">
         <div>
           <p className="section-kicker">
             {sessionActive ? "Live tape" : "Market tape"}
@@ -359,8 +359,8 @@ export function IndianMarketCards() {
   const sessionActive = isMarketSessionActive(marketStatus);
 
   return (
-    <section className="panel-stable rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2 sm:px-4">
+    <section className="panel-stable panel-luxe rounded-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-2.5 md:px-5">
         <div>
           <p className="section-kicker">Snapshot</p>
           <p className="section-title">Index performance</p>
@@ -378,7 +378,7 @@ export function IndianMarketCards() {
           />
         </div>
       </div>
-      <div className="snapshot-viewport overflow-x-auto overscroll-x-contain p-2.5 scrollbar-thin sm:p-3">
+      <div className="snapshot-viewport overflow-x-auto overscroll-x-contain p-3 scrollbar-thin md:p-4">
         <div className="flex w-max min-w-full gap-2">
           {loading && quotes.length === 0
             ? Array.from({ length: 5 }).map((_, i) => (

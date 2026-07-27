@@ -99,9 +99,9 @@ export function LiveCharts() {
   return (
     <section
       id="live-chart"
-      className="panel-stable overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)]"
+      className="panel-stable panel-luxe overflow-hidden rounded-2xl"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2 sm:gap-3 sm:px-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2.5 sm:gap-3 sm:px-4 md:px-5">
         <div className="min-w-0">
           <p className="section-kicker">
             {instrumentLive
@@ -151,7 +151,7 @@ export function LiveCharts() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-3 py-1.5 sm:px-4">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-3 py-2 sm:px-4 md:px-5">
         <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto overscroll-x-contain scrollbar-thin">
           {CHART_TIMEFRAMES.map((tf) => (
             <button
