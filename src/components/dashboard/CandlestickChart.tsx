@@ -1582,337 +1582,323 @@ export function CandlestickChart({
   }, [indexId, timeframe, theme, reloadKey, name]);
 
   return (
-    <div className="flex flex-col bg-[var(--bg-elevated)]">
-      <div className="grid grid-cols-1 lg:grid-cols-2">
-        {/* Chart — full width on small screens; left half on large */}
-        <div className="relative order-2 min-h-[280px] border-[var(--border)] sm:min-h-[340px] lg:order-1 lg:min-h-[420px] lg:border-r">
-          {loading ? (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[var(--bg-elevated)]/90">
-              <Loader2
-                size={22}
-                className="animate-spin text-[var(--gold-deep)] dark:text-[var(--gold)]"
-              />
-              <p className="text-sm text-[var(--fg-subtle)]">Loading candles…</p>
-            </div>
-          ) : null}
-          {error && !loading ? (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-4 sm:p-6">
-              <p className="rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-4 py-3 text-center text-sm text-[var(--fg-muted)]">
-                {error}
-              </p>
-              <button
-                type="button"
-                onClick={() => setReloadKey((k) => k + 1)}
-                className="rounded-lg bg-[var(--bg-muted)] px-4 py-2 text-xs font-semibold text-[var(--fg)]"
-              >
-                Retry
-              </button>
-            </div>
-          ) : null}
-          <div
-            ref={containerRef}
-            className="h-[280px] w-full touch-pan-y sm:h-[340px] lg:h-[420px]"
-          />
-        </div>
+    <div className="live-chart-split bg-[var(--bg-elevated)]">
+      <div className="live-chart-pane order-2 lg:order-1">
+        {loading ? (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[var(--bg-elevated)]/90">
+            <Loader2
+              size={22}
+              className="animate-spin text-[var(--gold-deep)] dark:text-[var(--gold)]"
+            />
+            <p className="text-sm text-[var(--fg-subtle)]">Loading candles…</p>
+          </div>
+        ) : null}
+        {error && !loading ? (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-4 sm:p-6">
+            <p className="rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-4 py-3 text-center text-sm text-[var(--fg-muted)]">
+              {error}
+            </p>
+            <button
+              type="button"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="rounded-lg bg-[var(--bg-muted)] px-4 py-2 text-xs font-semibold text-[var(--fg)]"
+            >
+              Retry
+            </button>
+          </div>
+        ) : null}
+        <div ref={containerRef} className="absolute inset-0 h-full w-full touch-pan-y" />
+      </div>
 
-        {/* Quote panel — above chart on mobile; right half on large */}
-        <aside className="quote-panel order-1 relative flex flex-col overflow-hidden border-b border-[var(--border)] lg:order-2 lg:min-h-[420px] lg:border-b-0">
+      <aside className="live-chart-quote order-1 lg:order-2">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-90"
+          aria-hidden
+          style={{
+            background:
+              "radial-gradient(ellipse 90% 55% at 100% 0%, color-mix(in srgb, var(--gold) 16%, transparent), transparent 58%), radial-gradient(ellipse 70% 50% at 0% 100%, color-mix(in srgb, var(--gold) 8%, transparent), transparent 60%)",
+          }}
+        />
+        <div className="live-chart-quote-scroll">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              {exchange ? (
+                <span className="shrink-0 rounded-md border border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em] text-[var(--gold-deep)] dark:text-[var(--gold)]">
+                  {exchange}
+                </span>
+              ) : null}
+              <p className="truncate text-[11px] font-bold tracking-[0.16em] text-[var(--fg)]">
+                {name.toUpperCase()}
+              </p>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide ${
+                  instrumentLive
+                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                    : awaitingPrint
+                      ? "bg-amber-500/15 text-amber-800 dark:text-amber-300"
+                      : "bg-[var(--bg-muted)] text-[var(--fg-subtle)]"
+                }`}
+              >
+                {instrumentLive ? "LIVE" : awaitingPrint ? "OPEN SOON" : "CLOSED"}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_80%,transparent)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-muted)] transition hover:border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] hover:text-[var(--fg)]"
+            >
+              <RefreshCw size={12} />
+              Refresh
+            </button>
+          </div>
+
           <div
-            className="pointer-events-none absolute inset-0 opacity-90"
-            aria-hidden
-            style={{
-              background:
-                "radial-gradient(ellipse 90% 55% at 100% 0%, color-mix(in srgb, var(--gold) 16%, transparent), transparent 58%), radial-gradient(ellipse 70% 50% at 0% 100%, color-mix(in srgb, var(--gold) 8%, transparent), transparent 60%)",
-            }}
-          />
-          <div className="relative flex min-h-0 flex-1 flex-col gap-3 px-4 py-4 sm:gap-3.5 sm:px-5 sm:py-5 lg:px-5 lg:py-5">
-            {/* Title row */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-2">
-                {exchange ? (
-                  <span className="shrink-0 rounded-md border border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em] text-[var(--gold-deep)] dark:text-[var(--gold)]">
-                    {exchange}
-                  </span>
-                ) : null}
-                <p className="truncate text-[11px] font-bold tracking-[0.16em] text-[var(--fg)]">
-                  {name.toUpperCase()}
+            className={`rounded-xl border border-[color-mix(in_srgb,var(--gold)_18%,var(--border))] bg-[color-mix(in_srgb,var(--bg-elevated)_72%,transparent)] px-3 py-2.5 ${priceFlash ? "price-flash" : ""}`}
+          >
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[9px] font-bold tracking-[0.18em] text-[var(--fg-subtle)]">
+                  LAST TRADED
                 </p>
                 <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide ${
-                    instrumentLive
-                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                      : awaitingPrint
-                        ? "bg-amber-500/15 text-amber-800 dark:text-amber-300"
-                        : "bg-[var(--bg-muted)] text-[var(--fg-subtle)]"
-                  }`}
-                >
-                  {instrumentLive
-                    ? "LIVE"
-                    : awaitingPrint
-                      ? "OPEN SOON"
-                      : "CLOSED"}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReloadKey((k) => k + 1)}
-                className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_80%,transparent)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-muted)] transition hover:border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] hover:text-[var(--fg)]"
-              >
-                <RefreshCw size={12} />
-                Refresh
-              </button>
-            </div>
-
-            {/* LTP hero */}
-            <div
-              className={`rounded-xl border border-[color-mix(in_srgb,var(--gold)_18%,var(--border))] bg-[color-mix(in_srgb,var(--bg-elevated)_72%,transparent)] px-3.5 py-3 backdrop-blur-sm ${priceFlash ? "price-flash" : ""}`}
-            >
-              <p className="text-[9px] font-bold tracking-[0.18em] text-[var(--fg-subtle)]">
-                LAST TRADED
-              </p>
-              <div className="mt-1.5 flex flex-wrap items-end justify-between gap-2">
-                <span
-                  className={`tv-num text-[2rem] font-semibold leading-none tracking-tight sm:text-[2.35rem] lg:text-[2.6rem] ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+                  className={`tv-num mt-1 block text-[1.85rem] font-semibold leading-none tracking-tight sm:text-[2.15rem] ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
                 >
                   {displayPrice}
                 </span>
-                <div className="flex flex-col items-end gap-1">
-                  <span
-                    className={`tv-num rounded-md px-2 py-1 text-xs font-semibold sm:text-sm ${
-                      displayUp
-                        ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400"
-                        : "bg-red-500/12 text-red-700 dark:text-red-400"
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <span
+                  className={`tv-num rounded-md px-2 py-1 text-xs font-semibold ${
+                    displayUp
+                      ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400"
+                      : "bg-red-500/12 text-red-700 dark:text-red-400"
+                  }`}
+                >
+                  {displayChange} · {displayChangePct}
+                </span>
+                {basisHint ? (
+                  <span className="text-[10px] font-medium text-[var(--fg-subtle)]">
+                    {basisHint}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            {vsPrev ? (
+              <div className="mt-2 flex items-center justify-between gap-2 border-t border-[color-mix(in_srgb,var(--border)_80%,transparent)] pt-2">
+                <span className="text-[10px] tracking-wide text-[var(--fg-subtle)]">
+                  vs prev close
+                </span>
+                <span
+                  className={`tv-num text-xs font-semibold ${
+                    vsPrev.change >= 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-red-600 dark:text-red-400"
+                  }`}
+                >
+                  {formatMarketChange(vsPrev.change, indexId)} (
+                  {formatMarketChangePercent(vsPrev.changePercent)})
+                </span>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_78%,transparent)] px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[9px] font-bold tracking-[0.16em] text-[var(--fg-subtle)]">
+                {barReadout?.timeLabel ? "CROSSHAIR" : "LATEST BAR"}
+              </span>
+              <span className="tv-num truncate text-[10px] text-[var(--fg-muted)]">
+                {barReadout?.timeLabel ||
+                  (header.hoverTime
+                    ? `${header.hoverTime} IST`
+                    : header.asOf
+                      ? `${header.asOf} IST`
+                      : "—")}
+              </span>
+            </div>
+            <div className="mt-1.5 grid grid-cols-4 gap-1">
+              {(
+                [
+                  ["O", barReadout?.open],
+                  ["H", barReadout?.high],
+                  ["L", barReadout?.low],
+                  ["C", barReadout?.close],
+                ] as const
+              ).map(([label, value]) => (
+                <div
+                  key={label}
+                  className="rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1 py-1 text-center"
+                >
+                  <p className="text-[9px] font-bold tracking-wide text-[var(--fg-subtle)]">
+                    {label}
+                  </p>
+                  <p
+                    className={`tv-num mt-0.5 truncate text-[11px] font-semibold ${
+                      label === "C" && barReadout
+                        ? barReadout.up
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-red-600 dark:text-red-400"
+                        : label === "H"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : label === "L"
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-[var(--fg)]"
                     }`}
                   >
-                    {displayChange} · {displayChangePct}
-                  </span>
-                  {basisHint ? (
-                    <span className="text-[10px] font-medium text-[var(--fg-subtle)]">
-                      {basisHint}
-                    </span>
-                  ) : null}
+                    {value ?? "—"}
+                  </p>
                 </div>
-              </div>
-              {vsPrev ? (
-                <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-[color-mix(in_srgb,var(--border)_80%,transparent)] pt-2.5">
-                  <span className="text-[10px] tracking-wide text-[var(--fg-subtle)]">
-                    vs prev close
-                  </span>
+              ))}
+            </div>
+            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 border-t border-[var(--border)] pt-1.5 text-[10px]">
+              {barReadout?.changePct ? (
+                <span className="tv-num text-[var(--fg-muted)]">
+                  Δ{" "}
                   <span
-                    className={`tv-num text-xs font-semibold ${
-                      vsPrev.change >= 0
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-red-600 dark:text-red-400"
-                    }`}
+                    className={
+                      barReadout.changePct.startsWith("-")
+                        ? "font-semibold text-red-600 dark:text-red-400"
+                        : "font-semibold text-emerald-600 dark:text-emerald-400"
+                    }
                   >
-                    {formatMarketChange(vsPrev.change, indexId)} (
-                    {formatMarketChangePercent(vsPrev.changePercent)})
+                    {barReadout.changePct}
                   </span>
-                </div>
+                </span>
               ) : null}
-            </div>
-
-            {/* Chart bar readout — OHLC / overlays live here, not over candles */}
-            <div className="rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_78%,transparent)] px-3 py-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[9px] font-bold tracking-[0.16em] text-[var(--fg-subtle)]">
-                  {barReadout?.timeLabel ? "CROSSHAIR" : "LATEST BAR"}
+              {barReadout?.volume ? (
+                <span className="tv-num text-[var(--fg-muted)]">
+                  Vol{" "}
+                  <span className="font-semibold text-[var(--fg)]">
+                    {barReadout.volume}
+                  </span>
                 </span>
-                <span className="tv-num truncate text-[10px] text-[var(--fg-muted)]">
-                  {barReadout?.timeLabel ||
-                    (header.hoverTime
-                      ? `${header.hoverTime} IST`
-                      : header.asOf
-                        ? `${header.asOf} IST`
-                        : "—")}
-                </span>
-              </div>
-              <div className="mt-2 grid grid-cols-4 gap-1.5">
-                {(
-                  [
-                    ["O", barReadout?.open],
-                    ["H", barReadout?.high],
-                    ["L", barReadout?.low],
-                    ["C", barReadout?.close],
-                  ] as const
-                ).map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1.5 text-center"
-                  >
-                    <p className="text-[9px] font-bold tracking-wide text-[var(--fg-subtle)]">
-                      {label}
-                    </p>
-                    <p
-                      className={`tv-num mt-0.5 truncate text-[11px] font-semibold sm:text-xs ${
-                        label === "C" && barReadout
-                          ? barReadout.up
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-red-600 dark:text-red-400"
-                          : label === "H"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : label === "L"
-                              ? "text-red-600 dark:text-red-400"
-                              : "text-[var(--fg)]"
-                      }`}
-                    >
-                      {value ?? "—"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-[var(--border)] pt-2 text-[10px]">
-                {barReadout?.changePct ? (
-                  <span className="tv-num text-[var(--fg-muted)]">
-                    Δ{" "}
-                    <span
-                      className={
-                        barReadout.changePct.startsWith("-")
-                          ? "font-semibold text-red-600 dark:text-red-400"
-                          : "font-semibold text-emerald-600 dark:text-emerald-400"
-                      }
-                    >
-                      {barReadout.changePct}
-                    </span>
-                  </span>
-                ) : null}
-                {barReadout?.volume ? (
-                  <span className="tv-num text-[var(--fg-muted)]">
-                    Vol{" "}
-                    <span className="font-semibold text-[var(--fg)]">
-                      {barReadout.volume}
-                    </span>
-                  </span>
-                ) : null}
-                {barReadout?.vwap ? (
-                  <span className="tv-num text-[var(--fg-muted)]">
-                    VWAP{" "}
-                    <span className="font-semibold text-[var(--gold-deep)] dark:text-[var(--gold)]">
-                      {barReadout.vwap}
-                    </span>
-                  </span>
-                ) : null}
-                {barReadout?.sma ? (
-                  <span className="tv-num text-[var(--fg-muted)]">
-                    SMA{" "}
-                    <span className="font-semibold text-sky-700 dark:text-sky-300">
-                      {barReadout.sma}
-                    </span>
-                  </span>
-                ) : null}
-                {barReadout?.bbUpper && barReadout?.bbLower ? (
-                  <span className="tv-num text-[var(--fg-muted)]">
-                    BB{" "}
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">
-                      {barReadout.bbLower}–{barReadout.bbUpper}
-                    </span>
-                  </span>
-                ) : null}
-              </div>
-            </div>
-
-            {/* Dense levels grid */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-2">
-                <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
-                  {sameSessionOpen || timeframe === "1D" ? "OPEN" : "PERIOD OPEN"}
-                </p>
-                <p className="tv-num mt-1 truncate text-[15px] font-semibold text-[var(--fg)]">
-                  {periodReference != null
-                    ? formatMarketPrice(periodReference, indexId)
-                    : "—"}
-                </p>
-              </div>
-              <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-2">
-                <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
-                  PREV CLOSE
-                </p>
-                <p className="tv-num mt-1 truncate text-[15px] font-semibold text-[var(--fg)]">
-                  {syncedQuote?.previousClose != null
-                    ? formatMarketPrice(syncedQuote.previousClose, indexId)
-                    : "—"}
-                </p>
-              </div>
-              <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-2">
-                <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
-                  HIGH
-                </p>
-                <p className="tv-num mt-1 truncate text-[15px] font-semibold text-emerald-600 dark:text-emerald-400">
-                  {periodHigh != null
-                    ? formatMarketPrice(periodHigh, indexId)
-                    : "—"}
-                </p>
-              </div>
-              <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-2">
-                <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
-                  LOW
-                </p>
-                <p className="tv-num mt-1 truncate text-[15px] font-semibold text-red-600 dark:text-red-400">
-                  {periodLow != null
-                    ? formatMarketPrice(periodLow, indexId)
-                    : "—"}
-                </p>
-              </div>
-              {!sameSessionOpen &&
-              timeframe !== "1D" &&
-              syncedQuote?.dayOpen != null ? (
-                <div className="col-span-2 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-2">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
-                      SESSION OPEN
-                    </p>
-                    <p className="tv-num truncate text-[15px] font-semibold text-[var(--fg)]">
-                      {formatMarketPrice(syncedQuote.dayOpen, indexId)}
-                    </p>
-                  </div>
-                </div>
               ) : null}
-            </div>
-
-            {/* Overlays + status footer */}
-            <div className="mt-auto space-y-2.5">
-              <div className="flex flex-wrap gap-1.5">
-                <span className="rounded-md border border-[var(--border)] bg-[var(--bg-muted)] px-2 py-1 text-[10px] font-semibold tracking-wide text-[var(--fg-muted)]">
-                  {timeframe}
-                </span>
-                {timeframe === "1D" ? (
-                  <span className="rounded-md border border-[color-mix(in_srgb,#d4a017_40%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] px-2 py-1 text-[10px] font-semibold text-[var(--gold-deep)] dark:text-[var(--gold)]">
-                    VWAP
+              {barReadout?.vwap ? (
+                <span className="tv-num text-[var(--fg-muted)]">
+                  VWAP{" "}
+                  <span className="font-semibold text-[var(--gold-deep)] dark:text-[var(--gold)]">
+                    {barReadout.vwap}
                   </span>
-                ) : null}
-                <span className="rounded-md border border-[color-mix(in_srgb,#38bdf8_35%,var(--border))] bg-[color-mix(in_srgb,#38bdf8_10%,transparent)] px-2 py-1 text-[10px] font-semibold text-sky-800 dark:text-sky-300">
-                  SMA
                 </span>
-                <span className="rounded-md border border-[color-mix(in_srgb,#94a3b8_40%,var(--border))] bg-[color-mix(in_srgb,#94a3b8_12%,transparent)] px-2 py-1 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
-                  BB
+              ) : null}
+              {barReadout?.sma ? (
+                <span className="tv-num text-[var(--fg-muted)]">
+                  SMA{" "}
+                  <span className="font-semibold text-sky-700 dark:text-sky-300">
+                    {barReadout.sma}
+                  </span>
                 </span>
-              </div>
-              <p className="tv-num border-t border-[var(--border)] pt-2 text-[10px] leading-snug text-[var(--fg-subtle)] sm:text-[11px]">
-                {header.hoverTime
-                  ? `Crosshair · ${header.hoverTime} IST`
-                  : syncedQuote?.marketTime
-                    ? awaitingPrint
-                      ? `Awaiting today's print · ${sessionPhrase} ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: true }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
-                      : `${instrumentLive ? "Synced" : sessionPhrase} · ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: !instrumentLive }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
-                    : syncedAsOf
-                      ? instrumentLive
-                        ? `Synced · ${formatIstSyncTime(syncedAsOf)} IST · every minute`
-                        : awaitingPrint
-                          ? `Awaiting today's print · polling for open`
-                          : `${sessionPhrase} · ${formatIstSessionStamp(syncedAsOf, { forceDate: true })} IST`
-                      : header.asOf
-                        ? `${instrumentLive ? "Last update" : awaitingPrint ? "Awaiting open" : sessionPhrase} · ${header.asOf} IST`
-                        : instrumentLive
-                          ? "Live · refreshes every minute · axis in IST"
-                          : awaitingPrint
-                            ? "Awaiting today's print · chart shows last session · axis in IST"
-                            : `Markets closed · showing ${sessionPhrase.toLowerCase()} · axis in IST`}
-                {zoomEnabled ? " · double-click resets view" : ""}
-              </p>
+              ) : null}
+              {barReadout?.bbUpper && barReadout?.bbLower ? (
+                <span className="tv-num text-[var(--fg-muted)]">
+                  BB{" "}
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    {barReadout.bbLower}–{barReadout.bbUpper}
+                  </span>
+                </span>
+              ) : null}
             </div>
           </div>
-        </aside>
-      </div>
+
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+              <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
+                {sameSessionOpen || timeframe === "1D" ? "OPEN" : "PERIOD OPEN"}
+              </p>
+              <p className="tv-num mt-0.5 truncate text-sm font-semibold text-[var(--fg)]">
+                {periodReference != null
+                  ? formatMarketPrice(periodReference, indexId)
+                  : "—"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+              <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
+                PREV CLOSE
+              </p>
+              <p className="tv-num mt-0.5 truncate text-sm font-semibold text-[var(--fg)]">
+                {syncedQuote?.previousClose != null
+                  ? formatMarketPrice(syncedQuote.previousClose, indexId)
+                  : "—"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+              <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
+                HIGH
+              </p>
+              <p className="tv-num mt-0.5 truncate text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                {periodHigh != null
+                  ? formatMarketPrice(periodHigh, indexId)
+                  : "—"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+              <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
+                LOW
+              </p>
+              <p className="tv-num mt-0.5 truncate text-sm font-semibold text-red-600 dark:text-red-400">
+                {periodLow != null
+                  ? formatMarketPrice(periodLow, indexId)
+                  : "—"}
+              </p>
+            </div>
+            {!sameSessionOpen &&
+            timeframe !== "1D" &&
+            syncedQuote?.dayOpen != null ? (
+              <div className="col-span-2 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
+                    SESSION OPEN
+                  </p>
+                  <p className="tv-num truncate text-sm font-semibold text-[var(--fg)]">
+                    {formatMarketPrice(syncedQuote.dayOpen, indexId)}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="mt-auto space-y-1.5 pt-1">
+            <div className="flex flex-wrap gap-1.5">
+              <span className="rounded-md border border-[var(--border)] bg-[var(--bg-muted)] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[var(--fg-muted)]">
+                {timeframe}
+              </span>
+              {timeframe === "1D" ? (
+                <span className="rounded-md border border-[color-mix(in_srgb,#d4a017_40%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-[var(--gold-deep)] dark:text-[var(--gold)]">
+                  VWAP
+                </span>
+              ) : null}
+              <span className="rounded-md border border-[color-mix(in_srgb,#38bdf8_35%,var(--border))] bg-[color-mix(in_srgb,#38bdf8_10%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-sky-800 dark:text-sky-300">
+                SMA
+              </span>
+              <span className="rounded-md border border-[color-mix(in_srgb,#94a3b8_40%,var(--border))] bg-[color-mix(in_srgb,#94a3b8_12%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+                BB
+              </span>
+            </div>
+            <p className="tv-num border-t border-[var(--border)] pt-1.5 text-[10px] leading-snug text-[var(--fg-subtle)]">
+              {header.hoverTime
+                ? `Crosshair · ${header.hoverTime} IST`
+                : syncedQuote?.marketTime
+                  ? awaitingPrint
+                    ? `Awaiting today's print · ${sessionPhrase} ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: true }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
+                    : `${instrumentLive ? "Synced" : sessionPhrase} · ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: !instrumentLive }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
+                  : syncedAsOf
+                    ? instrumentLive
+                      ? `Synced · ${formatIstSyncTime(syncedAsOf)} IST · every minute`
+                      : awaitingPrint
+                        ? `Awaiting today's print · polling for open`
+                        : `${sessionPhrase} · ${formatIstSessionStamp(syncedAsOf, { forceDate: true })} IST`
+                    : header.asOf
+                      ? `${instrumentLive ? "Last update" : awaitingPrint ? "Awaiting open" : sessionPhrase} · ${header.asOf} IST`
+                      : instrumentLive
+                        ? "Live · refreshes every minute · axis in IST"
+                        : awaitingPrint
+                          ? "Awaiting today's print · chart shows last session · axis in IST"
+                          : `Markets closed · showing ${sessionPhrase.toLowerCase()} · axis in IST`}
+              {zoomEnabled ? " · double-click resets view" : ""}
+            </p>
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }

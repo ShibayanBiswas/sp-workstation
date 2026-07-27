@@ -100,7 +100,7 @@ export function LiveCharts() {
       id="live-chart"
       className="panel-stable panel-luxe overflow-hidden rounded-2xl"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-3 py-3 sm:px-4 md:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2.5 sm:gap-3 sm:px-4 md:px-5">
         <div className="min-w-0">
           <p className="section-kicker">
             {instrumentLive
@@ -111,7 +111,7 @@ export function LiveCharts() {
           </p>
           <h3 className="section-title truncate">{active.name}</h3>
         </div>
-        <div className="relative w-full min-w-0 sm:w-auto sm:min-w-[240px] sm:max-w-[320px]">
+        <div className="relative w-full min-w-0 sm:w-auto sm:min-w-[220px] sm:max-w-[280px]">
           <label className="sr-only" htmlFor="index-select">
             Select index
           </label>
@@ -119,7 +119,7 @@ export function LiveCharts() {
             id="index-select"
             value={selectedIndexId}
             onChange={(e) => setSelectedIndexId(e.target.value)}
-            className="input-field w-full appearance-none py-2.5 pr-10 text-sm transition-all duration-300 focus:scale-[1.01]"
+            className="input-field w-full appearance-none py-2 pr-10 text-sm"
           >
             <optgroup label="Benchmarks">
               {benchmarks.map((i) => (
@@ -150,73 +150,60 @@ export function LiveCharts() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 border-b border-[var(--border)] px-3 py-2 sm:px-4 md:px-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <div className="flex max-w-full gap-1 overflow-x-auto overscroll-x-contain pb-0.5 scrollbar-thin">
-              {CHART_TIMEFRAMES.map((tf) => (
-                <button
-                  key={tf.id}
-                  type="button"
-                  onClick={() => setTimeframe(tf.id)}
-                  className={`shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold tracking-wide transition-all duration-300 sm:px-3 sm:text-xs ${
-                    timeframe === tf.id
-                      ? "bg-[color-mix(in_srgb,var(--gold)_20%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)] scale-[1.02]"
-                      : "text-[var(--fg-muted)] hover:bg-[var(--bg-muted)] hover:scale-[1.02]"
-                  }`}
-                >
-                  {tf.label}
-                </button>
-              ))}
-            </div>
+      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-3 py-2 sm:px-4 md:px-5">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto overscroll-x-contain scrollbar-thin">
+          {CHART_TIMEFRAMES.map((tf) => (
             <button
+              key={tf.id}
               type="button"
-              onClick={() => setZoomEnabled((z) => !z)}
-              title={
-                zoomEnabled
-                  ? "Disable pan and zoom"
-                  : "Enable pan, scroll, and zoom"
-              }
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-all duration-300 ease-out active:scale-[0.97] sm:px-3 sm:text-xs ${
-                zoomEnabled
-                  ? "border-[color-mix(in_srgb,var(--gold)_45%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_14%,transparent)] text-[var(--gold-deep)] shadow-[0_6px_16px_color-mix(in_srgb,var(--gold)_14%,transparent)] dark:text-[var(--gold)]"
-                  : "border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--bg-muted)] hover:border-[color-mix(in_srgb,var(--gold)_28%,var(--border))]"
+              onClick={() => setTimeframe(tf.id)}
+              className={`shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold tracking-wide transition sm:px-3 sm:text-xs ${
+                timeframe === tf.id
+                  ? "bg-[color-mix(in_srgb,var(--gold)_20%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]"
+                  : "text-[var(--fg-muted)] hover:bg-[var(--bg-muted)]"
               }`}
             >
-              <Move
-                size={14}
-                className={`transition-transform duration-300 ${zoomEnabled ? "rotate-45" : ""}`}
-              />
-              Zoom {zoomEnabled ? "On" : "Off"}
+              {tf.label}
             </button>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <LiveSyncIndicator
-              syncing={syncing}
-              lastSyncedAt={asOf}
-              lastMarketTime={chartLastMarketTime}
-              marketStatus={chartSyncStatus}
-              awaitingTodayPrint={awaitingPrint}
-              compact
+          ))}
+          <button
+            type="button"
+            onClick={() => setZoomEnabled((z) => !z)}
+            title={
+              zoomEnabled
+                ? "Disable pan and zoom"
+                : "Enable pan, scroll, and zoom"
+            }
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition active:scale-[0.97] sm:px-3 sm:text-xs ${
+              zoomEnabled
+                ? "border-[color-mix(in_srgb,var(--gold)_45%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_14%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]"
+                : "border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--bg-muted)]"
+            }`}
+          >
+            <Move
+              size={14}
+              className={`transition-transform ${zoomEnabled ? "rotate-45" : ""}`}
             />
-            <span
-              className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${marketBadgeClass(chartStatus, awaitingPrint)}`}
-            >
-              {awaitingPrint
-                ? "Awaiting open · IST"
-                : `${marketStatusLabel(marketStatus)} · IST`}
-            </span>
-          </div>
+            Zoom {zoomEnabled ? "On" : "Off"}
+          </button>
         </div>
-        {zoomEnabled ? (
-          <span className="hidden text-[10px] text-[var(--fg-subtle)] sm:inline">
-            Full history loaded · wheel to zoom · drag to pan
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <LiveSyncIndicator
+            syncing={syncing}
+            lastSyncedAt={asOf}
+            lastMarketTime={chartLastMarketTime}
+            marketStatus={chartSyncStatus}
+            awaitingTodayPrint={awaitingPrint}
+            compact
+          />
+          <span
+            className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${marketBadgeClass(chartStatus, awaitingPrint)}`}
+          >
+            {awaitingPrint
+              ? "Awaiting open · IST"
+              : `${marketStatusLabel(marketStatus)} · IST`}
           </span>
-        ) : (
-          <span className="hidden text-[10px] text-[var(--fg-subtle)] sm:inline">
-            Zoom Off · from period open · Zoom On for full history
-          </span>
-        )}
+        </div>
       </div>
 
       {mounted ? (
@@ -245,7 +232,7 @@ export function LiveCharts() {
           syncedAsOf={asOf}
         />
       ) : (
-        <div className="flex h-[280px] items-center justify-center text-sm text-[var(--fg-subtle)] sm:h-[340px] lg:h-[420px]">
+        <div className="live-chart-pane flex items-center justify-center text-sm text-[var(--fg-subtle)] lg:h-[460px]">
           <span className={instrumentLive ? "animate-pulse-live" : ""}>
             Preparing chart…
           </span>

@@ -530,14 +530,78 @@ a {
   contain-intrinsic-size: auto 240px;
 }
 
+/* Keep the live chart out of content-visibility — it causes scroll jumps. */
 .home-scroll-section-chart {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 720px;
+  content-visibility: visible;
+  contain: layout style;
+}
+
+.live-chart-split {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.live-chart-pane {
+  position: relative;
+  height: 300px;
+  min-height: 300px;
+}
+
+.live-chart-quote {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+
+.live-chart-quote-scroll {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.65rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.85rem 1rem;
+  scrollbar-gutter: stable;
+}
+
+@media (min-width: 640px) {
+  .live-chart-pane {
+    height: 340px;
+    min-height: 340px;
+  }
+
+  .live-chart-quote-scroll {
+    gap: 0.75rem;
+    padding: 1rem 1.15rem;
+  }
 }
 
 @media (min-width: 1024px) {
-  .home-scroll-section-chart {
-    contain-intrinsic-size: auto 520px;
+  .live-chart-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    height: 460px;
+    align-items: stretch;
+  }
+
+  .live-chart-pane {
+    order: 1;
+    height: 100%;
+    min-height: 0;
+    border-right: 1px solid var(--border);
+  }
+
+  .live-chart-quote {
+    order: 2;
+    height: 100%;
+    border-bottom: 0;
   }
 }
 
