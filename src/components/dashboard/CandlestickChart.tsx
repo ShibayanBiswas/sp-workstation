@@ -162,11 +162,11 @@ const LIVE_RIGHT_GAP_BARS = 12;
 /** Zoom On keeps a smaller trailing gap. */
 const ZOOM_RIGHT_GAP_BARS = 6;
 /**
- * Fixed candle pitch (px) — TradingView-thin.
+ * Fixed candle pitch (px) — a touch thicker than ultra-thin TV spacing.
  * Must stay fixed: putting the right gap into setVisibleLogicalRange makes
  * LWC stretch barSpacing and fatten 1D/1W when few bars exist.
  */
-const TV_BAR_SPACING = 4;
+const TV_BAR_SPACING = 5.5;
 const TV_BAR_SPACING_MIN = 2;
 
 function chartInteractionOptions(zoomEnabled: boolean) {
