@@ -450,6 +450,10 @@ export function CandlestickChart({
   const loadingHistoryRef = useRef(false);
   const barCountRef = useRef(0);
   const prevPriceRef = useRef<number | null>(null);
+  /** True while cursor is on a candle (preserve CROSSHAIR readout). */
+  const hoverActiveRef = useRef(false);
+  /** Glue forming tip + quote OHLC/SMA/BB/VWAP to tape LTP between chart polls. */
+  const applyLiveTipRef = useRef<((price: number) => void) | null>(null);
   /** Apply Zoom On/Off without remounting — keeps candles warm. */
   const onZoomModeChangeRef = useRef<((enabled: boolean) => void) | null>(
     null
@@ -489,6 +493,8 @@ export function CandlestickChart({
     bbUpper: string | null;
     bbLower: string | null;
     vwap: string | null;
+    /** True only while the cursor is over a candle. */
+    hovering?: boolean;
   } | null>(null);
   const [clockStatus, setClockStatus] = useState<MarketStatus>(() =>
     getNseMarketStatus()
@@ -575,12 +581,13 @@ export function CandlestickChart({
   useEffect(() => {
     if (syncedQuote?.price == null) return;
     const newPrice = syncedQuote.price;
+    let flashTimer = 0;
     if (
       prevPriceRef.current != null &&
       prevPriceRef.current !== newPrice
     ) {
       setPriceFlash(true);
-      setTimeout(() => setPriceFlash(false), 700);
+      flashTimer = window.setTimeout(() => setPriceFlash(false), 700);
     }
     prevPriceRef.current = newPrice;
 
@@ -596,22 +603,24 @@ export function CandlestickChart({
       setReturnBasis("day_open");
     }
 
-    // Keep the forming candle glued to tape LTP between chart polls
-    // (1D intraday tip, and daily tip on 1W/1M/… while the session is live).
-    const series = candleRef.current;
-    const bars = barsRef.current;
-    if (!series || bars.length === 0) return;
-    const patched = applyLiveCloseToBars(bars, newPrice);
-    barsRef.current = patched;
-    const last = patched[patched.length - 1]!;
-    const tf = getTimeframe(timeframe);
-    series.update({
-      time: barToChartTime(last, tf.intraday),
-      open: last.open,
-      high: last.high,
-      low: last.low,
-      close: last.close,
-    });
+    // Keep forming candle + quote panel OHLC / SMA / BB / VWAP glued to tape.
+    applyLiveTipRef.current?.(newPrice);
+
+    if (syncedQuote.marketTime != null) {
+      const stamp = formatIstDateTime(
+        syncedQuote.marketTime,
+        getTimeframe(timeframe).axisLabelMode
+      );
+      if (stamp) {
+        setHeader((h) =>
+          h.asOf === stamp && !h.hoverTime ? h : { ...h, asOf: stamp }
+        );
+      }
+    }
+
+    return () => {
+      if (flashTimer) window.clearTimeout(flashTimer);
+    };
   }, [syncedQuote, timeframe]);
 
   useEffect(() => {
@@ -811,7 +820,8 @@ export function CandlestickChart({
         sma?: number | null;
         bbUpper?: number | null;
         bbLower?: number | null;
-      }
+      },
+      hovering = false
     ) => {
       if (!bar) return;
       const up = bar.close >= bar.open;
@@ -846,6 +856,7 @@ export function CandlestickChart({
         bbUpper: extras?.bbUpper != null ? fmt(extras.bbUpper) : null,
         bbLower: extras?.bbLower != null ? fmt(extras.bbLower) : null,
         vwap: extras?.vwap != null ? fmt(extras.vwap) : null,
+        hovering,
       });
     };
 
@@ -911,8 +922,9 @@ export function CandlestickChart({
       let sma = seriesExtras?.sma ?? null;
       let bbUpper = seriesExtras?.bbUpper ?? null;
       let bbLower = seriesExtras?.bbLower ?? null;
+      let vwap = seriesExtras?.vwap ?? null;
 
-      // Fallback when crosshair is idle — derive SMA / BB from loaded bars.
+      // Fallback when crosshair is idle — derive SMA / BB / VWAP from loaded bars.
       if (
         (sma == null || bbUpper == null || bbLower == null) &&
         barsRef.current.length > 0
@@ -949,14 +961,59 @@ export function CandlestickChart({
         }
       }
 
+      if (vwap == null && tf.intraday && barsRef.current.length > 0) {
+        const vwapPts = computeSessionVwapSeries(
+          barsRef.current.slice(0, barIndex + 1),
+          true
+        );
+        const tip = vwapPts[vwapPts.length - 1];
+        if (tip && "value" in tip && typeof tip.value === "number") {
+          vwap = tip.value;
+        }
+      }
+
       return {
         volume: bar?.volume ?? null,
         prevClose: prev?.close ?? null,
-        vwap: seriesExtras?.vwap ?? null,
+        vwap,
         sma,
         bbUpper,
         bbLower,
       };
+    };
+
+    applyLiveTipRef.current = (price: number) => {
+      if (!alive || !Number.isFinite(price) || price <= 0) return;
+      const bars = barsRef.current;
+      if (bars.length === 0) return;
+      const patched = applyLiveCloseToBars(bars, price);
+      const last = patched[patched.length - 1]!;
+      barsRef.current = patched;
+      candleSeries.update({
+        time: barToChartTime(last, tf.intraday),
+        open: last.open,
+        high: last.high,
+        low: last.low,
+        close: last.close,
+      });
+      updateOverlayLines(patched);
+      setBarStats(extremesFromBars(patched));
+      lastCandle = {
+        time: barToChartTime(last, tf.intraday),
+        open: last.open,
+        high: last.high,
+        low: last.low,
+        close: last.close,
+      };
+      lastUnix = last.time;
+      lastBarIndex = patched.length - 1;
+      if (!hoverActiveRef.current) {
+        renderLegend(
+          lastCandle,
+          lastUnix,
+          legendExtrasForBar(lastBarIndex)
+        );
+      }
     };
 
     const applyBars = (
@@ -1488,14 +1545,17 @@ export function CandlestickChart({
     chart.subscribeCrosshairMove((param: MouseEventParams<Time>) => {
       if (!lastCandle) return;
       if (!param.time || !param.seriesData.size) {
+        hoverActiveRef.current = false;
         renderLegend(
           lastCandle,
           lastUnix,
-          legendExtrasForBar(lastBarIndex)
+          legendExtrasForBar(lastBarIndex),
+          false
         );
         setHeader((h) => ({ ...h, hoverTime: "" }));
         return;
       }
+      hoverActiveRef.current = true;
       const hoverUnix = timeToUnix(param.time);
       const candle = param.seriesData.get(candleSeries) as
         | CandlestickData<Time>
@@ -1530,7 +1590,7 @@ export function CandlestickChart({
         sma: smaPt?.value ?? null,
         bbUpper: bbUpperPt?.value ?? null,
         bbLower: bbLowerPt?.value ?? null,
-      });
+      }, true);
       setHeader((h) => ({
         ...h,
         hoverTime: formatIstDateTime(hoverUnix, tf.axisLabelMode),
@@ -1567,6 +1627,8 @@ export function CandlestickChart({
       cancelled = true;
       window.clearTimeout(timeoutId);
       alive = false;
+      applyLiveTipRef.current = null;
+      hoverActiveRef.current = false;
       resizeObs.disconnect();
       container.removeEventListener("dblclick", onDblClick);
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChange);
@@ -1715,7 +1777,7 @@ export function CandlestickChart({
           <div className="quote-block rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_78%,transparent)] px-3 py-2">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[9px] font-bold tracking-[0.16em] text-[var(--fg-subtle)]">
-                {barReadout?.timeLabel ? "CROSSHAIR" : "LATEST BAR"}
+                {barReadout?.hovering ? "CROSSHAIR" : "LATEST BAR"}
               </span>
               <span className="tv-num truncate text-[10px] text-[var(--fg-muted)]">
                 {barReadout?.timeLabel ||
@@ -1866,6 +1928,8 @@ export function CandlestickChart({
               </div>
             ) : null}
           </div>
+
+          <div className="quote-grow hidden lg:block" aria-hidden />
 
           <div className="quote-block space-y-1 pt-0.5">
             <div className="flex flex-wrap gap-1.5">

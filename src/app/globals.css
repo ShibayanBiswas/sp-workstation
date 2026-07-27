@@ -726,27 +726,82 @@ a {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     /* Row height = taller column so quote never clips and panes stay matched. */
     align-items: stretch;
+    grid-auto-rows: 1fr;
   }
 
   .live-chart-pane {
     order: 1;
-    height: 100%;
+    align-self: stretch;
+    height: auto;
     min-height: 520px;
     border-right: 1px solid var(--border);
   }
 
   .live-chart-quote {
     order: 2;
-    height: 100%;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    height: auto;
     min-height: 520px;
     border-bottom: 0;
     overflow: visible;
   }
 
   .live-chart-quote-scroll {
+    flex: 1 1 auto;
+    min-height: 100%;
     height: 100%;
+    justify-content: space-between;
     overflow: visible;
   }
+
+  .quote-grow {
+    flex: 1 1 auto;
+    min-height: 0.5rem;
+  }
+}
+
+.dark .live-chart-quote {
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--bg-elevated) 92%, #1a1608) 0%,
+    var(--bg-elevated) 48%,
+    color-mix(in srgb, var(--bg-elevated) 88%, #0a0c12) 100%
+  );
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gold) 12%, transparent);
+}
+
+.dark .live-chart-quote::after {
+  opacity: 0.35;
+  background: linear-gradient(
+    125deg,
+    transparent 38%,
+    color-mix(in srgb, var(--gold) 14%, transparent) 50%,
+    transparent 62%
+  );
+  background-size: 220% 220%;
+}
+
+.dark .quote-hero {
+  border-color: color-mix(in srgb, var(--gold) 28%, var(--border));
+  background: color-mix(in srgb, var(--bg-muted) 55%, transparent);
+  box-shadow:
+    0 12px 36px color-mix(in srgb, var(--gold) 12%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--gold) 10%, transparent);
+}
+
+.dark .quote-metric {
+  background: color-mix(in srgb, var(--bg-muted) 75%, transparent);
+}
+
+.dark .quote-metric:hover {
+  background: color-mix(in srgb, var(--bg-muted) 92%, transparent);
+  border-color: color-mix(in srgb, var(--gold) 38%, var(--border));
+}
+
+.dark .live-chart-pane {
+  background: var(--bg-elevated);
 }
 
 .status-pill {
