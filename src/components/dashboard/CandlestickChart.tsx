@@ -1743,7 +1743,7 @@ export function CandlestickChart({
                     {label}
                   </p>
                   <p
-                    className={`tv-num mt-0.5 truncate text-[11px] font-semibold ${
+                    className={`tv-num mt-0.5 text-[11px] font-semibold tabular-nums ${
                       label === "C" && barReadout
                         ? barReadout.up
                           ? "text-emerald-600 dark:text-emerald-400"
@@ -1815,7 +1815,7 @@ export function CandlestickChart({
               <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                 {sameSessionOpen || timeframe === "1D" ? "OPEN" : "PERIOD OPEN"}
               </p>
-              <p className="tv-num mt-0.5 truncate text-sm font-semibold text-[var(--fg)]">
+              <p className="tv-num mt-0.5 text-sm font-semibold tabular-nums text-[var(--fg)]">
                 {periodReference != null
                   ? formatMarketPrice(periodReference, indexId)
                   : "—"}
@@ -1825,7 +1825,7 @@ export function CandlestickChart({
               <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                 PREV CLOSE
               </p>
-              <p className="tv-num mt-0.5 truncate text-sm font-semibold text-[var(--fg)]">
+              <p className="tv-num mt-0.5 text-sm font-semibold tabular-nums text-[var(--fg)]">
                 {syncedQuote?.previousClose != null
                   ? formatMarketPrice(syncedQuote.previousClose, indexId)
                   : "—"}
@@ -1835,7 +1835,7 @@ export function CandlestickChart({
               <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                 HIGH
               </p>
-              <p className="tv-num mt-0.5 truncate text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+              <p className="tv-num mt-0.5 text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
                 {periodHigh != null
                   ? formatMarketPrice(periodHigh, indexId)
                   : "—"}
@@ -1845,7 +1845,7 @@ export function CandlestickChart({
               <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                 LOW
               </p>
-              <p className="tv-num mt-0.5 truncate text-sm font-semibold text-red-600 dark:text-red-400">
+              <p className="tv-num mt-0.5 text-sm font-semibold tabular-nums text-red-600 dark:text-red-400">
                 {periodLow != null
                   ? formatMarketPrice(periodLow, indexId)
                   : "—"}

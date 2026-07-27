@@ -233,7 +233,7 @@ export function LiveCharts() {
           syncedAsOf={asOf}
         />
       ) : (
-        <div className="live-chart-pane flex items-center justify-center text-sm text-[var(--fg-subtle)] lg:h-[480px]">
+        <div className="live-chart-pane flex items-center justify-center text-sm text-[var(--fg-subtle)] lg:min-h-[520px]">
           <span className={instrumentLive ? "animate-pulse-live" : ""}>
             Preparing chart…
           </span>
