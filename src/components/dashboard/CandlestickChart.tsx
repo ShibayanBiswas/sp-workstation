@@ -157,18 +157,21 @@ function fmtPct(n: number) {
   return `${sign}${n.toFixed(2)}%`;
 }
 
-/** Vacant bars on the right — new candles form into this room. */
-const LIVE_RIGHT_GAP_BARS = 12;
-/** Zoom On keeps a smaller trailing gap. */
-const ZOOM_RIGHT_GAP_BARS = 6;
+/** Vacant bars on the right — small forming runway (keep plot filled). */
+const LIVE_RIGHT_GAP_BARS = 3;
+/** Zoom On keeps a tighter trailing gap. */
+const ZOOM_RIGHT_GAP_BARS = 2;
+/** Right price axis width — room for price + SMA/BB last-value tags. */
+const PRICE_SCALE_MIN_WIDTH = 108;
 /**
- * Fixed candle pitch (px). Must stay fixed: putting the right gap into
- * setVisibleLogicalRange makes LWC stretch barSpacing and fatten when few
- * bars exist. ≤6M runs a bit fatter for readability; 1Y/5Y stay leaner.
+ * Preferred candle pitch (px). Zoom Off fits bars to the plot width so the
+ * screen isn't left blank; preferred is a soft target / upper clamp for ≤6M.
  */
 const TV_BAR_SPACING = 7;
 const TV_BAR_SPACING_TO_6M = 9.5;
 const TV_BAR_SPACING_MIN = 2;
+/** Hard cap so a single early-period bar never spans the whole pane. */
+const TV_BAR_SPACING_MAX = 16;
 
 function barSpacingForTimeframe(id: ChartTimeframeId): number {
   switch (id) {
@@ -186,6 +189,20 @@ function barSpacingForTimeframe(id: ChartTimeframeId): number {
       return _exhaustive;
     }
   }
+}
+
+/** Pitch that fills the plot: (width − price axis) / (bars + runway). */
+function fitBarSpacing(
+  container: HTMLDivElement,
+  barCount: number,
+  rightGap: number,
+  preferred: number
+): number {
+  const plotW = Math.max(container.clientWidth - PRICE_SCALE_MIN_WIDTH, 80);
+  const slots = Math.max(barCount + rightGap, 1);
+  const fitted = plotW / slots;
+  const max = Math.min(TV_BAR_SPACING_MAX, Math.max(preferred, preferred + 4));
+  return Math.min(Math.max(fitted, TV_BAR_SPACING_MIN), max);
 }
 
 function chartInteractionOptions(zoomEnabled: boolean) {
@@ -210,7 +227,7 @@ function chartInteractionOptions(zoomEnabled: boolean) {
   };
 }
 
-/** Re-assert fixed pitch + right runway (call after any fit/range change). */
+/** Re-assert pitch + right runway (call after any fit/range change). */
 function applyThinCandleScale(
   chart: IChartApi,
   opts: { zoomEnabled: boolean; rightGap: number; barSpacing: number }
@@ -226,9 +243,9 @@ function applyThinCandleScale(
 }
 
 /**
- * Fixed candle pitch + vacant right runway for forming bars.
- * Zoom Off anchors the left at the period start; rightOffset (not an expanded
- * logical range) reserves empty slots so early-period charts stay consistent.
+ * Fit candles to the chart pane + small right runway for forming bars.
+ * Zoom Off anchors the left at the period start; spacing is derived from
+ * container width so the plot isn't left blank.
  */
 function layoutLiveChart(
   chart: IChartApi,
@@ -238,14 +255,22 @@ function layoutLiveChart(
     zoomEnabled?: boolean;
     preserveScroll?: boolean;
     barSpacing?: number;
+    timeframeId?: ChartTimeframeId;
   }
 ) {
   if (barCount <= 0) return;
-  void container;
 
   const zoomEnabled = opts?.zoomEnabled === true;
   const rightGap = zoomEnabled ? ZOOM_RIGHT_GAP_BARS : LIVE_RIGHT_GAP_BARS;
-  const barSpacing = opts?.barSpacing ?? TV_BAR_SPACING;
+  const preferred =
+    opts?.barSpacing ??
+    (opts?.timeframeId
+      ? barSpacingForTimeframe(opts.timeframeId)
+      : TV_BAR_SPACING);
+  // Zoom Off: fill the pane. Zoom On: keep preferred pitch after fitContent.
+  const barSpacing = zoomEnabled
+    ? preferred
+    : fitBarSpacing(container, barCount, rightGap, preferred);
   const scaleOpts = { zoomEnabled, rightGap, barSpacing };
 
   applyThinCandleScale(chart, scaleOpts);
@@ -552,7 +577,7 @@ export function CandlestickChart({
         background: { color: colors.bg },
         textColor: colors.text,
         fontFamily: TV_FONT,
-        fontSize: 12,
+        fontSize: 14,
       },
       watermark: {
         visible: true,
@@ -570,8 +595,10 @@ export function CandlestickChart({
       },
       rightPriceScale: {
         borderColor: colors.border,
-        scaleMargins: { top: 0.08, bottom: 0.32 },
-        minimumWidth: 68,
+        scaleMargins: { top: 0.06, bottom: 0.28 },
+        minimumWidth: PRICE_SCALE_MIN_WIDTH,
+        entireTextOnly: false,
+        ticksVisible: true,
       },
       timeScale: {
         borderColor: colors.border,
@@ -629,10 +656,15 @@ export function CandlestickChart({
       priceLineWidth: 1,
       priceLineStyle: LineStyle.Dashed,
       lastValueVisible: true,
+      priceFormat: {
+        type: "price",
+        precision: 2,
+        minMove: 0.01,
+      },
     });
     // Leave the bottom third for the volume overlay (TradingView pattern).
     candleSeries.priceScale().applyOptions({
-      scaleMargins: { top: 0.08, bottom: 0.32 },
+      scaleMargins: { top: 0.06, bottom: 0.28 },
     });
 
     // Blank priceScaleId = overlay on the same pane (not a separate "vol" scale).
@@ -650,7 +682,7 @@ export function CandlestickChart({
       lineWidth: 1,
       lineType: LineType.Curved,
       priceLineVisible: false,
-      lastValueVisible: false,
+      lastValueVisible: true,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 2,
       title: "SMA",
@@ -661,7 +693,7 @@ export function CandlestickChart({
       lineType: LineType.Curved,
       lineStyle: LineStyle.Solid,
       priceLineVisible: false,
-      lastValueVisible: false,
+      lastValueVisible: true,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 2,
       title: "BB Upper",
@@ -672,7 +704,7 @@ export function CandlestickChart({
       lineType: LineType.Curved,
       lineStyle: LineStyle.Solid,
       priceLineVisible: false,
-      lastValueVisible: false,
+      lastValueVisible: true,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 2,
       title: "BB Lower",
@@ -682,7 +714,7 @@ export function CandlestickChart({
       lineWidth: 1,
       lineStyle: LineStyle.Dotted,
       priceLineVisible: false,
-      lastValueVisible: false,
+      lastValueVisible: tf.intraday,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 3,
       title: "VWAP",
@@ -914,11 +946,15 @@ export function CandlestickChart({
       } else if (opts.preserveRange && visibleRange) {
         chart.timeScale().setVisibleLogicalRange(visibleRange);
         // Keep the forming-candle runway even when preserving scroll.
+        const rightGap = zoomRef.current
+          ? ZOOM_RIGHT_GAP_BARS
+          : LIVE_RIGHT_GAP_BARS;
+        const preferred = barSpacingForTimeframe(tf.id);
         chart.timeScale().applyOptions({
-          rightOffset: zoomRef.current
-            ? ZOOM_RIGHT_GAP_BARS
-            : LIVE_RIGHT_GAP_BARS,
-          barSpacing: barSpacingForTimeframe(tf.id),
+          rightOffset: rightGap,
+          barSpacing: zoomRef.current
+            ? preferred
+            : fitBarSpacing(container, candles.length, rightGap, preferred),
           minBarSpacing: TV_BAR_SPACING_MIN,
           fixRightEdge: false,
           shiftVisibleRangeOnNewBar: true,
@@ -1258,7 +1294,12 @@ export function CandlestickChart({
             lastBarIndex = merged.length - 1;
             chart.timeScale().applyOptions({
               rightOffset: LIVE_RIGHT_GAP_BARS,
-              barSpacing: barSpacingForTimeframe(tf.id),
+              barSpacing: fitBarSpacing(
+                container,
+                merged.length,
+                LIVE_RIGHT_GAP_BARS,
+                barSpacingForTimeframe(tf.id)
+              ),
               minBarSpacing: TV_BAR_SPACING_MIN,
               fixRightEdge: false,
               shiftVisibleRangeOnNewBar: true,
