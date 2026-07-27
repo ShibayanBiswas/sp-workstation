@@ -2006,13 +2006,6 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sidebar-nav-item,
-  .sidebar-icon-badge {
-    transition: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
   .animate-rise,
   .animate-rise-delay-1,
   .animate-rise-delay-2,
@@ -2037,6 +2030,7 @@ a {
   .animate-shimmer,
   .gold-text-shimmer,
   .sidebar-nav-item,
+  .sidebar-icon-badge,
   .dashboard-aurora,
   .dashboard-shell-alive::before,
   .dashboard-main,
@@ -2046,6 +2040,11 @@ a {
   .footer-alive,
   .live-sync-countdown {
     animation: none !important;
+  }
+
+  .sidebar-nav-item,
+  .sidebar-icon-badge {
+    transition: none;
   }
 
   .dashboard-shell {
