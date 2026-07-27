@@ -18,8 +18,11 @@ export function OtpForm() {
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
+      const preview = sessionStorage.getItem("sp_otp_preview") || "";
       setEmail(sessionStorage.getItem("sp_login_email") || "");
-      setOtp(sessionStorage.getItem("sp_otp_preview") || "");
+      setOtp(preview);
+      // Prefill so display + entry never drift (local on-screen OTP).
+      if (preview) setCode(preview.replace(/\D/g, "").slice(0, 6));
     });
     return () => window.cancelAnimationFrame(frame);
   }, []);
@@ -32,6 +35,7 @@ export function OtpForm() {
       const res = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ code }),
       });
       const data = await res.json();
@@ -47,6 +51,7 @@ export function OtpForm() {
       sessionStorage.removeItem("sp_login_email");
       setLoading(false);
       router.push(data.redirect || "/dashboard");
+      router.refresh();
     } catch {
       setError("Verification failed. Returning to login…");
       setLoading(false);

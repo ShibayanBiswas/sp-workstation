@@ -22,6 +22,7 @@ export function ForgotPasswordForm() {
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email }),
       });
       const data = await res.json();
@@ -34,6 +35,7 @@ export function ForgotPasswordForm() {
         sessionStorage.setItem("sp_otp_preview", data.otp);
         sessionStorage.setItem("sp_login_email", data.email || email);
         router.push(data.redirect || "/change-password");
+        router.refresh();
         return;
       }
       setError(

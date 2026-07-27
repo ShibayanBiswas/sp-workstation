@@ -5,7 +5,7 @@ import { Otp } from "@/lib/models/Otp";
 import {
   generateOtp,
   createPendingToken,
-  setPendingCookie,
+  applyPendingCookie,
   getSession,
 } from "@/lib/auth";
 
@@ -27,7 +27,7 @@ export async function POST() {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await Otp.deleteMany({ userId: user._id, consumed: false });
-    await Otp.create({
+    const otpDoc = await Otp.create({
       userId: user._id,
       email: user.email,
       code,
@@ -39,15 +39,17 @@ export async function POST() {
       email: user.email,
       name: user.name,
       purpose: "password_reset",
+      otpId: String(otpDoc._id),
     });
-    await setPendingCookie(pending);
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       ok: true,
       message: "Verification code generated. Valid for 10 minutes.",
       email: user.email,
       otp: code,
     });
+    applyPendingCookie(res, pending);
+    return res;
   } catch (err) {
     console.error("Request password OTP error:", err);
     return NextResponse.json(

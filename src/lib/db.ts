@@ -65,6 +65,14 @@ async function resolveUri(): Promise<string> {
     return normalizeMongoUri(configured);
   }
 
+  // Vercel / production must use Atlas — in-memory Mongo dies between serverless
+  // instances and makes OTP verify fail with "Incorrect OTP".
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    throw new Error(
+      "MONGODB_URI is required on Vercel/production. Set an Atlas connection string (database: sp-workstation)."
+    );
+  }
+
   if (!cached.memory) {
     cached.memory = await MongoMemoryServer.create();
     console.warn(

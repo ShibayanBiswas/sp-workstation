@@ -19,9 +19,14 @@ export function LoginForm() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("reason") === "session_expired") {
+    const reason = params.get("reason");
+    if (reason === "session_expired") {
       setSessionNotice(
         "Your session ended. Sign in again to continue on the desk."
+      );
+    } else if (reason === "logged_out_elsewhere") {
+      setSessionNotice(
+        "Signed out — this account is active on another device. Only one workstation login is allowed at a time."
       );
     }
   }, []);
@@ -55,6 +60,7 @@ export function LoginForm() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
@@ -67,7 +73,9 @@ export function LoginForm() {
         sessionStorage.setItem("sp_otp_preview", data.otp);
       }
       sessionStorage.setItem("sp_login_email", data.email || email);
+      setLoading(false);
       router.push("/otp");
+      router.refresh();
     } catch {
       setError("Network error. Please try again.");
       setLoading(false);

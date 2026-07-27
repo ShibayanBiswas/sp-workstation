@@ -28,7 +28,10 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
     const frame = window.requestAnimationFrame(() => {
       const storedOtp = sessionStorage.getItem("sp_otp_preview") || "";
       const storedEmail = sessionStorage.getItem("sp_login_email") || "";
-      if (storedOtp) setOtp(storedOtp);
+      if (storedOtp) {
+        setOtp(storedOtp);
+        setCode(storedOtp.replace(/\D/g, "").slice(0, 6));
+      }
       if (storedEmail) setEmail(storedEmail);
     });
     return () => window.cancelAnimationFrame(frame);
@@ -42,6 +45,7 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
       try {
         const res = await fetch("/api/auth/request-password-otp", {
           method: "POST",
+          credentials: "include",
         });
         const data = await res.json();
         if (!alive) return;
@@ -52,6 +56,7 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
         }
         if (data.otp) {
           setOtp(data.otp);
+          setCode(String(data.otp).replace(/\D/g, "").slice(0, 6));
           sessionStorage.setItem("sp_otp_preview", data.otp);
         }
         if (data.email) {
@@ -82,6 +87,7 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
       const res = await fetch("/api/auth/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ code, password }),
       });
       const data = await res.json();

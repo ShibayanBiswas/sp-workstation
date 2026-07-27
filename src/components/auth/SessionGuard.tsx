@@ -23,7 +23,7 @@ export function SessionGuard() {
   const signingOut = useRef(false);
   const expiryTimer = useRef<number | null>(null);
 
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(async (reason: "session_expired" | "logged_out_elsewhere" = "session_expired") => {
     if (signingOut.current) return;
     signingOut.current = true;
     try {
@@ -31,7 +31,7 @@ export function SessionGuard() {
     } catch {
       /* still leave the tab */
     }
-    router.replace("/login?reason=session_expired");
+    router.replace(`/login?reason=${reason}`);
     router.refresh();
   }, [router]);
 
@@ -44,11 +44,11 @@ export function SessionGuard() {
       if (expiresAtSec == null || !Number.isFinite(expiresAtSec)) return;
       const msLeft = expiresAtSec * 1000 - Date.now() - SKEW_MS;
       if (msLeft <= 0) {
-        void signOut();
+        void signOut("session_expired");
         return;
       }
       expiryTimer.current = window.setTimeout(() => {
-        void signOut();
+        void signOut("session_expired");
       }, msLeft);
     },
     [signOut]
@@ -62,13 +62,13 @@ export function SessionGuard() {
         signal: AbortSignal.timeout(8_000),
       });
       if (res.status === 401) {
-        await signOut();
+        await signOut("logged_out_elsewhere");
         return;
       }
       if (!res.ok) return;
       const data = (await res.json()) as MeResponse;
       if (!data.authenticated) {
-        await signOut();
+        await signOut("logged_out_elsewhere");
         return;
       }
       scheduleExpiry(data.expiresAt);

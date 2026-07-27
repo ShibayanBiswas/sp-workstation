@@ -7,7 +7,7 @@ import {
   verifyPassword,
   generateOtp,
   createPendingToken,
-  setPendingCookie,
+  applyPendingCookie,
 } from "@/lib/auth";
 import { seedTeamMembers } from "@/lib/seed";
 import { resolveLoginEmail } from "@/lib/email-aliases";
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await Otp.deleteMany({ userId: user._id, consumed: false });
-    await Otp.create({
+    const otpDoc = await Otp.create({
       userId: user._id,
       email: user.email,
       code,
@@ -98,15 +98,17 @@ export async function POST(request: Request) {
       email: user.email,
       name: user.name,
       purpose: "login",
+      otpId: String(otpDoc._id),
     });
-    await setPendingCookie(pending);
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       ok: true,
       message: "Enter the verification code shown on the next screen.",
       email: user.email,
       otp: code,
     });
+    applyPendingCookie(res, pending);
+    return res;
   } catch (err) {
     console.error("Login error:", err);
     const message =

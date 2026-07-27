@@ -6,7 +6,7 @@ import { Otp } from "@/lib/models/Otp";
 import {
   generateOtp,
   createPendingToken,
-  setPendingCookie,
+  applyPendingCookie,
 } from "@/lib/auth";
 import { resolveLoginEmail } from "@/lib/email-aliases";
 import { TEAM_MEMBERS } from "@/data/team";
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await Otp.deleteMany({ userId: user._id, consumed: false });
-    await Otp.create({
+    const otpDoc = await Otp.create({
       userId: user._id,
       email: user.email,
       code,
@@ -70,15 +70,17 @@ export async function POST(request: Request) {
       email: user.email,
       name: user.name,
       purpose: "password_reset",
+      otpId: String(otpDoc._id),
     });
-    await setPendingCookie(pending);
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       ...generic,
       email: user.email,
       otp: code,
       redirect: "/change-password",
     });
+    applyPendingCookie(res, pending);
+    return res;
   } catch (err) {
     console.error("Forgot password error:", err);
     return NextResponse.json(

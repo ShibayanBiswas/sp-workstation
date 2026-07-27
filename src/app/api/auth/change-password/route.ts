@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import { User } from "@/lib/models/User";
 import { Otp } from "@/lib/models/Otp";
 import {
   hashPassword,
   getPending,
-  clearAuthCookies,
-  clearPendingCookie,
+  clearCookiesOnResponse,
+  normalizeOtpCode,
 } from "@/lib/auth";
 
 const schema = z.object({
-  code: z.string().length(6),
+  code: z.string().min(1),
   password: z
     .string()
     .min(8)
@@ -46,14 +47,33 @@ export async function POST(request: Request) {
       );
     }
 
+    const code = normalizeOtpCode(parsed.data.code);
+    if (code.length !== 6) {
+      return NextResponse.json(
+        { error: "Enter the 6-digit OTP." },
+        { status: 400 }
+      );
+    }
+
+    if (!mongoose.isValidObjectId(pending.otpId)) {
+      return NextResponse.json(
+        {
+          error: "Session expired. Request a new verification code.",
+          redirect: "/login",
+        },
+        { status: 401 }
+      );
+    }
+
     await connectDB();
     const record = await Otp.findOne({
+      _id: pending.otpId,
       userId: pending.userId,
       consumed: false,
       expiresAt: { $gt: new Date() },
-    }).sort({ createdAt: -1 });
+    });
 
-    if (!record || record.code !== parsed.data.code) {
+    if (!record || record.code !== code) {
       return NextResponse.json(
         { error: "Incorrect verification code. Please try again." },
         { status: 401 }
@@ -62,24 +82,29 @@ export async function POST(request: Request) {
 
     const user = await User.findById(pending.userId);
     if (!user) {
-      await clearAuthCookies();
-      return NextResponse.json({ error: "User not found." }, { status: 404 });
+      const res = NextResponse.json(
+        { error: "User not found." },
+        { status: 404 }
+      );
+      clearCookiesOnResponse(res);
+      return res;
     }
 
     user.passwordHash = await hashPassword(parsed.data.password);
+    // Password change invalidates every signed-in device.
+    user.activeSessionId = null;
     await user.save();
 
     record.consumed = true;
     await record.save();
 
-    await clearAuthCookies();
-    await clearPendingCookie();
-
-    return NextResponse.json({
+    const res = NextResponse.json({
       ok: true,
       message: "Password updated. Sign in with your new password.",
       redirect: "/login",
     });
+    clearCookiesOnResponse(res);
+    return res;
   } catch (err) {
     console.error("Change password error:", err);
     return NextResponse.json(

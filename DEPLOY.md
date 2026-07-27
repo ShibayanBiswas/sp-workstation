@@ -29,6 +29,17 @@ Atlas is almost always blocking Vercel’s IP.
 
 Without `0.0.0.0/0`, Vercel **cannot** use MongoDB and login cannot succeed.
 
+### Auth notes (Vercel)
+
+- **`MONGODB_URI` is required** on Vercel. Without Atlas, OTP codes cannot be
+  shared across serverless instances and verify fails with “Incorrect OTP”.
+- Cookies are `HttpOnly` + `Secure` on Vercel (`sp_pending` for OTP step,
+  `sp_session` after verify).
+- **One device per account:** a successful sign-in rotates `activeSessionId`.
+  Any other open workstation for that user is signed out automatically
+  (SessionGuard polls `/api/auth/me`).
+- Sign out clears the cookie **and** revokes the server session.
+
 ---
 
 ## Big picture (read once)
