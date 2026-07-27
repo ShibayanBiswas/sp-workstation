@@ -9,6 +9,7 @@ import {
   getPending,
   clearCookiesOnResponse,
   normalizeOtpCode,
+  invalidateSessionCache,
 } from "@/lib/auth";
 
 const schema = z.object({
@@ -94,6 +95,7 @@ export async function POST(request: Request) {
     // Password change invalidates every signed-in device.
     user.activeSessionId = null;
     await user.save();
+    invalidateSessionCache(String(user._id));
 
     record.consumed = true;
     await record.save();

@@ -5,8 +5,13 @@ const LEGACY_EMAIL_MIGRATIONS: Record<string, string> = {
   "shiabaynbiswas@rathi.com": "shibayanbiswas@rathi.com",
 };
 
+let migratedThisInstance = false;
+
 /** Renames legacy roster emails to their canonical spelling. */
 export async function migrateLegacyEmails(): Promise<number> {
+  // One pass per warm serverless instance — avoid extra Mongo work on every login.
+  if (migratedThisInstance) return 0;
+
   await connectDB();
   let migrated = 0;
 
@@ -24,5 +29,6 @@ export async function migrateLegacyEmails(): Promise<number> {
     migrated += 1;
   }
 
+  migratedThisInstance = true;
   return migrated;
 }

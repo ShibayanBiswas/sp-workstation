@@ -29,10 +29,12 @@ import {
   nseIndexNameForId,
 } from "@/lib/nse-indices";
 import { fetchBseSensexQuote } from "@/lib/bse-sensex";
-import { withTimeout } from "@/lib/fetch-timeout";
+import { ROUTE_BUDGET_MS, withTimeout } from "@/lib/fetch-timeout";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+/** Cap Vercel function runtime so cold Yahoo/NSE paths cannot hang the deploy. */
+export const maxDuration = 20;
 
 export type MarketQuote = {
   id: string;
@@ -53,8 +55,35 @@ export type MarketQuote = {
   source?: "nse" | "bse" | "yahoo";
 };
 
+type MarketsPayload = {
+  quotes: MarketQuote[];
+  marketStatus: MarketStatus;
+  asOf: string;
+};
+
+const MARKETS_CACHE_MS = 10_000;
+let marketsCache: { at: number; payload: MarketsPayload } | null = null;
+let marketsInflight: Promise<MarketsPayload> | null = null;
+
 function quickSpark(dayOpen: number, price: number): number[] {
   return sparklineSeries([dayOpen, price], dayOpen);
+}
+
+function emptyQuotes(): MarketQuote[] {
+  return sortByDisplayOrder(
+    INDIAN_MARKET_INDICES.map((index) => ({
+      id: index.id,
+      name: index.name,
+      price: null,
+      change: null,
+      changePercent: null,
+      dayOpen: null,
+      previousClose: null,
+      sparkline: [],
+      group: index.group,
+      sessionPrinted: false,
+    }))
+  );
 }
 
 type SparkResult = {
@@ -77,7 +106,7 @@ async function sessionSparkline(
 ): Promise<SparkResult> {
   const ohlc = await withTimeout(
     fetchYahooOhlc(yahooSymbol, getTimeframe("1D")),
-    10_000,
+    3_500,
     null
   );
   if (!ohlc?.bars.length) {
@@ -237,7 +266,11 @@ async function yahooQuote(
   status: MarketStatus
 ): Promise<MarketQuote | null> {
   try {
-    const live = await fetchYahooLiveQuote(index.yahoo, { fresh: true });
+    const live = await withTimeout(
+      fetchYahooLiveQuote(index.yahoo),
+      4_000,
+      null
+    );
     if (!live) return null;
 
     const spark = await sessionSparkline(index.yahoo, live.price, status);
@@ -257,17 +290,12 @@ async function yahooQuote(
   }
 }
 
-export async function GET() {
-  const session = await getSession();
-  if (!session) {
-    return jsonDynamic({ error: "Unauthorized" }, { status: 401 });
-  }
-
+async function buildMarketsPayload(): Promise<MarketsPayload> {
   const status = getCashMarketStatus();
 
   const [nseMap, bseSensex] = await Promise.all([
-    fetchNseIndexQuotes({ fresh: true }),
-    fetchBseSensexQuote({ fresh: true }),
+    withTimeout(fetchNseIndexQuotes(), 6_000, new Map()),
+    withTimeout(fetchBseSensexQuote(), 4_000, null),
   ]);
 
   const results = await mapPool(
@@ -311,9 +339,9 @@ export async function GET() {
       }
 
       // Venue miss — Yahoo fallback, still vs session open.
-      return withTimeout(yahooQuote(index, status), 14_000, null);
+      return withTimeout(yahooQuote(index, status), 6_000, null);
     },
-    4
+    6
   );
 
   const seen = new Set<string>();
@@ -325,25 +353,44 @@ export async function GET() {
     })
   );
 
-  return jsonDynamic({
-    quotes:
-      quotes.length > 0
-        ? quotes
-        : sortByDisplayOrder(
-            INDIAN_MARKET_INDICES.map((index) => ({
-              id: index.id,
-              name: index.name,
-              price: null,
-              change: null,
-              changePercent: null,
-              dayOpen: null,
-              previousClose: null,
-              sparkline: [],
-              group: index.group,
-              sessionPrinted: false,
-            }))
-          ),
+  return {
+    quotes: quotes.length > 0 ? quotes : emptyQuotes(),
     marketStatus: status,
     asOf: new Date().toISOString(),
-  });
+  };
+}
+
+export async function GET() {
+  const session = await getSession();
+  if (!session) {
+    return jsonDynamic({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (marketsCache && Date.now() - marketsCache.at < MARKETS_CACHE_MS) {
+    return jsonDynamic(marketsCache.payload);
+  }
+
+  if (!marketsInflight) {
+    marketsInflight = buildMarketsPayload()
+      .then((payload) => {
+        marketsCache = { at: Date.now(), payload };
+        return payload;
+      })
+      .finally(() => {
+        marketsInflight = null;
+      });
+  }
+
+  const stale = marketsCache?.payload;
+  const payload = await withTimeout(
+    marketsInflight,
+    ROUTE_BUDGET_MS,
+    stale ?? {
+      quotes: emptyQuotes(),
+      marketStatus: getCashMarketStatus(),
+      asOf: new Date().toISOString(),
+    }
+  );
+
+  return jsonDynamic(payload);
 }

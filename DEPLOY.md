@@ -29,6 +29,12 @@ Atlas is almost always blocking Vercel’s IP.
 
 Without `0.0.0.0/0`, Vercel **cannot** use MongoDB and login cannot succeed.
 
+### Performance notes (Vercel)
+
+- Deploy region is **Mumbai (`bom1`)** via `vercel.json` — closer to NSE/BSE/Atlas.
+- Market/chart routes fail fast (short upstream timeouts + stale cache) so the UI never hangs.
+- Session checks are cached briefly so 15s market polls do not hammer Mongo on every tick.
+
 ### Auth notes (Vercel)
 
 - **`MONGODB_URI` is required** on Vercel. Without Atlas, OTP codes cannot be

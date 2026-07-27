@@ -27,7 +27,7 @@ const UA =
 type Cache = { at: number; quote: BseSensexQuote };
 let cache: Cache | null = null;
 /** Align with NSE short TTL so markets + chart share one Sensex print. */
-const CACHE_MS = 8_000;
+const CACHE_MS = 12_000;
 let inflight: Promise<BseSensexQuote | null> | null = null;
 
 function num(v: unknown): number | null {
@@ -123,11 +123,8 @@ async function loadBseSensex(): Promise<BseSensexQuote | null> {
 }
 
 /** Live Sensex quote from BSE (day % vs today's open). */
-export async function fetchBseSensexQuote(opts?: {
-  fresh?: boolean;
-}): Promise<BseSensexQuote | null> {
-  const fresh = opts?.fresh === true;
-  if (!fresh && cache && Date.now() - cache.at < CACHE_MS) {
+export async function fetchBseSensexQuote(): Promise<BseSensexQuote | null> {
+  if (cache && Date.now() - cache.at < CACHE_MS) {
     return cache.quote;
   }
   if (inflight) return inflight;

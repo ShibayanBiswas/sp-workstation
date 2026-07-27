@@ -1,7 +1,11 @@
 /** Timed fetch helpers so upstream market APIs cannot hang the app. */
 
-export const UPSTREAM_TIMEOUT_MS = 8_000;
-export const CLIENT_API_TIMEOUT_MS = 18_000;
+/** Per-upstream call (Yahoo / NSE / BSE). Keep tight for Vercel. */
+export const UPSTREAM_TIMEOUT_MS = 5_000;
+/** Browser abort for /api/markets and /api/chart. */
+export const CLIENT_API_TIMEOUT_MS = 12_000;
+/** Whole serverless handler budget before returning stale/partial data. */
+export const ROUTE_BUDGET_MS = 12_000;
 
 /**
  * fetch() with an absolute timeout. Combines with any existing AbortSignal.

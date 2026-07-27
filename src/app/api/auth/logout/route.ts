@@ -5,6 +5,7 @@ import { User } from "@/lib/models/User";
 import {
   clearCookiesOnResponse,
   COOKIE_NAME,
+  invalidateSessionCache,
   verifyToken,
   type SessionPayload,
 } from "@/lib/auth";
@@ -24,6 +25,7 @@ export async function POST() {
           { _id: session.userId, activeSessionId: session.sid },
           { $set: { activeSessionId: null } }
         );
+        invalidateSessionCache(session.userId);
       }
     }
   } catch (err) {

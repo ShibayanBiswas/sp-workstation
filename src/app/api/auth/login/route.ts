@@ -19,6 +19,9 @@ const schema = z.object({
   password: z.string().min(1),
 });
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 15;
+
 const allowedEmails = new Set(
   TEAM_MEMBERS.map((member) => member.email.toLowerCase())
 );

@@ -117,9 +117,12 @@ export async function connectDB(): Promise<typeof mongoose> {
       const uri = await resolveUri();
       return mongoose.connect(uri, {
         bufferCommands: false,
-        serverSelectionTimeoutMS: 12_000,
-        connectTimeoutMS: 12_000,
+        // Fail fast on Vercel cold starts — long waits look like a hung deploy.
+        serverSelectionTimeoutMS: 5_000,
+        connectTimeoutMS: 5_000,
+        socketTimeoutMS: 8_000,
         maxPoolSize: 5,
+        maxIdleTimeMS: 10_000,
       });
     })().catch((err) => {
       // Allow the next request to retry after a failed cold-start connect.

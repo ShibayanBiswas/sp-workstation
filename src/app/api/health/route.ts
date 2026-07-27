@@ -4,6 +4,7 @@ import { jsonDynamic } from "@/lib/json-dynamic";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const maxDuration = 10;
 
 /** Lightweight readiness probe for Vercel / ops — no secrets returned. */
 export async function GET() {

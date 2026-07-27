@@ -37,6 +37,8 @@ import { withTimeout } from "@/lib/fetch-timeout";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+/** Cap Vercel function runtime so Yahoo history cannot hang the deploy. */
+export const maxDuration = 20;
 
 const querySchema = z.object({
   indexId: z.string().min(1),
@@ -76,8 +78,8 @@ export async function GET(req: Request) {
   const inception =
     parsed.data.full === "1" || parsed.data.full === "true";
   const isHistory = parsed.data.before != null;
-  // Budget must cover sequential Yahoo host attempts (8s each) + fallbacks.
-  const ohlcBudgetMs = inception || isHistory ? 22_000 : 18_000;
+  // Budget must cover Yahoo host attempts without eating the whole Vercel slot.
+  const ohlcBudgetMs = inception || isHistory ? 12_000 : 8_000;
   const ohlc = isHistory
     ? await withTimeout(
         fetchYahooOhlcBefore(index.yahoo, timeframe, parsed.data.before!),
@@ -148,16 +150,18 @@ export async function GET(req: Request) {
   // Prefer per-venue LTP (NSE / BSE) over lagged Yahoo closes.
   const nse =
     timeframe.id === "1D" && nseIndexNameForId(index.id)
-      ? (await fetchNseIndexQuotes({ fresh: true })).get(index.id)
+      ? (await withTimeout(fetchNseIndexQuotes(), 5_000, new Map())).get(
+          index.id
+        )
       : undefined;
   const bse =
     timeframe.id === "1D" && index.id === "sensex"
-      ? await fetchBseSensexQuote({ fresh: true })
+      ? await withTimeout(fetchBseSensexQuote(), 4_000, null)
       : undefined;
   const venue = bse ?? nse;
   const live = venue
     ? null
-    : await fetchYahooLiveQuote(index.yahoo, { fresh: true });
+    : await withTimeout(fetchYahooLiveQuote(index.yahoo), 4_000, null);
   const price = venue?.price ?? live?.price ?? lastBar.close;
   // Candle pane must track exchange LTP — not a lagged Yahoo close.
   bars = applyLiveCloseToBars(bars, price);

@@ -47,7 +47,7 @@ const cache = new Map<string, CacheEntry<unknown>>();
 /** Live LTP cache — slightly under the client poll so each tick can refresh. */
 const QUOTE_CACHE_MS = Math.max(LIVE_REFRESH_MS - 5_000, 5_000);
 /** OHLC/sparklines — longer TTL; shape changes slowly vs LTP. */
-const OHLC_CACHE_MS = 60_000;
+const OHLC_CACHE_MS = 90_000;
 
 function getCached<T>(key: string, ttlMs: number): T | null {
   const hit = cache.get(key);

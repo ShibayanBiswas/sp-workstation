@@ -12,7 +12,11 @@ import {
   newSessionId,
   normalizeOtpCode,
   PENDING_COOKIE,
+  invalidateSessionCache,
 } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 15;
 
 const schema = z.object({
   code: z.string().min(1),
@@ -77,6 +81,7 @@ export async function POST(request: Request) {
     const sid = newSessionId();
     user.activeSessionId = sid;
     await user.save();
+    invalidateSessionCache(String(user._id));
 
     const token = await createSessionToken({
       userId: String(user._id),

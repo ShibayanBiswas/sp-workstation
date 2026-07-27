@@ -41,6 +41,23 @@ export type SessionPayload = {
   exp?: number;
 };
 
+/** Avoid a Mongo round-trip on every 15s markets/chart poll (Vercel cold path). */
+const SESSION_CACHE_MS = 15_000;
+type SessionCacheEntry = { at: number; session: SessionPayload };
+const sessionCache = new Map<string, SessionCacheEntry>();
+
+export function invalidateSessionCache(userId?: string) {
+  if (!userId) {
+    sessionCache.clear();
+    return;
+  }
+  for (const [key, entry] of sessionCache) {
+    if (entry.session.userId === userId || key.startsWith(`${userId}:`)) {
+      sessionCache.delete(key);
+    }
+  }
+}
+
 /** Session lifetime for cookies and JWT (must stay in sync). */
 export const SESSION_MAX_AGE_SEC = 60 * 60 * 12;
 
@@ -139,6 +156,15 @@ export async function getSession(): Promise<SessionPayload | null> {
     const session = payload as unknown as SessionPayload;
     if (!session.userId || !session.email || !session.sid) return null;
 
+    const cacheKey = `${session.userId}:${session.sid}`;
+    const cached = sessionCache.get(cacheKey);
+    if (cached && Date.now() - cached.at < SESSION_CACHE_MS) {
+      return {
+        ...cached.session,
+        exp: typeof payload.exp === "number" ? payload.exp : cached.session.exp,
+      };
+    }
+
     await connectDB();
     const user = await User.findById(session.userId)
       .select("activeSessionId email name role")
@@ -147,10 +173,11 @@ export async function getSession(): Promise<SessionPayload | null> {
 
     // One active device: JWT sid must match the account's current session.
     if (!user.activeSessionId || user.activeSessionId !== session.sid) {
+      invalidateSessionCache(session.userId);
       return null;
     }
 
-    return {
+    const resolved: SessionPayload = {
       userId: session.userId,
       email: session.email,
       name: session.name,
@@ -158,6 +185,8 @@ export async function getSession(): Promise<SessionPayload | null> {
       sid: session.sid,
       exp: typeof payload.exp === "number" ? payload.exp : undefined,
     };
+    sessionCache.set(cacheKey, { at: Date.now(), session: resolved });
+    return resolved;
   } catch {
     return null;
   }
