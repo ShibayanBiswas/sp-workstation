@@ -152,7 +152,7 @@ export function buildHighLowMarkers(
       position: "aboveBar",
       shape: "arrowDown",
       color: highColor,
-      text: "H",
+      text: "",
       size: 0.8,
     },
     {
@@ -160,7 +160,7 @@ export function buildHighLowMarkers(
       position: "belowBar",
       shape: "arrowUp",
       color: lowColor,
-      text: "L",
+      text: "",
       size: 0.8,
     },
   ];

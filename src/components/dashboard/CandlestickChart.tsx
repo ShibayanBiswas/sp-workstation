@@ -439,7 +439,6 @@ export function CandlestickChart({
   syncedAsOf,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const legendRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
@@ -477,6 +476,20 @@ export function CandlestickChart({
     open: number | null;
     close: number | null;
   }>({ high: null, low: null, open: null, close: null });
+  const [barReadout, setBarReadout] = useState<{
+    timeLabel: string;
+    open: string;
+    high: string;
+    low: string;
+    close: string;
+    up: boolean;
+    changePct: string | null;
+    volume: string | null;
+    sma: string | null;
+    bbUpper: string | null;
+    bbLower: string | null;
+    vwap: string | null;
+  } | null>(null);
   const [clockStatus, setClockStatus] = useState<MarketStatus>(() =>
     getNseMarketStatus()
   );
@@ -623,6 +636,7 @@ export function CandlestickChart({
     tfRef.current = tf;
     setPeriodReference(null);
     setReturnBasis(null);
+    setBarReadout(null);
     const colors = chartColors(theme);
     barsRef.current = [];
     hasMoreRef.current = true;
@@ -640,7 +654,7 @@ export function CandlestickChart({
         fontSize: 12,
       },
       watermark: {
-        visible: true,
+        visible: false,
         text: name.toUpperCase(),
         fontSize: 48,
         fontFamily: TV_FONT,
@@ -715,7 +729,7 @@ export function CandlestickChart({
       priceLineVisible: true,
       priceLineWidth: 1,
       priceLineStyle: LineStyle.Dashed,
-      lastValueVisible: true,
+      lastValueVisible: false,
       priceFormat: {
         type: "price",
         precision: 2,
@@ -737,6 +751,7 @@ export function CandlestickChart({
     });
 
     // Overlays after candles so indicators paint on top (TradingView-style).
+    // Titles stay empty — OHLC / SMA / BB / VWAP readouts live in the right panel.
     const smaSeries = chart.addLineSeries({
       color: colors.sma,
       lineWidth: 1,
@@ -745,7 +760,7 @@ export function CandlestickChart({
       lastValueVisible: false,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 2,
-      title: "SMA",
+      title: "",
     });
     const bbUpperSeries = chart.addLineSeries({
       color: colors.bb,
@@ -756,7 +771,7 @@ export function CandlestickChart({
       lastValueVisible: false,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 2,
-      title: "BB Upper",
+      title: "",
     });
     const bbLowerSeries = chart.addLineSeries({
       color: colors.bb,
@@ -767,7 +782,7 @@ export function CandlestickChart({
       lastValueVisible: false,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 2,
-      title: "BB Lower",
+      title: "",
     });
     const vwapSeries = chart.addLineSeries({
       color: colors.vwap,
@@ -777,7 +792,7 @@ export function CandlestickChart({
       lastValueVisible: false,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 3,
-      title: "VWAP",
+      title: "",
       visible: tf.intraday,
     });
 
@@ -806,63 +821,40 @@ export function CandlestickChart({
         bbLower?: number | null;
       }
     ) => {
-      const el = legendRef.current;
-      if (!el || !bar) return;
+      if (!bar) return;
       const up = bar.close >= bar.open;
-      const priceColor = up ? colors.up : colors.down;
-      const item = (label: string, value: string, color = priceColor) =>
-        `<span style="color:${colors.muted}">${label}</span>&nbsp;<span style="color:${color};font-weight:600">${value}</span>`;
-      const timeLabel =
-        hoverUnix > 0 ? formatIstDateTime(hoverUnix, tf.axisLabelMode) : "";
-
-      let barChangeHtml = "";
+      let changePct: string | null = null;
       if (extras?.prevClose != null && extras.prevClose !== 0) {
-        const chg = bar.close - extras.prevClose;
-        const pct = (chg / extras.prevClose) * 100;
-        const chgColor = chg >= 0 ? colors.up : colors.down;
-        barChangeHtml = item("Δ", `${fmtPct(pct)}`, chgColor);
+        changePct = fmtPct(
+          ((bar.close - extras.prevClose) / extras.prevClose) * 100
+        );
       }
-
-      const volHtml = item(
-        "Vol",
-        formatVolumeShort(resolveBarVolume({
-          time: 0,
-          open: bar.open,
-          high: bar.high,
-          low: bar.low,
-          close: bar.close,
-          volume: extras?.volume ?? undefined,
-        })),
-        colors.text
-      );
-
-      const smaHtml =
-        extras?.sma != null
-          ? item("SMA", fmt(extras.sma), colors.sma)
-          : "";
-      const bbHtml =
-        extras?.bbUpper != null && extras?.bbLower != null
-          ? `${item("BB U", fmt(extras.bbUpper), colors.bb)}${item("BB L", fmt(extras.bbLower), colors.bb)}`
-          : "";
-
-      const vwapHtml =
-        extras?.vwap != null
-          ? item("VWAP", fmt(extras.vwap), colors.vwap)
-          : "";
-
-      el.innerHTML = `
-        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:${TV_FONT};font-size:${container.clientWidth < 420 ? 10 : 12}px;padding:2px 4px;border-radius:6px;background:${theme === "dark" ? "rgba(14,14,16,0.55)" : "rgba(255,255,255,0.72)"};backdrop-filter:blur(6px)">
-          ${timeLabel ? `<span style="color:${colors.muted}">${timeLabel} IST</span>` : ""}
-          ${item("O", fmt(bar.open))}
-          ${item("H", fmt(bar.high))}
-          ${item("L", fmt(bar.low))}
-          ${item("C", fmt(bar.close))}
-          ${barChangeHtml}
-          ${volHtml}
-          ${smaHtml}
-          ${bbHtml}
-          ${vwapHtml}
-        </div>`;
+      setBarReadout({
+        timeLabel:
+          hoverUnix > 0
+            ? `${formatIstDateTime(hoverUnix, tf.axisLabelMode)} IST`
+            : "",
+        open: fmt(bar.open),
+        high: fmt(bar.high),
+        low: fmt(bar.low),
+        close: fmt(bar.close),
+        up,
+        changePct,
+        volume: formatVolumeShort(
+          resolveBarVolume({
+            time: 0,
+            open: bar.open,
+            high: bar.high,
+            low: bar.low,
+            close: bar.close,
+            volume: extras?.volume ?? undefined,
+          })
+        ),
+        sma: extras?.sma != null ? fmt(extras.sma) : null,
+        bbUpper: extras?.bbUpper != null ? fmt(extras.bbUpper) : null,
+        bbLower: extras?.bbLower != null ? fmt(extras.bbLower) : null,
+        vwap: extras?.vwap != null ? fmt(extras.vwap) : null,
+      });
     };
 
     const updateOverlayLines = (bars: OhlcBar[]) => {
@@ -1602,10 +1594,6 @@ export function CandlestickChart({
       <div className="grid grid-cols-1 lg:grid-cols-2">
         {/* Chart — full width on small screens; left half on large */}
         <div className="relative order-2 min-h-[280px] border-[var(--border)] sm:min-h-[340px] lg:order-1 lg:min-h-[420px] lg:border-r">
-          <div
-            ref={legendRef}
-            className="pointer-events-none absolute left-2 top-2 z-10 max-w-[calc(100%-0.75rem)] sm:left-3 sm:max-w-[calc(100%-1.5rem)]"
-          />
           {loading ? (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[var(--bg-elevated)]/90">
               <Loader2
@@ -1730,6 +1718,105 @@ export function CandlestickChart({
                   </span>
                 </div>
               ) : null}
+            </div>
+
+            {/* Chart bar readout — OHLC / overlays live here, not over candles */}
+            <div className="rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_78%,transparent)] px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] font-bold tracking-[0.16em] text-[var(--fg-subtle)]">
+                  {barReadout?.timeLabel ? "CROSSHAIR" : "LATEST BAR"}
+                </span>
+                <span className="tv-num truncate text-[10px] text-[var(--fg-muted)]">
+                  {barReadout?.timeLabel ||
+                    (header.hoverTime
+                      ? `${header.hoverTime} IST`
+                      : header.asOf
+                        ? `${header.asOf} IST`
+                        : "—")}
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-4 gap-1.5">
+                {(
+                  [
+                    ["O", barReadout?.open],
+                    ["H", barReadout?.high],
+                    ["L", barReadout?.low],
+                    ["C", barReadout?.close],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1.5 text-center"
+                  >
+                    <p className="text-[9px] font-bold tracking-wide text-[var(--fg-subtle)]">
+                      {label}
+                    </p>
+                    <p
+                      className={`tv-num mt-0.5 truncate text-[11px] font-semibold sm:text-xs ${
+                        label === "C" && barReadout
+                          ? barReadout.up
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-red-600 dark:text-red-400"
+                          : label === "H"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : label === "L"
+                              ? "text-red-600 dark:text-red-400"
+                              : "text-[var(--fg)]"
+                      }`}
+                    >
+                      {value ?? "—"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-[var(--border)] pt-2 text-[10px]">
+                {barReadout?.changePct ? (
+                  <span className="tv-num text-[var(--fg-muted)]">
+                    Δ{" "}
+                    <span
+                      className={
+                        barReadout.changePct.startsWith("-")
+                          ? "font-semibold text-red-600 dark:text-red-400"
+                          : "font-semibold text-emerald-600 dark:text-emerald-400"
+                      }
+                    >
+                      {barReadout.changePct}
+                    </span>
+                  </span>
+                ) : null}
+                {barReadout?.volume ? (
+                  <span className="tv-num text-[var(--fg-muted)]">
+                    Vol{" "}
+                    <span className="font-semibold text-[var(--fg)]">
+                      {barReadout.volume}
+                    </span>
+                  </span>
+                ) : null}
+                {barReadout?.vwap ? (
+                  <span className="tv-num text-[var(--fg-muted)]">
+                    VWAP{" "}
+                    <span className="font-semibold text-[var(--gold-deep)] dark:text-[var(--gold)]">
+                      {barReadout.vwap}
+                    </span>
+                  </span>
+                ) : null}
+                {barReadout?.sma ? (
+                  <span className="tv-num text-[var(--fg-muted)]">
+                    SMA{" "}
+                    <span className="font-semibold text-sky-700 dark:text-sky-300">
+                      {barReadout.sma}
+                    </span>
+                  </span>
+                ) : null}
+                {barReadout?.bbUpper && barReadout?.bbLower ? (
+                  <span className="tv-num text-[var(--fg-muted)]">
+                    BB{" "}
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">
+                      {barReadout.bbLower}–{barReadout.bbUpper}
+                    </span>
+                  </span>
+                ) : null}
+              </div>
             </div>
 
             {/* Period range meter */}
