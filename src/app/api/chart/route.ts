@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
-import { computeTimeframeReturn } from "@/lib/chart-period-return";
+import {
+  computeTimeframeReturn,
+  timeframePeriodBars,
+} from "@/lib/chart-period-return";
 import { getTimeframe } from "@/lib/chart-timeframes";
 import { jsonDynamic } from "@/lib/json-dynamic";
 import { hasTodaySessionPrint } from "@/lib/market-hours";
@@ -13,7 +16,6 @@ import {
   snapFormingBarTip,
   yahooIntervalSeconds,
 } from "@/lib/yahoo-ohlc";
-import { tradingSessionBars } from "@/lib/chart-ist";
 import {
   changeVersusSessionOpen,
   ohlcSessionOpen,
@@ -101,10 +103,10 @@ export async function GET(req: Request) {
       ? snapFormingBarTip(ohlc.bars, intervalSec)
       : ohlc.bars.slice();
 
-  // Default 1D view = one trading session from that day's first print.
-  // Zoom/history (`full` / `before`) keep multi-day intraday history.
-  if (timeframe.id === "1D" && !inception && !isHistory) {
-    bars = tradingSessionBars(bars);
+  // Zoom Off default: one period from that timeframe's start (session / week /
+  // month / lookback). Zoom On (`full`) and history (`before`) keep extended series.
+  if (!inception && !isHistory) {
+    bars = timeframePeriodBars(bars, timeframe.id);
   }
 
   if (bars.length === 0) {
@@ -120,13 +122,11 @@ export async function GET(req: Request) {
 
   const lastBar = bars[bars.length - 1]!;
   const earliest = bars[0]!.time;
-  const nowSec = Math.floor(Date.now() / 1000);
   const MIN_HISTORY_UNIX = 946_684_800; // 2000-01-01 UTC
   const hasMore = isHistory
     ? bars.length > 0 && earliest > MIN_HISTORY_UNIX
-    : inception || timeframe.id !== "1D"
-      ? nowSec - earliest > 86_400
-      : false;
+    : // Period window (Zoom Off) still has older history available for Zoom On.
+      true;
 
   if (isHistory) {
     return jsonDynamic({

@@ -17,7 +17,6 @@ import {
 import { Loader2, RefreshCw } from "lucide-react";
 import {
   getTimeframe,
-  type ChartTimeframe,
   type ChartTimeframeId,
 } from "@/lib/chart-timeframes";
 import {
@@ -26,7 +25,6 @@ import {
   formatIstHeaderTime,
   istDateString,
   timeToUnix,
-  tradingSessionBars,
 } from "@/lib/chart-ist";
 import {
   buildHighLowMarkers,
@@ -54,6 +52,7 @@ import {
 import {
   computeTimeframeReturn,
   returnBasisLabel,
+  timeframePeriodBars,
   type ReturnBasis,
 } from "@/lib/chart-period-return";
 import {
@@ -94,15 +93,6 @@ const TV_FONT =
   "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif";
 
 const SMA_PERIOD = 20;
-
-function shouldShowRecentWindow(zoomEnabled: boolean, tf: ChartTimeframe) {
-  // Zoom On → show full loaded history (toward inception).
-  // 1D Zoom Off → one session from open — fit the whole day, never clip into yesterday.
-  // Other intraday (1W) → recent trading window.
-  if (zoomEnabled) return false;
-  if (tf.id === "1D") return false;
-  return tf.intraday;
-}
 
 function chartColors(theme: ThemeMode) {
   if (theme === "dark") {
@@ -196,26 +186,6 @@ function fitChartFullWidth(
     },
   });
   chart.timeScale().fitContent();
-}
-
-function showRecentWindow(
-  chart: IChartApi,
-  barCount: number,
-  tf: ChartTimeframe
-) {
-  const visible = Math.min(tf.defaultVisibleBars, Math.max(barCount - 1, 1));
-  chart.applyOptions({
-    timeScale: {
-      fixLeftEdge: false,
-      fixRightEdge: false,
-      barSpacing: 8,
-      rightOffset: 8,
-    },
-  });
-  chart.timeScale().setVisibleLogicalRange({
-    from: Math.max(barCount - visible, 0),
-    to: barCount + 2,
-  });
 }
 
 function mergeBars(
@@ -701,8 +671,6 @@ export function CandlestickChart({
         });
       } else if (opts.preserveRange && visibleRange) {
         chart.timeScale().setVisibleLogicalRange(visibleRange);
-      } else if (shouldShowRecentWindow(zoomRef.current, tf)) {
-        showRecentWindow(chart, candles.length, tf);
       } else {
         fitChartFullWidth(chart, container, candles.length);
       }
@@ -798,22 +766,20 @@ export function CandlestickChart({
       const count = barCountRef.current;
       if (count <= 0) return;
 
-      // Leaving zoom on 1D: clip back to this trading session from open.
-      if (!enabled && tf.id === "1D") {
-        const session = tradingSessionBars(barsRef.current);
-        if (session.length > 0) {
-          applyBars(session);
+      // Leaving Zoom On: clip back to this timeframe's period from its start.
+      if (!enabled) {
+        const period = timeframePeriodBars(barsRef.current, tf.id);
+        if (period.length > 0) {
+          applyBars(period);
           return;
         }
       }
 
-      if (shouldShowRecentWindow(enabled, tf)) {
-        showRecentWindow(chart, count, tf);
-        return;
-      }
-
       fitChartFullWidth(chart, container, count);
-      if (enabled && !historyExhaustedRef.current) {
+      if (enabled) {
+        // Period-clipped Zoom Off responses still have older history to pull.
+        hasMoreRef.current = true;
+        historyExhaustedRef.current = false;
         void loadAllHistory();
       }
     };
@@ -831,11 +797,7 @@ export function CandlestickChart({
     const resetView = () => {
       const count = barCountRef.current;
       if (count <= 0) return;
-      if (shouldShowRecentWindow(zoomRef.current, tf)) {
-        showRecentWindow(chart, count, tf);
-      } else {
-        fitChartFullWidth(chart, container, count);
-      }
+      fitChartFullWidth(chart, container, count);
     };
 
     const onDblClick = () => resetView();
@@ -888,15 +850,15 @@ export function CandlestickChart({
         if (livePrice != null) {
           incoming = applyLiveCloseToBars(incoming, livePrice);
         }
-        // Client guard: 1D Zoom Off is always one session from that day's open.
-        if (tf.id === "1D" && !zoomRef.current) {
-          incoming = tradingSessionBars(incoming);
+        // Zoom Off: always clip to this timeframe's period from its start.
+        if (!zoomRef.current) {
+          incoming = timeframePeriodBars(incoming, tf.id);
         }
 
         if (silent && barsRef.current.length > 0) {
           let merged = mergeBars(barsRef.current, incoming, intervalSec);
-          if (tf.id === "1D" && !zoomRef.current) {
-            merged = tradingSessionBars(merged);
+          if (!zoomRef.current) {
+            merged = timeframePeriodBars(merged, tf.id);
           }
           const lastIncoming = incoming[incoming.length - 1];
           const prevLast = barsRef.current[barsRef.current.length - 1];
@@ -1102,10 +1064,7 @@ export function CandlestickChart({
     schedulePoll();
 
     const resizeObs = new ResizeObserver(() => {
-      if (
-        !shouldShowRecentWindow(zoomRef.current, tf) &&
-        barCountRef.current > 0
-      ) {
+      if (!zoomRef.current && barCountRef.current > 0) {
         fitChartFullWidth(chart, container, barCountRef.current);
       }
     });

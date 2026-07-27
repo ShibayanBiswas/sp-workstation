@@ -207,7 +207,11 @@ export function LiveCharts() {
           <span className="text-[10px] text-[var(--fg-subtle)]">
             Full history loaded · wheel to zoom · drag to pan
           </span>
-        ) : null}
+        ) : (
+          <span className="text-[10px] text-[var(--fg-subtle)]">
+            From period open · Zoom On for extended history
+          </span>
+        )}
       </div>
 
       {mounted ? (
