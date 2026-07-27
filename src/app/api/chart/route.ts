@@ -103,8 +103,8 @@ export async function GET(req: Request) {
       ? snapFormingBarTip(ohlc.bars, intervalSec)
       : ohlc.bars.slice();
 
-  // Zoom Off chart window: active period + two prior. Returns always use the
-  // active day/week/month/lookback open from the unclipped series.
+  // Zoom Off default: active period plus prior like-period window(s)
+  // (1 for most TFs; 2 for 1M / 3M).
   let bars =
     !inception && !isHistory
       ? timeframeViewBars(fullBars, timeframe.id)
