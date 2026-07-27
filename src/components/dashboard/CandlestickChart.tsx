@@ -29,7 +29,6 @@ import {
 import {
   buildHighLowMarkers,
   computeSessionVwapSeries,
-  computeSmaSeries,
   findPeriodExtremes,
   formatVolumeShort,
 } from "@/lib/chart-indicators";
@@ -92,8 +91,6 @@ type Props = {
 const TV_FONT =
   "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif";
 
-const SMA_PERIOD = 20;
-
 function chartColors(theme: ThemeMode) {
   if (theme === "dark") {
     return {
@@ -109,7 +106,6 @@ function chartColors(theme: ThemeMode) {
       volumeDown: "rgba(239, 83, 80, 0.45)",
       muted: "#787b86",
       watermark: "rgba(255, 255, 255, 0.045)",
-      sma: "#5b9cf6",
       vwap: "#b388ff",
       refLine: "rgba(229, 207, 148, 0.75)",
       highLine: "rgba(38, 166, 154, 0.55)",
@@ -129,7 +125,6 @@ function chartColors(theme: ThemeMode) {
     volumeDown: "rgba(242, 54, 69, 0.4)",
     muted: "#787b86",
     watermark: "rgba(19, 23, 34, 0.055)",
-    sma: "#2962ff",
     vwap: "#7b1fa2",
     refLine: "rgba(180, 148, 72, 0.85)",
     highLine: "rgba(8, 153, 129, 0.55)",
@@ -497,16 +492,7 @@ export function CandlestickChart({
       scaleMargins: { top: 0.84, bottom: 0 },
     });
 
-    // Overlays after candles so MAs/VWAP paint on top (TradingView-style).
-    const smaSeries = chart.addLineSeries({
-      color: colors.sma,
-      lineWidth: 1,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      crosshairMarkerVisible: true,
-      crosshairMarkerRadius: 3,
-      title: `SMA ${SMA_PERIOD}`,
-    });
+    // Overlays after candles so VWAP paints on top (TradingView-style).
     const vwapSeries = chart.addLineSeries({
       color: colors.vwap,
       lineWidth: 1,
@@ -538,7 +524,6 @@ export function CandlestickChart({
       extras?: {
         volume?: number | null;
         prevClose?: number | null;
-        sma?: number | null;
         vwap?: number | null;
       }
     ) => {
@@ -564,10 +549,6 @@ export function CandlestickChart({
           ? item("Vol", formatVolumeShort(extras.volume), colors.text)
           : "";
 
-      const smaHtml =
-        extras?.sma != null
-          ? item(`SMA${SMA_PERIOD}`, fmt(extras.sma), colors.sma)
-          : "";
       const vwapHtml =
         extras?.vwap != null
           ? item("VWAP", fmt(extras.vwap), colors.vwap)
@@ -582,13 +563,11 @@ export function CandlestickChart({
           ${item("C", fmt(bar.close))}
           ${barChangeHtml}
           ${volHtml}
-          ${smaHtml}
           ${vwapHtml}
         </div>`;
     };
 
     const updateOverlayLines = (bars: OhlcBar[]) => {
-      smaSeries.setData(computeSmaSeries(bars, SMA_PERIOD, tf.intraday));
       if (tf.intraday) {
         vwapSeries.applyOptions({ visible: true });
         vwapSeries.setData(computeSessionVwapSeries(bars, true));
@@ -627,7 +606,6 @@ export function CandlestickChart({
     const legendExtrasForBar = (
       barIndex: number,
       seriesExtras?: {
-        sma?: number | null;
         vwap?: number | null;
       }
     ) => {
@@ -636,7 +614,6 @@ export function CandlestickChart({
       return {
         volume: bar?.volume ?? null,
         prevClose: prev?.close ?? null,
-        sma: seriesExtras?.sma ?? null,
         vwap: seriesExtras?.vwap ?? null,
       };
     };
@@ -681,14 +658,7 @@ export function CandlestickChart({
       renderLegend(
         lastCandle,
         lastUnix,
-        legendExtrasForBar(lastBarIndex, {
-          sma:
-            bars.length >= SMA_PERIOD
-              ? bars
-                  .slice(-SMA_PERIOD)
-                  .reduce((s, b) => s + b.close, 0) / SMA_PERIOD
-              : null,
-        })
+        legendExtrasForBar(lastBarIndex)
       );
     };
 
@@ -1027,9 +997,6 @@ export function CandlestickChart({
       const candle = param.seriesData.get(candleSeries) as
         | CandlestickData<Time>
         | undefined;
-      const smaPt = param.seriesData.get(smaSeries) as
-        | LineData<Time>
-        | undefined;
       const vwapPt = param.seriesData.get(vwapSeries) as
         | LineData<Time>
         | undefined;
@@ -1047,7 +1014,6 @@ export function CandlestickChart({
 
       renderLegend(candle ?? lastCandle, hoverUnix, {
         ...legendExtrasForBar(barIndex),
-        sma: smaPt?.value ?? null,
         vwap: vwapPt?.value ?? null,
       });
       setHeader((h) => ({
@@ -1141,8 +1107,6 @@ export function CandlestickChart({
                       : awaitingPrint
                         ? "Awaiting today's print · chart shows last session · axis in IST"
                         : `Markets closed · showing ${sessionPhrase.toLowerCase()} · axis in IST`}
-            {" · "}
-            SMA {SMA_PERIOD}
             {timeframe === "1D" ? " · VWAP" : ""}
             {zoomEnabled ? " · double-click resets view" : ""}
           </p>
