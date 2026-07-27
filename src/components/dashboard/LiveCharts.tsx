@@ -243,7 +243,7 @@ export function LiveCharts() {
           syncedAsOf={asOf}
         />
       ) : (
-        <div className="flex h-[540px] items-center justify-center text-sm text-[var(--fg-subtle)]">
+        <div className="flex h-[420px] items-center justify-center text-sm text-[var(--fg-subtle)]">
           <span className={instrumentLive ? "animate-pulse-live" : ""}>
             Preparing chart…
           </span>

@@ -161,8 +161,8 @@ function fmtPct(n: number) {
 const LIVE_RIGHT_GAP_BARS = 3;
 /** Zoom On keeps a tighter trailing gap. */
 const ZOOM_RIGHT_GAP_BARS = 2;
-/** Right price axis width — room for price + SMA/BB last-value tags. */
-const PRICE_SCALE_MIN_WIDTH = 108;
+/** Right price axis — halved for the half-width chart pane. */
+const PRICE_SCALE_MIN_WIDTH = 54;
 /**
  * Preferred candle pitch (px). Zoom Off fits bars to the plot width so the
  * screen isn't left blank; preferred is a soft target / upper clamp for ≤6M.
@@ -577,7 +577,7 @@ export function CandlestickChart({
         background: { color: colors.bg },
         textColor: colors.text,
         fontFamily: TV_FONT,
-        fontSize: 14,
+        fontSize: 12,
       },
       watermark: {
         visible: true,
@@ -682,7 +682,7 @@ export function CandlestickChart({
       lineWidth: 1,
       lineType: LineType.Curved,
       priceLineVisible: false,
-      lastValueVisible: true,
+      lastValueVisible: false,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 2,
       title: "SMA",
@@ -693,7 +693,7 @@ export function CandlestickChart({
       lineType: LineType.Curved,
       lineStyle: LineStyle.Solid,
       priceLineVisible: false,
-      lastValueVisible: true,
+      lastValueVisible: false,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 2,
       title: "BB Upper",
@@ -704,7 +704,7 @@ export function CandlestickChart({
       lineType: LineType.Curved,
       lineStyle: LineStyle.Solid,
       priceLineVisible: false,
-      lastValueVisible: true,
+      lastValueVisible: false,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 2,
       title: "BB Lower",
@@ -714,7 +714,7 @@ export function CandlestickChart({
       lineWidth: 1,
       lineStyle: LineStyle.Dotted,
       priceLineVisible: false,
-      lastValueVisible: tf.intraday,
+      lastValueVisible: false,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 3,
       title: "VWAP",
@@ -1536,31 +1536,120 @@ export function CandlestickChart({
 
   return (
     <div className="flex flex-col bg-[var(--bg-elevated)]">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3 md:px-5">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
-            {name.toUpperCase()}
-          </p>
+      <div className="grid grid-cols-1 md:grid-cols-2">
+        {/* Left half — chart */}
+        <div className="relative min-h-[420px] border-[var(--border)] md:border-r">
           <div
-            className={`mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 rounded-md px-1 ${priceFlash ? "price-flash" : ""}`}
-          >
-            <span
-              className={`tv-num text-[26px] font-semibold leading-none md:text-[32px] ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+            ref={legendRef}
+            className="pointer-events-none absolute left-3 top-2 z-10 max-w-[calc(100%-1.5rem)]"
+          />
+          {loading ? (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[var(--bg-elevated)]/90">
+              <Loader2
+                size={22}
+                className="animate-spin text-[var(--gold-deep)] dark:text-[var(--gold)]"
+              />
+              <p className="text-sm text-[var(--fg-subtle)]">Loading candles…</p>
+            </div>
+          ) : null}
+          {error && !loading ? (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-6">
+              <p className="rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-4 py-3 text-center text-sm text-[var(--fg-muted)]">
+                {error}
+              </p>
+              <button
+                type="button"
+                onClick={() => setReloadKey((k) => k + 1)}
+                className="rounded-lg bg-[var(--bg-muted)] px-4 py-2 text-xs font-semibold text-[var(--fg)]"
+              >
+                Retry
+              </button>
+            </div>
+          ) : null}
+          <div ref={containerRef} className="h-[420px] w-full" />
+        </div>
+
+        {/* Right half — quote / period detail */}
+        <aside className="flex min-h-[420px] flex-col justify-between gap-6 px-5 py-5 md:px-6">
+          <div className="min-w-0">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-[10px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
+                {name.toUpperCase()}
+              </p>
+              <button
+                type="button"
+                onClick={() => setReloadKey((k) => k + 1)}
+                className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition hover:bg-[var(--bg-muted)]"
+              >
+                <RefreshCw size={13} />
+                Refresh
+              </button>
+            </div>
+            <div
+              className={`mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-md ${priceFlash ? "price-flash" : ""}`}
             >
-              {displayPrice}
-            </span>
-            <span
-              className={`tv-num text-sm font-medium ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
-            >
-              {displayChange} ({displayChangePct})
-            </span>
-            {basisHint ? (
-              <span className="text-[10px] font-medium tracking-wide text-[var(--fg-subtle)]">
-                {basisHint}
+              <span
+                className={`tv-num text-[32px] font-semibold leading-none md:text-[40px] ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+              >
+                {displayPrice}
               </span>
+              <span
+                className={`tv-num text-base font-medium ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+              >
+                {displayChange} ({displayChangePct})
+              </span>
+            </div>
+            {basisHint ? (
+              <p className="mt-2 text-[11px] font-medium tracking-wide text-[var(--fg-subtle)]">
+                {basisHint}
+              </p>
             ) : null}
+
+            <dl className="mt-6 space-y-3 border-t border-[var(--border)] pt-5">
+              <div className="flex items-baseline justify-between gap-4">
+                <dt className="text-[11px] tracking-wide text-[var(--fg-subtle)]">
+                  Period open
+                </dt>
+                <dd className="tv-num text-sm font-medium text-[var(--fg)]">
+                  {periodReference != null
+                    ? formatMarketPrice(periodReference, indexId)
+                    : "—"}
+                </dd>
+              </div>
+              {syncedQuote?.dayOpen != null ? (
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-[11px] tracking-wide text-[var(--fg-subtle)]">
+                    Session open
+                  </dt>
+                  <dd className="tv-num text-sm font-medium text-[var(--fg)]">
+                    {formatMarketPrice(syncedQuote.dayOpen, indexId)}
+                  </dd>
+                </div>
+              ) : null}
+              {syncedQuote?.previousClose != null ? (
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-[11px] tracking-wide text-[var(--fg-subtle)]">
+                    Prev close
+                  </dt>
+                  <dd className="tv-num text-sm font-medium text-[var(--fg)]">
+                    {formatMarketPrice(syncedQuote.previousClose, indexId)}
+                  </dd>
+                </div>
+              ) : null}
+              <div className="flex items-baseline justify-between gap-4">
+                <dt className="text-[11px] tracking-wide text-[var(--fg-subtle)]">
+                  Timeframe
+                </dt>
+                <dd className="text-sm font-semibold text-[var(--fg)]">
+                  {timeframe}
+                  {timeframe === "1D" ? " · VWAP" : ""}
+                  {" · SMA · BB"}
+                </dd>
+              </div>
+            </dl>
           </div>
-          <p className="tv-num mt-1 text-[11px] text-[var(--fg-subtle)]">
+
+          <p className="tv-num text-[11px] leading-relaxed text-[var(--fg-subtle)]">
             {header.hoverTime
               ? `${header.hoverTime} IST`
               : syncedQuote?.marketTime
@@ -1580,47 +1669,9 @@ export function CandlestickChart({
                       : awaitingPrint
                         ? "Awaiting today's print · chart shows last session · axis in IST"
                         : `Markets closed · showing ${sessionPhrase.toLowerCase()} · axis in IST`}
-            {timeframe === "1D" ? " · VWAP" : ""}
-            {" · SMA · BB"}
             {zoomEnabled ? " · double-click resets view" : ""}
           </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setReloadKey((k) => k + 1)}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition hover:bg-[var(--bg-muted)]"
-        >
-          <RefreshCw size={13} />
-          Refresh
-        </button>
-      </div>
-
-      <div className="relative min-h-[500px]">
-        <div ref={legendRef} className="pointer-events-none absolute left-3 top-2 z-10 max-w-[calc(100%-1.5rem)]" />
-        {loading ? (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[var(--bg-elevated)]/90">
-            <Loader2
-              size={22}
-              className="animate-spin text-[var(--gold-deep)] dark:text-[var(--gold)]"
-            />
-            <p className="text-sm text-[var(--fg-subtle)]">Loading candles…</p>
-          </div>
-        ) : null}
-        {error && !loading ? (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-6">
-            <p className="rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-4 py-3 text-center text-sm text-[var(--fg-muted)]">
-              {error}
-            </p>
-            <button
-              type="button"
-              onClick={() => setReloadKey((k) => k + 1)}
-              className="rounded-lg bg-[var(--bg-muted)] px-4 py-2 text-xs font-semibold text-[var(--fg)]"
-            >
-              Retry
-            </button>
-          </div>
-        ) : null}
-        <div ref={containerRef} className="h-[500px] w-full" />
+        </aside>
       </div>
     </div>
   );
