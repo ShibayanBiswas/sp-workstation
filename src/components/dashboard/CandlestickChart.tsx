@@ -555,14 +555,6 @@ export function CandlestickChart({
       : barStats.close;
   const periodHigh = barStats.high;
   const periodLow = barStats.low;
-  const rangeSpan =
-    periodHigh != null && periodLow != null && periodHigh > periodLow
-      ? periodHigh - periodLow
-      : null;
-  const rangePos =
-    ltp != null && periodLow != null && rangeSpan != null && rangeSpan > 0
-      ? Math.min(100, Math.max(0, ((ltp - periodLow) / rangeSpan) * 100))
-      : null;
   const vsPrev =
     ltp != null &&
     syncedQuote?.previousClose != null &&
@@ -1816,57 +1808,6 @@ export function CandlestickChart({
                     </span>
                   </span>
                 ) : null}
-              </div>
-            </div>
-
-            {/* Period range meter */}
-            <div className="rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-muted)_55%,transparent)] px-3 py-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[9px] font-bold tracking-[0.16em] text-[var(--fg-subtle)]">
-                  {timeframe} RANGE
-                </span>
-                {rangeSpan != null ? (
-                  <span className="tv-num text-[10px] font-medium text-[var(--fg-muted)]">
-                    {formatMarketPrice(rangeSpan, indexId)} pts
-                    {rangePos != null
-                      ? ` · ${rangePos.toFixed(0)}% of range`
-                      : ""}
-                  </span>
-                ) : null}
-              </div>
-              <div className="relative mt-2.5 h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--ink)_8%,var(--bg))]">
-                <div
-                  className="absolute inset-y-0 left-0 rounded-full bg-[color-mix(in_srgb,var(--gold)_55%,#26a69a)]"
-                  style={{ width: `${rangePos ?? 0}%` }}
-                />
-                {rangePos != null ? (
-                  <div
-                    className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--bg-elevated)] bg-[var(--gold-deep)] shadow-sm dark:bg-[var(--gold)]"
-                    style={{ left: `${rangePos}%` }}
-                  />
-                ) : null}
-              </div>
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[9px] tracking-wide text-[var(--fg-subtle)]">
-                    Low
-                  </p>
-                  <p className="tv-num truncate text-sm font-semibold text-red-600 dark:text-red-400">
-                    {periodLow != null
-                      ? formatMarketPrice(periodLow, indexId)
-                      : "—"}
-                  </p>
-                </div>
-                <div className="min-w-0 text-right">
-                  <p className="text-[9px] tracking-wide text-[var(--fg-subtle)]">
-                    High
-                  </p>
-                  <p className="tv-num truncate text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                    {periodHigh != null
-                      ? formatMarketPrice(periodHigh, indexId)
-                      : "—"}
-                  </p>
-                </div>
               </div>
             </div>
 
