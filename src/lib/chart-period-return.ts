@@ -29,17 +29,14 @@ const LOOKBACK_SEC: Record<
 
 /**
  * Zoom Off starts at the active period open (new day / week / month / lookback),
- * matching the original daily session-from-open behaviour.
- *
- * 1M and 3M keep two like-period windows (active + one prior) for context.
+ * matching the original daily session-from-open behaviour — all timeframes.
  */
 export function zoomOffViewOffset(timeframeId: ChartTimeframeId): number {
   switch (timeframeId) {
-    case "1M":
-    case "3M":
-      return 1; // two windows: prior + active
     case "1D":
     case "1W":
+    case "1M":
+    case "3M":
     case "6M":
     case "1Y":
     case "5Y":
@@ -200,7 +197,7 @@ export function timeframePeriodBars(
   }
 }
 
-/** Zoom Off chart clip — active period from its open (1M/3M: two windows). */
+/** Zoom Off chart clip — active period from its open. */
 export function timeframeViewBars(
   bars: OhlcBar[],
   timeframeId: ChartTimeframeId,

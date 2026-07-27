@@ -269,7 +269,7 @@ async function main() {
         Number.isFinite(r.json.last.changePercent),
       `${tf} chart missing period changePercent`
     );
-    // Zoom Off starts at the active period open (1M/3M keep two windows);
+    // Zoom Off starts at the active period open;
     // header % stays vs that period's open.
     pass(
       `${tf} period return ${Number(r.json.last.changePercent).toFixed(2)}% (ref ${r.json.last.reference}, ${r.json.bars.length} bars)`
