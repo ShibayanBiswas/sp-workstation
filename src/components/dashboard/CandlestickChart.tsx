@@ -181,34 +181,17 @@ function fitChartFullWidth(
 ) {
   const scaleWidth = 72;
   const width = Math.max(container.clientWidth - scaleWidth, 200);
-  // Sparse windows (1M ~18 bars) must not stretch into fat slabs.
-  // Cap bar width; when that leaves empty space, pin to the right edge.
-  const maxSpacing = barCount <= 25 ? 7 : barCount <= 50 ? 8 : 11;
-  const natural = width / Math.max(barCount, 1);
-  const spacing = Math.max(3, Math.min(maxSpacing, natural));
-  const wouldStretch = natural > maxSpacing + 0.5;
-  const fixEdges =
-    opts?.fixEdges === false ? false : !wouldStretch;
-
+  const spacing = Math.max(4, Math.min(14, width / Math.max(barCount, 1)));
+  const fixEdges = opts?.fixEdges !== false;
   chart.applyOptions({
     timeScale: {
-      rightOffset: wouldStretch ? 2 : 0,
+      rightOffset: 0,
       fixLeftEdge: fixEdges,
-      fixRightEdge: opts?.fixEdges === false ? false : true,
+      fixRightEdge: fixEdges,
       barSpacing: spacing,
     },
   });
-
-  if (wouldStretch) {
-    // Keep recent bars at a readable width; leave empty space on the left.
-    const visibleBars = Math.max(barCount, Math.floor(width / spacing));
-    chart.timeScale().setVisibleLogicalRange({
-      from: barCount - visibleBars,
-      to: barCount - 1 + 0.5,
-    });
-  } else {
-    chart.timeScale().fitContent();
-  }
+  chart.timeScale().fitContent();
 }
 
 function easeOutCubic(t: number) {
