@@ -162,12 +162,31 @@ const LIVE_RIGHT_GAP_BARS = 12;
 /** Zoom On keeps a smaller trailing gap. */
 const ZOOM_RIGHT_GAP_BARS = 6;
 /**
- * Fixed candle pitch (px) — slightly fat for readability.
- * Must stay fixed: putting the right gap into setVisibleLogicalRange makes
- * LWC stretch barSpacing and fatten 1D/1W when few bars exist.
+ * Fixed candle pitch (px). Must stay fixed: putting the right gap into
+ * setVisibleLogicalRange makes LWC stretch barSpacing and fatten when few
+ * bars exist. ≤6M runs a bit fatter for readability; 1Y/5Y stay leaner.
  */
 const TV_BAR_SPACING = 7;
+const TV_BAR_SPACING_TO_6M = 9.5;
 const TV_BAR_SPACING_MIN = 2;
+
+function barSpacingForTimeframe(id: ChartTimeframeId): number {
+  switch (id) {
+    case "1D":
+    case "1W":
+    case "1M":
+    case "3M":
+    case "6M":
+      return TV_BAR_SPACING_TO_6M;
+    case "1Y":
+    case "5Y":
+      return TV_BAR_SPACING;
+    default: {
+      const _exhaustive: never = id;
+      return _exhaustive;
+    }
+  }
+}
 
 function chartInteractionOptions(zoomEnabled: boolean) {
   return {
@@ -191,13 +210,13 @@ function chartInteractionOptions(zoomEnabled: boolean) {
   };
 }
 
-/** Re-assert thin pitch + right runway (call after any fit/range change). */
+/** Re-assert fixed pitch + right runway (call after any fit/range change). */
 function applyThinCandleScale(
   chart: IChartApi,
-  opts: { zoomEnabled: boolean; rightGap: number }
+  opts: { zoomEnabled: boolean; rightGap: number; barSpacing: number }
 ) {
   chart.timeScale().applyOptions({
-    barSpacing: TV_BAR_SPACING,
+    barSpacing: opts.barSpacing,
     minBarSpacing: TV_BAR_SPACING_MIN,
     rightOffset: opts.rightGap,
     fixLeftEdge: !opts.zoomEnabled,
@@ -207,28 +226,34 @@ function applyThinCandleScale(
 }
 
 /**
- * Thin candles + vacant right runway for forming bars.
+ * Fixed candle pitch + vacant right runway for forming bars.
  * Zoom Off anchors the left at the period start; rightOffset (not an expanded
- * logical range) reserves empty slots so 1D/1W stay thin early in the period.
+ * logical range) reserves empty slots so early-period charts stay consistent.
  */
 function layoutLiveChart(
   chart: IChartApi,
   container: HTMLDivElement,
   barCount: number,
-  opts?: { zoomEnabled?: boolean; preserveScroll?: boolean }
+  opts?: {
+    zoomEnabled?: boolean;
+    preserveScroll?: boolean;
+    barSpacing?: number;
+  }
 ) {
   if (barCount <= 0) return;
   void container;
 
   const zoomEnabled = opts?.zoomEnabled === true;
   const rightGap = zoomEnabled ? ZOOM_RIGHT_GAP_BARS : LIVE_RIGHT_GAP_BARS;
+  const barSpacing = opts?.barSpacing ?? TV_BAR_SPACING;
+  const scaleOpts = { zoomEnabled, rightGap, barSpacing };
 
-  applyThinCandleScale(chart, { zoomEnabled, rightGap });
+  applyThinCandleScale(chart, scaleOpts);
   if (opts?.preserveScroll) return;
 
   if (zoomEnabled) {
     chart.timeScale().fitContent();
-    applyThinCandleScale(chart, { zoomEnabled: true, rightGap });
+    applyThinCandleScale(chart, { ...scaleOpts, zoomEnabled: true });
     return;
   }
 
@@ -238,7 +263,7 @@ function layoutLiveChart(
     from: -0.25,
     to: last + 0.35,
   });
-  applyThinCandleScale(chart, { zoomEnabled: false, rightGap });
+  applyThinCandleScale(chart, { ...scaleOpts, zoomEnabled: false });
 }
 
 function easeOutCubic(t: number) {
@@ -555,7 +580,7 @@ export function CandlestickChart({
         rightOffset: LIVE_RIGHT_GAP_BARS,
         fixLeftEdge: !zoomRef.current,
         fixRightEdge: false,
-        barSpacing: TV_BAR_SPACING,
+        barSpacing: barSpacingForTimeframe(tf.id),
         minBarSpacing: TV_BAR_SPACING_MIN,
         tickMarkMaxCharacterLength: tf.axisLabelMode === "day" ? 8 : 10,
         tickMarkFormatter: (time: Time) =>
@@ -893,7 +918,7 @@ export function CandlestickChart({
           rightOffset: zoomRef.current
             ? ZOOM_RIGHT_GAP_BARS
             : LIVE_RIGHT_GAP_BARS,
-          barSpacing: TV_BAR_SPACING,
+          barSpacing: barSpacingForTimeframe(tf.id),
           minBarSpacing: TV_BAR_SPACING_MIN,
           fixRightEdge: false,
           shiftVisibleRangeOnNewBar: true,
@@ -901,6 +926,7 @@ export function CandlestickChart({
       } else {
         layoutLiveChart(chart, container, candles.length, {
           zoomEnabled: zoomRef.current,
+          barSpacing: barSpacingForTimeframe(tf.id),
         });
       }
 
@@ -1001,9 +1027,13 @@ export function CandlestickChart({
         layoutLiveChart(chart, container, count, {
           zoomEnabled: true,
           preserveScroll: true,
+          barSpacing: barSpacingForTimeframe(tf.id),
         });
       } else {
-        layoutLiveChart(chart, container, count, { zoomEnabled: true });
+        layoutLiveChart(chart, container, count, {
+          zoomEnabled: true,
+          barSpacing: barSpacingForTimeframe(tf.id),
+        });
         chart.applyOptions(chartInteractionOptions(true));
       }
     };
@@ -1047,6 +1077,7 @@ export function CandlestickChart({
           applyBars(period);
           layoutLiveChart(chart, container, period.length, {
             zoomEnabled: false,
+            barSpacing: barSpacingForTimeframe(tf.id),
           });
           chart.applyOptions(chartInteractionOptions(false));
         })();
@@ -1093,7 +1124,7 @@ export function CandlestickChart({
               fixLeftEdge: false,
               fixRightEdge: false,
               rightOffset: ZOOM_RIGHT_GAP_BARS,
-              barSpacing: TV_BAR_SPACING,
+              barSpacing: barSpacingForTimeframe(tf.id),
               minBarSpacing: TV_BAR_SPACING_MIN,
               shiftVisibleRangeOnNewBar: true,
             },
@@ -1120,6 +1151,7 @@ export function CandlestickChart({
       if (count <= 0) return;
       layoutLiveChart(chart, container, count, {
         zoomEnabled: zoomRef.current,
+        barSpacing: barSpacingForTimeframe(tf.id),
       });
     };
 
@@ -1226,7 +1258,7 @@ export function CandlestickChart({
             lastBarIndex = merged.length - 1;
             chart.timeScale().applyOptions({
               rightOffset: LIVE_RIGHT_GAP_BARS,
-              barSpacing: TV_BAR_SPACING,
+              barSpacing: barSpacingForTimeframe(tf.id),
               minBarSpacing: TV_BAR_SPACING_MIN,
               fixRightEdge: false,
               shiftVisibleRangeOnNewBar: true,
@@ -1437,6 +1469,7 @@ export function CandlestickChart({
           zoomEnabled: zoomRef.current,
           // Zoom On: keep user's pan; Zoom Off: re-anchor period + right gap.
           preserveScroll: zoomRef.current,
+          barSpacing: barSpacingForTimeframe(tf.id),
         });
       }
     });
