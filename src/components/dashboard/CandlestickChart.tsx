@@ -1620,7 +1620,7 @@ export function CandlestickChart({
           }}
         />
         <div className="live-chart-quote-scroll">
-          <div className="flex items-center justify-between gap-2">
+          <div className="quote-block flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               {exchange ? (
                 <span className="shrink-0 rounded-md border border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em] text-[var(--gold-deep)] dark:text-[var(--gold)]">
@@ -1631,7 +1631,7 @@ export function CandlestickChart({
                 {name.toUpperCase()}
               </p>
               <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide ${
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide ${
                   instrumentLive
                     ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
                     : awaitingPrint
@@ -1639,13 +1639,16 @@ export function CandlestickChart({
                       : "bg-[var(--bg-muted)] text-[var(--fg-subtle)]"
                 }`}
               >
+                {instrumentLive ? (
+                  <span className="quote-live-dot" aria-hidden />
+                ) : null}
                 {instrumentLive ? "LIVE" : awaitingPrint ? "OPEN SOON" : "CLOSED"}
               </span>
             </div>
             <button
               type="button"
               onClick={() => setReloadKey((k) => k + 1)}
-              className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_80%,transparent)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-muted)] transition hover:border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] hover:text-[var(--fg)]"
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_80%,transparent)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-muted)] transition hover:border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] hover:text-[var(--fg)] active:scale-[0.97]"
             >
               <RefreshCw size={12} />
               Refresh
@@ -1653,9 +1656,9 @@ export function CandlestickChart({
           </div>
 
           <div
-            className={`rounded-xl border border-[color-mix(in_srgb,var(--gold)_18%,var(--border))] bg-[color-mix(in_srgb,var(--bg-elevated)_72%,transparent)] px-3 py-2.5 ${priceFlash ? "price-flash" : ""}`}
+            className={`quote-block quote-hero rounded-xl border border-[color-mix(in_srgb,var(--gold)_22%,var(--border))] bg-[color-mix(in_srgb,var(--bg-elevated)_78%,transparent)] px-3 py-2.5 backdrop-blur-sm ${priceFlash ? "price-flash" : ""}`}
           >
-            <div className="flex flex-wrap items-end justify-between gap-2">
+            <div className="relative z-[1] flex flex-wrap items-end justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-[9px] font-bold tracking-[0.18em] text-[var(--fg-subtle)]">
                   LAST TRADED
@@ -1668,13 +1671,13 @@ export function CandlestickChart({
               </div>
               <div className="flex flex-col items-end gap-1">
                 <span
-                  className={`tv-num rounded-md px-2 py-1 text-xs font-semibold ${
+                  className={`quote-change-chip tv-num rounded-md px-2.5 py-1 text-xs font-semibold ${
                     displayUp
                       ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400"
                       : "bg-red-500/12 text-red-700 dark:text-red-400"
                   }`}
                 >
-                  {displayChange} · {displayChangePct}
+                  {displayChange} ({displayChangePct})
                 </span>
                 {basisHint ? (
                   <span className="text-[10px] font-medium text-[var(--fg-subtle)]">
@@ -1684,7 +1687,7 @@ export function CandlestickChart({
               </div>
             </div>
             {vsPrev ? (
-              <div className="mt-2 flex items-center justify-between gap-2 border-t border-[color-mix(in_srgb,var(--border)_80%,transparent)] pt-2">
+              <div className="relative z-[1] mt-2 flex items-center justify-between gap-2 border-t border-[color-mix(in_srgb,var(--border)_80%,transparent)] pt-2">
                 <span className="text-[10px] tracking-wide text-[var(--fg-subtle)]">
                   vs prev close
                 </span>
@@ -1695,14 +1698,13 @@ export function CandlestickChart({
                       : "text-red-600 dark:text-red-400"
                   }`}
                 >
-                  {formatMarketChange(vsPrev.change, indexId)} (
-                  {formatMarketChangePercent(vsPrev.changePercent)})
+                  {`${formatMarketChange(vsPrev.change, indexId)} (${formatMarketChangePercent(vsPrev.changePercent)})`}
                 </span>
               </div>
             ) : null}
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_78%,transparent)] px-3 py-2">
+          <div className="quote-block rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_78%,transparent)] px-3 py-2">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[9px] font-bold tracking-[0.16em] text-[var(--fg-subtle)]">
                 {barReadout?.timeLabel ? "CROSSHAIR" : "LATEST BAR"}
@@ -1727,7 +1729,7 @@ export function CandlestickChart({
               ).map(([label, value]) => (
                 <div
                   key={label}
-                  className="rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1 py-1 text-center"
+                  className="quote-metric rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1 py-1 text-center"
                 >
                   <p className="text-[9px] font-bold tracking-wide text-[var(--fg-subtle)]">
                     {label}
@@ -1800,8 +1802,8 @@ export function CandlestickChart({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-1.5">
-            <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+          <div className="quote-block grid grid-cols-2 gap-1.5">
+            <div className="quote-metric rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
               <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                 {sameSessionOpen || timeframe === "1D" ? "OPEN" : "PERIOD OPEN"}
               </p>
@@ -1811,7 +1813,7 @@ export function CandlestickChart({
                   : "—"}
               </p>
             </div>
-            <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+            <div className="quote-metric rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
               <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                 PREV CLOSE
               </p>
@@ -1821,7 +1823,7 @@ export function CandlestickChart({
                   : "—"}
               </p>
             </div>
-            <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+            <div className="quote-metric rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
               <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                 HIGH
               </p>
@@ -1831,7 +1833,7 @@ export function CandlestickChart({
                   : "—"}
               </p>
             </div>
-            <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+            <div className="quote-metric rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
               <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                 LOW
               </p>
@@ -1844,7 +1846,7 @@ export function CandlestickChart({
             {!sameSessionOpen &&
             timeframe !== "1D" &&
             syncedQuote?.dayOpen != null ? (
-              <div className="col-span-2 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+              <div className="quote-metric col-span-2 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                     SESSION OPEN
@@ -1857,20 +1859,20 @@ export function CandlestickChart({
             ) : null}
           </div>
 
-          <div className="mt-auto space-y-1.5 pt-1">
+          <div className="quote-block mt-auto space-y-1.5 pt-1">
             <div className="flex flex-wrap gap-1.5">
-              <span className="rounded-md border border-[var(--border)] bg-[var(--bg-muted)] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[var(--fg-muted)]">
+              <span className="rounded-md border border-[var(--border)] bg-[var(--bg-muted)] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[var(--fg-muted)] transition hover:scale-[1.03]">
                 {timeframe}
               </span>
               {timeframe === "1D" ? (
-                <span className="rounded-md border border-[color-mix(in_srgb,#d4a017_40%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-[var(--gold-deep)] dark:text-[var(--gold)]">
+                <span className="rounded-md border border-[color-mix(in_srgb,#d4a017_40%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-[var(--gold-deep)] transition hover:scale-[1.03] dark:text-[var(--gold)]">
                   VWAP
                 </span>
               ) : null}
-              <span className="rounded-md border border-[color-mix(in_srgb,#38bdf8_35%,var(--border))] bg-[color-mix(in_srgb,#38bdf8_10%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-sky-800 dark:text-sky-300">
+              <span className="rounded-md border border-[color-mix(in_srgb,#38bdf8_35%,var(--border))] bg-[color-mix(in_srgb,#38bdf8_10%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-sky-800 transition hover:scale-[1.03] dark:text-sky-300">
                 SMA
               </span>
-              <span className="rounded-md border border-[color-mix(in_srgb,#94a3b8_40%,var(--border))] bg-[color-mix(in_srgb,#94a3b8_12%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+              <span className="rounded-md border border-[color-mix(in_srgb,#94a3b8_40%,var(--border))] bg-[color-mix(in_srgb,#94a3b8_12%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-slate-700 transition hover:scale-[1.03] dark:text-slate-300">
                 BB
               </span>
             </div>
