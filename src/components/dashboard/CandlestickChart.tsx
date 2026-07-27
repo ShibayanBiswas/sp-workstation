@@ -44,7 +44,7 @@ import {
 } from "@/lib/yahoo-ohlc";
 import { refreshIntervalForStatus } from "@/lib/live-refresh";
 import { CLIENT_API_TIMEOUT_MS } from "@/lib/fetch-timeout";
-import { lastSessionPhrase } from "@/data/indian-markets";
+import { cashExchangeLabel, lastSessionPhrase } from "@/data/indian-markets";
 import {
   getNseMarketStatus,
   isAwaitingTodayPrint,
@@ -64,6 +64,29 @@ import {
   formatIstSessionStamp,
   formatIstSyncTime,
 } from "@/lib/market-quote";
+
+function extremesFromBars(bars: OhlcBar[]): {
+  high: number | null;
+  low: number | null;
+  open: number | null;
+  close: number | null;
+} {
+  if (bars.length === 0) {
+    return { high: null, low: null, open: null, close: null };
+  }
+  let high = -Infinity;
+  let low = Infinity;
+  for (const b of bars) {
+    if (b.high > high) high = b.high;
+    if (b.low < low) low = b.low;
+  }
+  return {
+    high: Number.isFinite(high) ? high : null,
+    low: Number.isFinite(low) ? low : null,
+    open: bars[0]!.open,
+    close: bars[bars.length - 1]!.close,
+  };
+}
 
 type ThemeMode = "light" | "dark";
 
@@ -448,6 +471,12 @@ export function CandlestickChart({
   });
   const [periodReference, setPeriodReference] = useState<number | null>(null);
   const [returnBasis, setReturnBasis] = useState<ReturnBasis | null>(null);
+  const [barStats, setBarStats] = useState<{
+    high: number | null;
+    low: number | null;
+    open: number | null;
+    close: number | null;
+  }>({ high: null, low: null, open: null, close: null });
   const [clockStatus, setClockStatus] = useState<MarketStatus>(() =>
     getNseMarketStatus()
   );
@@ -506,6 +535,37 @@ export function CandlestickChart({
     returnBasis ?? (timeframe === "1D" ? "day_open" : null)
   );
   const sessionPhrase = lastSessionPhrase(indexId);
+  const exchange = cashExchangeLabel(indexId);
+  const ltp =
+    syncedQuote?.price != null && Number.isFinite(syncedQuote.price)
+      ? syncedQuote.price
+      : barStats.close;
+  const periodHigh = barStats.high;
+  const periodLow = barStats.low;
+  const rangeSpan =
+    periodHigh != null && periodLow != null && periodHigh > periodLow
+      ? periodHigh - periodLow
+      : null;
+  const rangePos =
+    ltp != null && periodLow != null && rangeSpan != null && rangeSpan > 0
+      ? Math.min(100, Math.max(0, ((ltp - periodLow) / rangeSpan) * 100))
+      : null;
+  const vsPrev =
+    ltp != null &&
+    syncedQuote?.previousClose != null &&
+    syncedQuote.previousClose !== 0
+      ? {
+          change: ltp - syncedQuote.previousClose,
+          changePercent:
+            ((ltp - syncedQuote.previousClose) / syncedQuote.previousClose) *
+            100,
+        }
+      : null;
+  const sameSessionOpen =
+    timeframe === "1D" &&
+    periodReference != null &&
+    syncedQuote?.dayOpen != null &&
+    Math.abs(periodReference - syncedQuote.dayOpen) < 0.05;
 
   useEffect(() => {
     if (syncedQuote?.price == null) return;
@@ -935,6 +995,7 @@ export function CandlestickChart({
       barsRef.current = bars;
       barCountRef.current = candles.length;
       updateOverlayLines(bars);
+      setBarStats(extremesFromBars(bars));
 
       if (candles.length === 0) return;
 
@@ -1268,6 +1329,7 @@ export function CandlestickChart({
             if (volumes[0]) volumeSeries.update(volumes[0]);
             barsRef.current = merged;
             updateOverlayLines(merged);
+            setBarStats(extremesFromBars(merged));
             lastCandle = candles[0] ?? lastCandle;
             lastUnix = lastIncoming.time;
             lastBarIndex = merged.length - 1;
@@ -1289,6 +1351,7 @@ export function CandlestickChart({
             barsRef.current = merged;
             barCountRef.current = merged.length;
             updateOverlayLines(merged);
+            setBarStats(extremesFromBars(merged));
             lastCandle = candles[0] ?? lastCandle;
             lastUnix = lastIncoming.time;
             lastBarIndex = merged.length - 1;
@@ -1573,107 +1636,253 @@ export function CandlestickChart({
         </div>
 
         {/* Quote panel — above chart on mobile; right half on large */}
-        <aside className="order-1 flex flex-col justify-between gap-4 border-b border-[var(--border)] px-4 py-4 sm:gap-5 sm:px-5 sm:py-5 lg:order-2 lg:min-h-[420px] lg:border-b-0 lg:px-6">
-          <div className="min-w-0">
-            <div className="flex items-start justify-between gap-3">
-              <p className="truncate text-[10px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
-                {name.toUpperCase()}
-              </p>
+        <aside className="quote-panel order-1 relative flex flex-col overflow-hidden border-b border-[var(--border)] lg:order-2 lg:min-h-[420px] lg:border-b-0">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-90"
+            aria-hidden
+            style={{
+              background:
+                "radial-gradient(ellipse 90% 55% at 100% 0%, color-mix(in srgb, var(--gold) 16%, transparent), transparent 58%), radial-gradient(ellipse 70% 50% at 0% 100%, color-mix(in srgb, var(--gold) 8%, transparent), transparent 60%)",
+            }}
+          />
+          <div className="relative flex min-h-0 flex-1 flex-col gap-3 px-4 py-4 sm:gap-3.5 sm:px-5 sm:py-5 lg:px-5 lg:py-5">
+            {/* Title row */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
+                {exchange ? (
+                  <span className="shrink-0 rounded-md border border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em] text-[var(--gold-deep)] dark:text-[var(--gold)]">
+                    {exchange}
+                  </span>
+                ) : null}
+                <p className="truncate text-[11px] font-bold tracking-[0.16em] text-[var(--fg)]">
+                  {name.toUpperCase()}
+                </p>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide ${
+                    instrumentLive
+                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                      : awaitingPrint
+                        ? "bg-amber-500/15 text-amber-800 dark:text-amber-300"
+                        : "bg-[var(--bg-muted)] text-[var(--fg-subtle)]"
+                  }`}
+                >
+                  {instrumentLive
+                    ? "LIVE"
+                    : awaitingPrint
+                      ? "OPEN SOON"
+                      : "CLOSED"}
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={() => setReloadKey((k) => k + 1)}
-                className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium text-[var(--fg-muted)] transition hover:bg-[var(--bg-muted)]"
+                className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_80%,transparent)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-muted)] transition hover:border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] hover:text-[var(--fg)]"
               >
-                <RefreshCw size={13} />
+                <RefreshCw size={12} />
                 Refresh
               </button>
             </div>
-            <div
-              className={`mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-md sm:mt-3 ${priceFlash ? "price-flash" : ""}`}
-            >
-              <span
-                className={`tv-num text-[28px] font-semibold leading-none sm:text-[32px] lg:text-[40px] ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
-              >
-                {displayPrice}
-              </span>
-              <span
-                className={`tv-num text-sm font-medium sm:text-base ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
-              >
-                {displayChange} ({displayChangePct})
-              </span>
-            </div>
-            {basisHint ? (
-              <p className="mt-1.5 text-[11px] font-medium tracking-wide text-[var(--fg-subtle)] sm:mt-2">
-                {basisHint}
-              </p>
-            ) : null}
 
-            <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-[var(--border)] pt-4 sm:mt-6 sm:grid-cols-1 sm:gap-3 lg:pt-5">
-              <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-                <dt className="text-[10px] tracking-wide text-[var(--fg-subtle)] sm:text-[11px]">
-                  Period open
-                </dt>
-                <dd className="tv-num truncate text-sm font-medium text-[var(--fg)]">
+            {/* LTP hero */}
+            <div
+              className={`rounded-xl border border-[color-mix(in_srgb,var(--gold)_18%,var(--border))] bg-[color-mix(in_srgb,var(--bg-elevated)_72%,transparent)] px-3.5 py-3 backdrop-blur-sm ${priceFlash ? "price-flash" : ""}`}
+            >
+              <p className="text-[9px] font-bold tracking-[0.18em] text-[var(--fg-subtle)]">
+                LAST TRADED
+              </p>
+              <div className="mt-1.5 flex flex-wrap items-end justify-between gap-2">
+                <span
+                  className={`tv-num text-[2rem] font-semibold leading-none tracking-tight sm:text-[2.35rem] lg:text-[2.6rem] ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+                >
+                  {displayPrice}
+                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span
+                    className={`tv-num rounded-md px-2 py-1 text-xs font-semibold sm:text-sm ${
+                      displayUp
+                        ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400"
+                        : "bg-red-500/12 text-red-700 dark:text-red-400"
+                    }`}
+                  >
+                    {displayChange} · {displayChangePct}
+                  </span>
+                  {basisHint ? (
+                    <span className="text-[10px] font-medium text-[var(--fg-subtle)]">
+                      {basisHint}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              {vsPrev ? (
+                <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-[color-mix(in_srgb,var(--border)_80%,transparent)] pt-2.5">
+                  <span className="text-[10px] tracking-wide text-[var(--fg-subtle)]">
+                    vs prev close
+                  </span>
+                  <span
+                    className={`tv-num text-xs font-semibold ${
+                      vsPrev.change >= 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {formatMarketChange(vsPrev.change, indexId)} (
+                    {formatMarketChangePercent(vsPrev.changePercent)})
+                  </span>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Period range meter */}
+            <div className="rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-muted)_55%,transparent)] px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] font-bold tracking-[0.16em] text-[var(--fg-subtle)]">
+                  {timeframe} RANGE
+                </span>
+                {rangeSpan != null ? (
+                  <span className="tv-num text-[10px] font-medium text-[var(--fg-muted)]">
+                    {formatMarketPrice(rangeSpan, indexId)} pts
+                    {rangePos != null
+                      ? ` · ${rangePos.toFixed(0)}% of range`
+                      : ""}
+                  </span>
+                ) : null}
+              </div>
+              <div className="relative mt-2.5 h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--ink)_8%,var(--bg))]">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-[color-mix(in_srgb,var(--gold)_55%,#26a69a)]"
+                  style={{ width: `${rangePos ?? 0}%` }}
+                />
+                {rangePos != null ? (
+                  <div
+                    className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--bg-elevated)] bg-[var(--gold-deep)] shadow-sm dark:bg-[var(--gold)]"
+                    style={{ left: `${rangePos}%` }}
+                  />
+                ) : null}
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[9px] tracking-wide text-[var(--fg-subtle)]">
+                    Low
+                  </p>
+                  <p className="tv-num truncate text-sm font-semibold text-red-600 dark:text-red-400">
+                    {periodLow != null
+                      ? formatMarketPrice(periodLow, indexId)
+                      : "—"}
+                  </p>
+                </div>
+                <div className="min-w-0 text-right">
+                  <p className="text-[9px] tracking-wide text-[var(--fg-subtle)]">
+                    High
+                  </p>
+                  <p className="tv-num truncate text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                    {periodHigh != null
+                      ? formatMarketPrice(periodHigh, indexId)
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Dense levels grid */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-2">
+                <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
+                  {sameSessionOpen || timeframe === "1D" ? "OPEN" : "PERIOD OPEN"}
+                </p>
+                <p className="tv-num mt-1 truncate text-[15px] font-semibold text-[var(--fg)]">
                   {periodReference != null
                     ? formatMarketPrice(periodReference, indexId)
                     : "—"}
-                </dd>
+                </p>
               </div>
-              {syncedQuote?.dayOpen != null ? (
-                <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-                  <dt className="text-[10px] tracking-wide text-[var(--fg-subtle)] sm:text-[11px]">
-                    Session open
-                  </dt>
-                  <dd className="tv-num truncate text-sm font-medium text-[var(--fg)]">
-                    {formatMarketPrice(syncedQuote.dayOpen, indexId)}
-                  </dd>
+              <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-2">
+                <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
+                  PREV CLOSE
+                </p>
+                <p className="tv-num mt-1 truncate text-[15px] font-semibold text-[var(--fg)]">
+                  {syncedQuote?.previousClose != null
+                    ? formatMarketPrice(syncedQuote.previousClose, indexId)
+                    : "—"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-2">
+                <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
+                  HIGH
+                </p>
+                <p className="tv-num mt-1 truncate text-[15px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  {periodHigh != null
+                    ? formatMarketPrice(periodHigh, indexId)
+                    : "—"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-2">
+                <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
+                  LOW
+                </p>
+                <p className="tv-num mt-1 truncate text-[15px] font-semibold text-red-600 dark:text-red-400">
+                  {periodLow != null
+                    ? formatMarketPrice(periodLow, indexId)
+                    : "—"}
+                </p>
+              </div>
+              {!sameSessionOpen &&
+              timeframe !== "1D" &&
+              syncedQuote?.dayOpen != null ? (
+                <div className="col-span-2 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-2">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
+                      SESSION OPEN
+                    </p>
+                    <p className="tv-num truncate text-[15px] font-semibold text-[var(--fg)]">
+                      {formatMarketPrice(syncedQuote.dayOpen, indexId)}
+                    </p>
+                  </div>
                 </div>
               ) : null}
-              {syncedQuote?.previousClose != null ? (
-                <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-                  <dt className="text-[10px] tracking-wide text-[var(--fg-subtle)] sm:text-[11px]">
-                    Prev close
-                  </dt>
-                  <dd className="tv-num truncate text-sm font-medium text-[var(--fg)]">
-                    {formatMarketPrice(syncedQuote.previousClose, indexId)}
-                  </dd>
-                </div>
-              ) : null}
-              <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-                <dt className="text-[10px] tracking-wide text-[var(--fg-subtle)] sm:text-[11px]">
-                  Timeframe
-                </dt>
-                <dd className="truncate text-sm font-semibold text-[var(--fg)]">
-                  {timeframe}
-                  {timeframe === "1D" ? " · VWAP" : ""}
-                  {" · SMA · BB"}
-                </dd>
-              </div>
-            </dl>
-          </div>
+            </div>
 
-          <p className="tv-num text-[10px] leading-relaxed text-[var(--fg-subtle)] sm:text-[11px]">
-            {header.hoverTime
-              ? `${header.hoverTime} IST`
-              : syncedQuote?.marketTime
-                ? awaitingPrint
-                  ? `Awaiting today's print · ${sessionPhrase} ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: true }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
-                  : `${instrumentLive ? "Synced" : sessionPhrase} · ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: !instrumentLive }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
-                : syncedAsOf
-                  ? instrumentLive
-                    ? `Synced · ${formatIstSyncTime(syncedAsOf)} IST · every minute`
-                    : awaitingPrint
-                      ? `Awaiting today's print · polling for open`
-                      : `${sessionPhrase} · ${formatIstSessionStamp(syncedAsOf, { forceDate: true })} IST`
-                  : header.asOf
-                    ? `${instrumentLive ? "Last update" : awaitingPrint ? "Awaiting open" : sessionPhrase} · ${header.asOf} IST`
-                    : instrumentLive
-                      ? "Live · refreshes every minute · axis in IST"
-                      : awaitingPrint
-                        ? "Awaiting today's print · chart shows last session · axis in IST"
-                        : `Markets closed · showing ${sessionPhrase.toLowerCase()} · axis in IST`}
-            {zoomEnabled ? " · double-click resets view" : ""}
-          </p>
+            {/* Overlays + status footer */}
+            <div className="mt-auto space-y-2.5">
+              <div className="flex flex-wrap gap-1.5">
+                <span className="rounded-md border border-[var(--border)] bg-[var(--bg-muted)] px-2 py-1 text-[10px] font-semibold tracking-wide text-[var(--fg-muted)]">
+                  {timeframe}
+                </span>
+                {timeframe === "1D" ? (
+                  <span className="rounded-md border border-[color-mix(in_srgb,#d4a017_40%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] px-2 py-1 text-[10px] font-semibold text-[var(--gold-deep)] dark:text-[var(--gold)]">
+                    VWAP
+                  </span>
+                ) : null}
+                <span className="rounded-md border border-[color-mix(in_srgb,#38bdf8_35%,var(--border))] bg-[color-mix(in_srgb,#38bdf8_10%,transparent)] px-2 py-1 text-[10px] font-semibold text-sky-800 dark:text-sky-300">
+                  SMA
+                </span>
+                <span className="rounded-md border border-[color-mix(in_srgb,#94a3b8_40%,var(--border))] bg-[color-mix(in_srgb,#94a3b8_12%,transparent)] px-2 py-1 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+                  BB
+                </span>
+              </div>
+              <p className="tv-num border-t border-[var(--border)] pt-2 text-[10px] leading-snug text-[var(--fg-subtle)] sm:text-[11px]">
+                {header.hoverTime
+                  ? `Crosshair · ${header.hoverTime} IST`
+                  : syncedQuote?.marketTime
+                    ? awaitingPrint
+                      ? `Awaiting today's print · ${sessionPhrase} ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: true }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
+                      : `${instrumentLive ? "Synced" : sessionPhrase} · ${formatIstSessionStamp(syncedQuote.marketTime, { forceDate: !instrumentLive }) || formatIstHeaderTime(syncedQuote.marketTime)} IST`
+                    : syncedAsOf
+                      ? instrumentLive
+                        ? `Synced · ${formatIstSyncTime(syncedAsOf)} IST · every minute`
+                        : awaitingPrint
+                          ? `Awaiting today's print · polling for open`
+                          : `${sessionPhrase} · ${formatIstSessionStamp(syncedAsOf, { forceDate: true })} IST`
+                      : header.asOf
+                        ? `${instrumentLive ? "Last update" : awaitingPrint ? "Awaiting open" : sessionPhrase} · ${header.asOf} IST`
+                        : instrumentLive
+                          ? "Live · refreshes every minute · axis in IST"
+                          : awaitingPrint
+                            ? "Awaiting today's print · chart shows last session · axis in IST"
+                            : `Markets closed · showing ${sessionPhrase.toLowerCase()} · axis in IST`}
+                {zoomEnabled ? " · double-click resets view" : ""}
+              </p>
+            </div>
+          </div>
         </aside>
       </div>
     </div>
