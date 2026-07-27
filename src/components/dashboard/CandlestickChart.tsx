@@ -153,6 +153,14 @@ function fmtPct(n: number) {
   return `${sign}${n.toFixed(2)}%`;
 }
 
+/** Vacant bars on the right — new candles form into this room. */
+const LIVE_RIGHT_GAP_BARS = 14;
+/** Zoom On keeps a smaller trailing gap. */
+const ZOOM_RIGHT_GAP_BARS = 6;
+/** Thin candle bodies — never stretch to fill the pane when few bars. */
+const THIN_BAR_SPACING_MIN = 2.5;
+const THIN_BAR_SPACING_MAX = 6.5;
+
 function chartInteractionOptions(zoomEnabled: boolean) {
   return {
     handleScroll: {
@@ -167,31 +175,61 @@ function chartInteractionOptions(zoomEnabled: boolean) {
       pinch: zoomEnabled,
     },
     timeScale: {
+      // Lock left at period open in Zoom Off; never fix right — that clamps
+      // rightOffset to 0 and kills the live forming-candle runway.
       fixLeftEdge: !zoomEnabled,
-      fixRightEdge: !zoomEnabled,
+      fixRightEdge: false,
     },
   };
 }
 
-function fitChartFullWidth(
+/**
+ * Thin candles + vacant right runway for forming bars.
+ * Zoom Off anchors the left at the period start; right stays open so each
+ * new print slides into the reserved gap (TradingView-style).
+ */
+function layoutLiveChart(
   chart: IChartApi,
   container: HTMLDivElement,
   barCount: number,
-  opts?: { fixEdges?: boolean }
+  opts?: { zoomEnabled?: boolean; preserveScroll?: boolean }
 ) {
+  if (barCount <= 0) return;
+
+  const zoomEnabled = opts?.zoomEnabled === true;
+  const rightGap = zoomEnabled ? ZOOM_RIGHT_GAP_BARS : LIVE_RIGHT_GAP_BARS;
   const scaleWidth = 72;
   const width = Math.max(container.clientWidth - scaleWidth, 200);
-  const spacing = Math.max(4, Math.min(14, width / Math.max(barCount, 1)));
-  const fixEdges = opts?.fixEdges !== false;
+  // Size bars for data + right gap so early-session 1D stays thin, not fat.
+  const natural = width / Math.max(barCount + rightGap, 1);
+  const spacing = Math.max(
+    THIN_BAR_SPACING_MIN,
+    Math.min(THIN_BAR_SPACING_MAX, natural)
+  );
+
   chart.applyOptions({
     timeScale: {
-      rightOffset: 0,
-      fixLeftEdge: fixEdges,
-      fixRightEdge: fixEdges,
+      rightOffset: rightGap,
+      fixLeftEdge: !zoomEnabled,
+      fixRightEdge: false,
       barSpacing: spacing,
+      shiftVisibleRangeOnNewBar: true,
     },
   });
-  chart.timeScale().fitContent();
+
+  if (opts?.preserveScroll) return;
+
+  if (zoomEnabled) {
+    chart.timeScale().fitContent();
+    chart.timeScale().applyOptions({ rightOffset: rightGap });
+    return;
+  }
+
+  // Period view: show open → latest, with empty slots on the right.
+  chart.timeScale().setVisibleLogicalRange({
+    from: -0.35,
+    to: Math.max(barCount - 1, 0) + rightGap,
+  });
 }
 
 function easeOutCubic(t: number) {
@@ -505,9 +543,11 @@ export function CandlestickChart({
         borderColor: colors.border,
         timeVisible: true,
         secondsVisible: false,
-        rightOffset: 0,
+        rightOffset: LIVE_RIGHT_GAP_BARS,
         fixLeftEdge: !zoomRef.current,
-        fixRightEdge: !zoomRef.current,
+        fixRightEdge: false,
+        barSpacing: THIN_BAR_SPACING_MAX,
+        minBarSpacing: THIN_BAR_SPACING_MIN,
         tickMarkMaxCharacterLength: tf.axisLabelMode === "day" ? 8 : 10,
         tickMarkFormatter: (time: Time) =>
           axisTickFormatter(timeToUnix(time)),
@@ -822,8 +862,18 @@ export function CandlestickChart({
         });
       } else if (opts.preserveRange && visibleRange) {
         chart.timeScale().setVisibleLogicalRange(visibleRange);
+        // Keep the forming-candle runway even when preserving scroll.
+        chart.timeScale().applyOptions({
+          rightOffset: zoomRef.current
+            ? ZOOM_RIGHT_GAP_BARS
+            : LIVE_RIGHT_GAP_BARS,
+          fixRightEdge: false,
+          shiftVisibleRangeOnNewBar: true,
+        });
       } else {
-        fitChartFullWidth(chart, container, candles.length);
+        layoutLiveChart(chart, container, candles.length, {
+          zoomEnabled: zoomRef.current,
+        });
       }
 
       lastCandle = candles[candles.length - 1];
@@ -920,8 +970,12 @@ export function CandlestickChart({
         });
         if (isCancelled?.()) return;
         chart.applyOptions(chartInteractionOptions(true));
+        layoutLiveChart(chart, container, count, {
+          zoomEnabled: true,
+          preserveScroll: true,
+        });
       } else {
-        fitChartFullWidth(chart, container, count, { fixEdges: false });
+        layoutLiveChart(chart, container, count, { zoomEnabled: true });
         chart.applyOptions(chartInteractionOptions(true));
       }
     };
@@ -961,14 +1015,10 @@ export function CandlestickChart({
           });
           if (isCancelled()) return;
 
-          // Remap period bars to 0…N and settle the window without a hard jump.
+          // Remap period bars to 0…N with thin candles + right runway.
           applyBars(period);
-          chart.timeScale().setVisibleLogicalRange({
-            from: 0,
-            to: Math.max(period.length - 1, 1) + 0.25,
-          });
-          fitChartFullWidth(chart, container, period.length, {
-            fixEdges: true,
+          layoutLiveChart(chart, container, period.length, {
+            zoomEnabled: false,
           });
           chart.applyOptions(chartInteractionOptions(false));
         })();
@@ -1014,7 +1064,8 @@ export function CandlestickChart({
             timeScale: {
               fixLeftEdge: false,
               fixRightEdge: false,
-              rightOffset: 6,
+              rightOffset: ZOOM_RIGHT_GAP_BARS,
+              shiftVisibleRangeOnNewBar: true,
             },
           });
         }
@@ -1037,7 +1088,9 @@ export function CandlestickChart({
     const resetView = () => {
       const count = barCountRef.current;
       if (count <= 0) return;
-      fitChartFullWidth(chart, container, count);
+      layoutLiveChart(chart, container, count, {
+        zoomEnabled: zoomRef.current,
+      });
     };
 
     const onDblClick = () => resetView();
@@ -1120,8 +1173,36 @@ export function CandlestickChart({
             lastCandle = candles[0] ?? lastCandle;
             lastUnix = lastIncoming.time;
             lastBarIndex = merged.length - 1;
+          } else if (
+            !zoomRef.current &&
+            merged.length === barsRef.current.length + 1 &&
+            lastIncoming.time > prevLast.time
+          ) {
+            // New bar in Zoom Off — append via update so shiftVisibleRangeOnNewBar
+            // slides it into the reserved right runway (keeps left at period open).
+            const { candles, volumes } = buildChartSeries(
+              [lastIncoming],
+              tf.intraday,
+              colors.volumeUp,
+              colors.volumeDown
+            );
+            if (candles[0]) candleSeries.update(candles[0]);
+            if (volumes[0]) volumeSeries.update(volumes[0]);
+            barsRef.current = merged;
+            barCountRef.current = merged.length;
+            updateOverlayLines(merged);
+            lastCandle = candles[0] ?? lastCandle;
+            lastUnix = lastIncoming.time;
+            lastBarIndex = merged.length - 1;
+            chart.timeScale().applyOptions({
+              rightOffset: LIVE_RIGHT_GAP_BARS,
+              fixRightEdge: false,
+              shiftVisibleRangeOnNewBar: true,
+            });
           } else {
-            applyBars(merged, { preserveRange: true });
+            applyBars(merged, {
+              preserveRange: zoomRef.current,
+            });
           }
         } else {
           applyBars(incoming);
@@ -1319,8 +1400,12 @@ export function CandlestickChart({
     schedulePoll();
 
     const resizeObs = new ResizeObserver(() => {
-      if (!zoomRef.current && barCountRef.current > 0) {
-        fitChartFullWidth(chart, container, barCountRef.current);
+      if (barCountRef.current > 0) {
+        layoutLiveChart(chart, container, barCountRef.current, {
+          zoomEnabled: zoomRef.current,
+          // Zoom On: keep user's pan; Zoom Off: re-anchor period + right gap.
+          preserveScroll: zoomRef.current,
+        });
       }
     });
     resizeObs.observe(container);
