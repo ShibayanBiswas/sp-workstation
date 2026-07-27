@@ -107,8 +107,8 @@ function chartColors(theme: ThemeMode) {
       crosshairGlow: "rgba(117, 134, 150, 0.14)",
       up: "#26a69a",
       down: "#ef5350",
-      volumeUp: "rgba(38, 166, 154, 0.45)",
-      volumeDown: "rgba(239, 83, 80, 0.45)",
+      volumeUp: "rgba(38, 166, 154, 0.72)",
+      volumeDown: "rgba(239, 83, 80, 0.72)",
       muted: "#787b86",
       watermark: "rgba(255, 255, 255, 0.045)",
       vwap: "#b388ff",
@@ -128,8 +128,8 @@ function chartColors(theme: ThemeMode) {
     crosshairGlow: "rgba(149, 152, 161, 0.12)",
     up: "#089981",
     down: "#f23645",
-    volumeUp: "rgba(8, 153, 129, 0.4)",
-    volumeDown: "rgba(242, 54, 69, 0.4)",
+    volumeUp: "rgba(8, 153, 129, 0.65)",
+    volumeDown: "rgba(242, 54, 69, 0.65)",
     muted: "#787b86",
     watermark: "rgba(19, 23, 34, 0.055)",
     vwap: "#7b1fa2",
@@ -498,7 +498,7 @@ export function CandlestickChart({
       },
       rightPriceScale: {
         borderColor: colors.border,
-        scaleMargins: { top: 0.08, bottom: 0.22 },
+        scaleMargins: { top: 0.08, bottom: 0.32 },
         minimumWidth: 68,
       },
       timeScale: {
@@ -556,13 +556,18 @@ export function CandlestickChart({
       priceLineStyle: LineStyle.Dashed,
       lastValueVisible: true,
     });
+    // Leave the bottom third for the volume overlay (TradingView pattern).
+    candleSeries.priceScale().applyOptions({
+      scaleMargins: { top: 0.08, bottom: 0.32 },
+    });
 
+    // Blank priceScaleId = overlay on the same pane (not a separate "vol" scale).
     const volumeSeries = chart.addHistogramSeries({
       priceFormat: { type: "volume" },
-      priceScaleId: "vol",
+      priceScaleId: "",
     });
     volumeSeries.priceScale().applyOptions({
-      scaleMargins: { top: 0.76, bottom: 0 },
+      scaleMargins: { top: 0.72, bottom: 0 },
     });
 
     // Overlays after candles so indicators paint on top (TradingView-style).
