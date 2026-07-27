@@ -26,9 +26,9 @@ unless noted.
 
 | Member | Email | Status |
 |---|---|---|
-| Kaplpesh Koradia | kalpeshkoradia@rathi.com | ✅ `src/data/team.ts` |
+| Kalpesh Koradia | kalpeshkoradia@rathi.com | ✅ `src/data/team.ts` |
 | Vinay Rathi | vinayrathi@rathi.com | ✅ |
-| Sammedi Shan | sammedishah@rathi.com | ✅ |
+| Sammedi Shah | sammedishah@rathi.com | ✅ |
 | Parth Parekh | parthparekh@rathi.com | ✅ |
 | Nishchay Soni | nishchaysoni@rathi.com | ✅ |
 | Subhendu Maji | subhendumaji@rathi.com | ✅ |
