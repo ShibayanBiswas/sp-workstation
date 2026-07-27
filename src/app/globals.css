@@ -301,6 +301,9 @@ a {
     border-bottom: 1px solid var(--border);
     background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
     padding: 0.65rem 0.85rem;
+    padding-top: max(0.65rem, env(safe-area-inset-top));
+    padding-left: max(0.85rem, env(safe-area-inset-left));
+    padding-right: max(0.85rem, env(safe-area-inset-right));
     backdrop-filter: blur(12px);
   }
 
@@ -529,7 +532,13 @@ a {
 
 .home-scroll-section-chart {
   content-visibility: auto;
-  contain-intrinsic-size: auto 620px;
+  contain-intrinsic-size: auto 720px;
+}
+
+@media (min-width: 1024px) {
+  .home-scroll-section-chart {
+    contain-intrinsic-size: auto 520px;
+  }
 }
 
 .status-pill {

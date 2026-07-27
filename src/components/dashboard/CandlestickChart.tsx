@@ -791,7 +791,7 @@ export function CandlestickChart({
           : "";
 
       el.innerHTML = `
-        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-family:${TV_FONT};font-size:12px;padding:2px 4px;border-radius:6px;background:${theme === "dark" ? "rgba(14,14,16,0.55)" : "rgba(255,255,255,0.72)"};backdrop-filter:blur(6px)">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:${TV_FONT};font-size:${container.clientWidth < 420 ? 10 : 12}px;padding:2px 4px;border-radius:6px;background:${theme === "dark" ? "rgba(14,14,16,0.55)" : "rgba(255,255,255,0.72)"};backdrop-filter:blur(6px)">
           ${timeLabel ? `<span style="color:${colors.muted}">${timeLabel} IST</span>` : ""}
           ${item("O", fmt(bar.open))}
           ${item("H", fmt(bar.high))}
@@ -1536,12 +1536,12 @@ export function CandlestickChart({
 
   return (
     <div className="flex flex-col bg-[var(--bg-elevated)]">
-      <div className="grid grid-cols-1 md:grid-cols-2">
-        {/* Left half — chart */}
-        <div className="relative min-h-[420px] border-[var(--border)] md:border-r">
+      <div className="grid grid-cols-1 lg:grid-cols-2">
+        {/* Chart — full width on small screens; left half on large */}
+        <div className="relative order-2 min-h-[280px] border-[var(--border)] sm:min-h-[340px] lg:order-1 lg:min-h-[420px] lg:border-r">
           <div
             ref={legendRef}
-            className="pointer-events-none absolute left-3 top-2 z-10 max-w-[calc(100%-1.5rem)]"
+            className="pointer-events-none absolute left-2 top-2 z-10 max-w-[calc(100%-0.75rem)] sm:left-3 sm:max-w-[calc(100%-1.5rem)]"
           />
           {loading ? (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[var(--bg-elevated)]/90">
@@ -1553,7 +1553,7 @@ export function CandlestickChart({
             </div>
           ) : null}
           {error && !loading ? (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-6">
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-4 sm:p-6">
               <p className="rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-4 py-3 text-center text-sm text-[var(--fg-muted)]">
                 {error}
               </p>
@@ -1566,14 +1566,17 @@ export function CandlestickChart({
               </button>
             </div>
           ) : null}
-          <div ref={containerRef} className="h-[420px] w-full" />
+          <div
+            ref={containerRef}
+            className="h-[280px] w-full touch-pan-y sm:h-[340px] lg:h-[420px]"
+          />
         </div>
 
-        {/* Right half — quote / period detail */}
-        <aside className="flex min-h-[420px] flex-col justify-between gap-6 px-5 py-5 md:px-6">
+        {/* Quote panel — above chart on mobile; right half on large */}
+        <aside className="order-1 flex flex-col justify-between gap-4 border-b border-[var(--border)] px-4 py-4 sm:gap-5 sm:px-5 sm:py-5 lg:order-2 lg:min-h-[420px] lg:border-b-0 lg:px-6">
           <div className="min-w-0">
             <div className="flex items-start justify-between gap-3">
-              <p className="text-[10px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
+              <p className="truncate text-[10px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                 {name.toUpperCase()}
               </p>
               <button
@@ -1586,61 +1589,61 @@ export function CandlestickChart({
               </button>
             </div>
             <div
-              className={`mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-md ${priceFlash ? "price-flash" : ""}`}
+              className={`mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-md sm:mt-3 ${priceFlash ? "price-flash" : ""}`}
             >
               <span
-                className={`tv-num text-[32px] font-semibold leading-none md:text-[40px] ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+                className={`tv-num text-[28px] font-semibold leading-none sm:text-[32px] lg:text-[40px] ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
               >
                 {displayPrice}
               </span>
               <span
-                className={`tv-num text-base font-medium ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+                className={`tv-num text-sm font-medium sm:text-base ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
               >
                 {displayChange} ({displayChangePct})
               </span>
             </div>
             {basisHint ? (
-              <p className="mt-2 text-[11px] font-medium tracking-wide text-[var(--fg-subtle)]">
+              <p className="mt-1.5 text-[11px] font-medium tracking-wide text-[var(--fg-subtle)] sm:mt-2">
                 {basisHint}
               </p>
             ) : null}
 
-            <dl className="mt-6 space-y-3 border-t border-[var(--border)] pt-5">
-              <div className="flex items-baseline justify-between gap-4">
-                <dt className="text-[11px] tracking-wide text-[var(--fg-subtle)]">
+            <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-[var(--border)] pt-4 sm:mt-6 sm:grid-cols-1 sm:gap-3 lg:pt-5">
+              <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                <dt className="text-[10px] tracking-wide text-[var(--fg-subtle)] sm:text-[11px]">
                   Period open
                 </dt>
-                <dd className="tv-num text-sm font-medium text-[var(--fg)]">
+                <dd className="tv-num truncate text-sm font-medium text-[var(--fg)]">
                   {periodReference != null
                     ? formatMarketPrice(periodReference, indexId)
                     : "—"}
                 </dd>
               </div>
               {syncedQuote?.dayOpen != null ? (
-                <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-[11px] tracking-wide text-[var(--fg-subtle)]">
+                <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                  <dt className="text-[10px] tracking-wide text-[var(--fg-subtle)] sm:text-[11px]">
                     Session open
                   </dt>
-                  <dd className="tv-num text-sm font-medium text-[var(--fg)]">
+                  <dd className="tv-num truncate text-sm font-medium text-[var(--fg)]">
                     {formatMarketPrice(syncedQuote.dayOpen, indexId)}
                   </dd>
                 </div>
               ) : null}
               {syncedQuote?.previousClose != null ? (
-                <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-[11px] tracking-wide text-[var(--fg-subtle)]">
+                <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                  <dt className="text-[10px] tracking-wide text-[var(--fg-subtle)] sm:text-[11px]">
                     Prev close
                   </dt>
-                  <dd className="tv-num text-sm font-medium text-[var(--fg)]">
+                  <dd className="tv-num truncate text-sm font-medium text-[var(--fg)]">
                     {formatMarketPrice(syncedQuote.previousClose, indexId)}
                   </dd>
                 </div>
               ) : null}
-              <div className="flex items-baseline justify-between gap-4">
-                <dt className="text-[11px] tracking-wide text-[var(--fg-subtle)]">
+              <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                <dt className="text-[10px] tracking-wide text-[var(--fg-subtle)] sm:text-[11px]">
                   Timeframe
                 </dt>
-                <dd className="text-sm font-semibold text-[var(--fg)]">
+                <dd className="truncate text-sm font-semibold text-[var(--fg)]">
                   {timeframe}
                   {timeframe === "1D" ? " · VWAP" : ""}
                   {" · SMA · BB"}
@@ -1649,7 +1652,7 @@ export function CandlestickChart({
             </dl>
           </div>
 
-          <p className="tv-num text-[11px] leading-relaxed text-[var(--fg-subtle)]">
+          <p className="tv-num text-[10px] leading-relaxed text-[var(--fg-subtle)] sm:text-[11px]">
             {header.hoverTime
               ? `${header.hoverTime} IST`
               : syncedQuote?.marketTime
