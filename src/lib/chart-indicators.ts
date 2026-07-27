@@ -114,8 +114,12 @@ export function buildHighLowMarkers(
       size: 0.8,
     },
   ];
-  // Same bar for both extremes is rare but valid — keep both markers.
-  return markers;
+  // lightweight-charts requires markers ascending by time (high may be after low).
+  return markers.sort((a, b) => {
+    const ta = typeof a.time === "number" ? a.time : String(a.time);
+    const tb = typeof b.time === "number" ? b.time : String(b.time);
+    return ta < tb ? -1 : ta > tb ? 1 : 0;
+  });
 }
 
 export function formatVolumeShort(volume: number): string {

@@ -153,6 +153,10 @@ async function main() {
   assert(markets1.status === 200, `Markets failed: ${markets1.status}`);
   assert(Array.isArray(markets1.json?.quotes), "Quotes array missing");
   assert(markets1.json.quotes.length >= 10, "Expected 10+ index quotes");
+  assert(
+    !markets1.json.quotes.some((q) => q.id === "usdinr"),
+    "USD/INR must not appear in markets quotes"
+  );
   const nifty = markets1.json.quotes.find((q) => q.id === "nifty");
   assert(nifty?.price != null, "Nifty 50 price missing");
   assert(
@@ -188,8 +192,8 @@ async function main() {
   );
   pass(`Chart synced with tape (Nifty ${chart.json.last.price})`);
   assert(
-    chart.json.last.basis === "prev_close",
-    `1D chart basis should be prev_close, got ${chart.json.last.basis}`
+    chart.json.last.basis === "day_open",
+    `1D chart basis should be day_open, got ${chart.json.last.basis}`
   );
   assert(
     typeof nifty.previousClose === "number" && nifty.previousClose > 0,
@@ -204,7 +208,7 @@ async function main() {
       nifty.source === "nse",
       `Nifty should prefer NSE live quotes, got source=${nifty.source}`
     );
-    pass(`Nifty source=nse · ${Number(nifty.changePercent).toFixed(2)}% vs prev close`);
+    pass(`Nifty source=nse · ${Number(nifty.changePercent).toFixed(2)}% vs session open`);
   }
   assert(
     typeof chart.json.last.reference === "number" && chart.json.last.reference > 0,
@@ -245,16 +249,17 @@ async function main() {
       sensex.source === "bse" || sensex.source === "yahoo",
       `Sensex source unexpected: ${sensex.source}`
     );
-    pass(`Sensex source=${sensex.source} · ${Number(sensex.changePercent).toFixed(2)}% vs prev close`);
+    pass(`Sensex source=${sensex.source} · ${Number(sensex.changePercent).toFixed(2)}% vs session open`);
   }
   pass(
     `Sensex dayOpen aligned (${sensex.dayOpen}) · exchange ${sensexChart.json.exchange}`
   );
 
   // 8b. Timeframe period returns include a reference open for each window
-  for (const tf of ["1W", "1M", "3M"]) {
+  for (const tf of ["1W", "1M", "3M", "6M", "1Y"]) {
     const r = await request(`/api/chart?indexId=nifty&timeframe=${tf}`);
     assert(r.status === 200, `${tf} chart failed: ${r.status}`);
+    assert(r.json?.bars?.length > 0, `${tf} chart bars missing`);
     assert(
       typeof r.json?.last?.reference === "number" && r.json.last.reference > 0,
       `${tf} chart missing period reference`
@@ -264,8 +269,15 @@ async function main() {
         Number.isFinite(r.json.last.changePercent),
       `${tf} chart missing period changePercent`
     );
+    // Zoom Off: first bar open should match period reference (within tick noise).
+    const firstOpen = r.json.bars[0]?.open;
+    assert(
+      typeof firstOpen === "number" &&
+        Math.abs(firstOpen - r.json.last.reference) < 0.05,
+      `${tf} Zoom Off should start at period open (first ${firstOpen} vs ref ${r.json.last.reference})`
+    );
     pass(
-      `${tf} period return ${Number(r.json.last.changePercent).toFixed(2)}% (ref ${r.json.last.reference})`
+      `${tf} period return ${Number(r.json.last.changePercent).toFixed(2)}% (ref ${r.json.last.reference}, ${r.json.bars.length} bars)`
     );
   }
 

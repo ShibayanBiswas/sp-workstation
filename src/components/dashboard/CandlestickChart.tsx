@@ -997,8 +997,15 @@ export function CandlestickChart({
             );
           }
         }
-      } catch {
-        if (!silent && alive) setError("Failed to load chart data.");
+      } catch (err) {
+        console.error("[CandlestickChart] load failed", err);
+        if (!silent && alive) {
+          const detail =
+            err instanceof Error && err.message
+              ? err.message
+              : "Failed to load chart data.";
+          setError(detail);
+        }
       } finally {
         if (silent) pollInFlight = false;
         if (!silent && alive) setLoading(false);
