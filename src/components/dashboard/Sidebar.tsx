@@ -69,20 +69,19 @@ function NavBranch({
   const pathname = usePathname();
   const hasChildren = Boolean(item.children?.length);
   const open = !collapsed && (openMap[item.id] ?? false);
-  const active =
-    !suppressExactActive && pathActive(pathname, item.path);
+  const active = !suppressExactActive && pathActive(pathname, item.path);
   const childActive = hasChildren && branchActive(pathname, item);
 
-  const rowClass = `flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition ${
+  const rowClass = `group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-all duration-200 ${
     active
-      ? "bg-[color-mix(in_srgb,var(--gold)_18%,transparent)] text-[var(--fg)]"
+      ? "bg-[color-mix(in_srgb,var(--gold)_18%,transparent)] text-[var(--fg)] shadow-[inset_2px_0_0_0_color-mix(in_srgb,var(--gold)_70%,transparent)]"
       : childActive
         ? "text-[var(--fg)]"
-        : "text-[var(--fg-subtle)] hover:bg-[var(--bg-muted)] hover:text-[var(--fg)]"
+        : "text-[var(--fg-subtle)] hover:bg-[var(--bg-muted)] hover:text-[var(--fg)] hover:shadow-[inset_2px_0_0_0_color-mix(in_srgb,var(--gold)_28%,transparent)]"
   }`;
 
   const label = (
-    <span className="sidebar-label min-w-0 flex-1 truncate text-[13px] font-medium">
+    <span className="sidebar-label min-w-0 flex-1 truncate text-[13px] font-medium tracking-[-0.01em]">
       {item.label}
     </span>
   );
@@ -121,21 +120,21 @@ function NavBranch({
             type="button"
             aria-label={open ? `Collapse ${item.label}` : `Expand ${item.label}`}
             aria-expanded={open}
-            className="shrink-0 rounded-md p-1 text-[var(--fg-subtle)] hover:bg-[var(--bg-muted)] hover:text-[var(--fg)]"
+            className="shrink-0 rounded-md p-1 text-[var(--fg-subtle)] transition hover:bg-[var(--bg-muted)] hover:text-[var(--fg)]"
             onClick={() =>
               setOpenMap((s) => ({ ...s, [item.id]: !s[item.id] }))
             }
           >
             <ChevronDown
               size={14}
-              className={`transition ${open ? "rotate-180" : ""}`}
+              className={`transition duration-200 ${open ? "rotate-180" : ""}`}
             />
           </button>
         ) : null}
       </div>
 
       {hasChildren && open ? (
-        <div className="ml-3 border-l border-[var(--border)] pl-2">
+        <div className="ml-3 border-l border-[color-mix(in_srgb,var(--gold)_18%,var(--border))] pl-2">
           {item.children!.map((child) => (
             <NavBranch
               key={child.id}
@@ -144,11 +143,9 @@ function NavBranch({
               setOpenMap={setOpenMap}
               collapsed={collapsed}
               onNavigate={onNavigate}
-              suppressExactActive={
-                Boolean(
-                  item.path && child.path && item.path === child.path
-                )
-              }
+              suppressExactActive={Boolean(
+                item.path && child.path && item.path === child.path
+              )}
             />
           ))}
         </div>
@@ -199,16 +196,16 @@ export function Sidebar({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="border-b border-[var(--border)] px-3 py-3 md:px-4 md:py-4">
+    <div className="relative z-[1] flex h-full min-h-0 flex-1 flex-col">
+      <div className="sidebar-brand border-b border-[color-mix(in_srgb,var(--gold)_12%,var(--border))] px-3 py-3.5 md:px-4 md:py-4">
         <Link
           href="/dashboard"
-          className="flex min-w-0 items-center justify-center lg:justify-start"
+          className="flex min-w-0 items-center justify-center transition duration-300 hover:opacity-95 lg:justify-start"
           onClick={onNavigate}
           title="Home Terminal"
         >
           {collapsed ? (
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl gold-gradient text-xs font-bold text-[#111]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl gold-gradient text-xs font-bold text-[#111] shadow-[0_8px_20px_color-mix(in_srgb,var(--gold)_28%,transparent)]">
               SP
             </span>
           ) : (
@@ -217,7 +214,7 @@ export function Sidebar({
         </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-2 py-3 scrollbar-thin md:py-4">
+      <nav className="flex-1 overflow-y-auto px-2 py-3 scrollbar-thin md:px-2.5 md:py-4">
         <Link
           href="/dashboard"
           title="Home Terminal"
@@ -226,34 +223,42 @@ export function Sidebar({
             collapsed ? "justify-center px-2" : ""
           } ${
             pathname === "/dashboard"
-              ? "bg-[color-mix(in_srgb,var(--gold)_18%,transparent)] text-[var(--fg)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--gold)_35%,var(--border))]"
+              ? "sidebar-nav-item-active bg-[color-mix(in_srgb,var(--gold)_18%,transparent)] text-[var(--fg)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--gold)_35%,var(--border)),0_8px_22px_color-mix(in_srgb,var(--gold)_12%,transparent)]"
               : "text-[var(--fg-muted)]"
           }`}
         >
-          <LayoutDashboard size={18} className="shrink-0 text-[var(--gold-deep)] dark:text-[var(--gold)]" />
-          <span className="sidebar-label font-medium">Home Terminal</span>
+          <span className="sidebar-icon-badge shrink-0">
+            <LayoutDashboard size={15} />
+          </span>
+          <span className="sidebar-label font-semibold tracking-[-0.01em]">
+            Home Terminal
+          </span>
         </Link>
 
         {!collapsed ? (
-          <p className="mb-2 mt-5 px-3 text-[10px] font-semibold tracking-[0.22em] text-[var(--fg-subtle)]">
+          <p className="mb-2.5 mt-5 px-3 text-[10px] font-semibold tracking-[0.28em] text-[var(--fg-subtle)]">
             MODULES
           </p>
         ) : (
-          <div className="my-3 h-px bg-[var(--border)]" />
+          <div className="my-3 h-px bg-[color-mix(in_srgb,var(--gold)_18%,var(--border))]" />
         )}
 
-        {MODULES.map((mod) => {
+        {MODULES.map((mod, index) => {
           const open = !collapsed && (openModules[mod.id] ?? false);
           const active = pathname.startsWith(mod.href);
           const ModuleIcon = MODULE_ICONS[mod.icon];
           return (
-            <div key={mod.id} className="mb-1">
+            <div
+              key={mod.id}
+              className={`sidebar-module-rail mb-1.5 ${active ? "sidebar-module-rail-active sidebar-module-active" : ""}`}
+              style={{ animationDelay: `${80 + index * 45}ms` }}
+            >
               <div
-                className={`flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-sm transition ${
+                className={`flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-sm transition-all duration-200 ${
                   collapsed ? "justify-center px-1" : ""
                 } ${
                   active
-                    ? "bg-[var(--bg-muted)] text-[var(--fg)]"
+                    ? "bg-[color-mix(in_srgb,var(--gold)_10%,var(--bg-muted))] text-[var(--fg)]"
                     : "text-[var(--fg-muted)] hover:bg-[var(--bg-muted)]"
                 }`}
               >
@@ -263,31 +268,35 @@ export function Sidebar({
                   title={mod.label}
                   onClick={onNavigate}
                 >
-                  <ModuleIcon size={18} className="shrink-0 text-[var(--gold-deep)] dark:text-[var(--gold)]" />
-                  <span className="sidebar-label min-w-0 flex-1 truncate font-medium">
+                  <span className="sidebar-icon-badge shrink-0">
+                    <ModuleIcon size={15} />
+                  </span>
+                  <span className="sidebar-label min-w-0 flex-1 truncate font-semibold tracking-[-0.01em]">
                     {mod.label}
                   </span>
                 </Link>
                 {!collapsed ? (
                   <button
                     type="button"
-                    aria-label={open ? `Collapse ${mod.label}` : `Expand ${mod.label}`}
+                    aria-label={
+                      open ? `Collapse ${mod.label}` : `Expand ${mod.label}`
+                    }
                     aria-expanded={open}
-                    className="shrink-0 rounded-md p-1.5 text-[var(--fg-subtle)] hover:bg-[var(--bg)] hover:text-[var(--fg)]"
+                    className="shrink-0 rounded-md p-1.5 text-[var(--fg-subtle)] transition hover:bg-[var(--bg)] hover:text-[var(--fg)]"
                     onClick={() =>
                       setOpenModules((s) => ({ ...s, [mod.id]: !s[mod.id] }))
                     }
                   >
                     <ChevronDown
                       size={14}
-                      className={`transition ${open ? "rotate-180" : ""}`}
+                      className={`transition duration-200 ${open ? "rotate-180" : ""}`}
                     />
                   </button>
                 ) : null}
               </div>
 
               {open ? (
-                <div className="ml-4 mt-1 border-l border-[var(--border)] pl-2">
+                <div className="ml-4 mt-1 border-l border-[color-mix(in_srgb,var(--gold)_16%,var(--border))] pl-2">
                   {mod.nav.map((item) => (
                     <NavBranch
                       key={item.id}
@@ -305,16 +314,20 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="border-t border-[var(--border)] p-3">
-        <div className={`mb-3 flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
+      <div className="border-t border-[color-mix(in_srgb,var(--gold)_12%,var(--border))] p-3">
+        <div
+          className={`sidebar-user-card mb-3 flex items-center gap-3 rounded-xl px-2.5 py-2.5 ${collapsed ? "justify-center px-1.5" : ""}`}
+        >
           <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full gold-gradient text-xs font-bold text-[#111]"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full gold-gradient text-xs font-bold text-[#111] shadow-[0_6px_16px_color-mix(in_srgb,var(--gold)_30%,transparent)]"
             title={userName}
           >
             {initials}
           </div>
           <div className="sidebar-label min-w-0">
-            <p className="truncate text-sm font-medium">{userName}</p>
+            <p className="truncate text-sm font-semibold tracking-[-0.01em]">
+              {userName}
+            </p>
             <p className="truncate text-[11px] text-[var(--fg-subtle)]">
               {userEmail}
             </p>
@@ -328,7 +341,9 @@ export function Sidebar({
             title={theme === "dark" ? "Light" : "Dark"}
           >
             {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-            <span className="sidebar-label">{theme === "dark" ? "Light" : "Dark"}</span>
+            <span className="sidebar-label">
+              {theme === "dark" ? "Light" : "Dark"}
+            </span>
           </button>
           <button
             type="button"

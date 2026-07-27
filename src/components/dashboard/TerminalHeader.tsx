@@ -55,19 +55,19 @@ export function TerminalHeader() {
     }) ?? "";
 
   return (
-    <div className="terminal-header panel-stable panel-luxe flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-2 md:px-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-[10px] font-semibold tracking-[0.32em] text-[var(--gold-deep)] dark:text-[var(--gold)]">
+    <div className="terminal-header terminal-header-luxe panel-stable panel-luxe flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-2.5 md:px-5">
+      <div className="flex flex-wrap items-center gap-3 pl-1">
+        <span className="text-[10px] font-semibold tracking-[0.34em] text-[var(--gold-deep)] dark:text-[var(--gold)]">
           SP TERMINAL
         </span>
-        <span className="hidden h-4 w-px bg-[var(--border)] sm:block" />
-        <span className="status-pill">
+        <span className="hidden h-4 w-px bg-[color-mix(in_srgb,var(--gold)_25%,var(--border))] sm:block" />
+        <span className="status-pill border-[color-mix(in_srgb,var(--gold)_18%,var(--border))]">
           <span
             className={`h-1.5 w-1.5 rounded-full ${statusColor(marketStatus)} ${isMarketLive(marketStatus) ? "animate-pulse-live" : ""}`}
           />
           {marketStatusLabel(marketStatus)}
         </span>
-        <span className="hidden text-[11px] text-[var(--fg-subtle)] lg:inline">
+        <span className="hidden text-[11px] tracking-wide text-[var(--fg-subtle)] lg:inline">
           NSE · BSE · IST
         </span>
       </div>

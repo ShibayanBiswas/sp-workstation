@@ -32,7 +32,7 @@ export function DashboardHome({ name }: Props) {
             <LiveCharts />
           </div>
 
-          <footer className="animate-rise-delay-3 border-t border-[var(--border)] pt-2 pb-0 text-center text-[10px] tracking-[0.2em] text-[var(--fg-subtle)]">
+          <footer className="home-footer-luxe footer-alive animate-rise-delay-3 border-t border-[color-mix(in_srgb,var(--gold)_14%,var(--border))] pt-3 pb-1 text-center text-[10px] tracking-[0.22em] text-[var(--fg-subtle)]">
             ANAND RATHI WEALTH · STRUCTURED PRODUCTS WORKSTATION
           </footer>
         </div>
