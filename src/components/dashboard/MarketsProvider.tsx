@@ -260,45 +260,47 @@ export function IndianMarketTape() {
     return () => io.disconnect();
   }, []);
 
-  const chips = quotes.map((q, index) => {
-    const up = (q.change ?? 0) >= 0;
-    const spark = q.sparkline?.length ? q.sparkline : [0, 0];
-    const flash = flashIds.has(q.id);
-    return (
-      <div
-        key={`tape-${q.id}`}
-        style={{ animationDelay: `${index * 60}ms` }}
-        className={`tape-chip tape-chip-7 tape-chip-animate flex shrink-0 flex-col justify-between gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2.5 py-2 sm:px-3 sm:py-2.5 ${flash ? "price-flash" : ""}`}
-      >
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <p className="truncate text-[10px] font-semibold leading-tight text-[var(--fg)] sm:text-[11px]">
-            {q.name}
-          </p>
-          <div className="flex min-w-0 items-baseline justify-between gap-2">
-            <p className="tv-num truncate text-[13px] font-semibold leading-none text-[var(--fg)] sm:text-sm">
-              {formatMarketPrice(q.price, q.id)}
+  function renderTapeChips(keySuffix: "a" | "b") {
+    return quotes.map((q, index) => {
+      const up = (q.change ?? 0) >= 0;
+      const spark = q.sparkline?.length ? q.sparkline : [0, 0];
+      const flash = flashIds.has(q.id);
+      return (
+        <div
+          key={`tape-${q.id}-${keySuffix}`}
+          style={{ animationDelay: `${index * 60}ms` }}
+          className={`tape-chip tape-chip-7 tape-chip-animate flex shrink-0 flex-col justify-between gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2.5 py-2 sm:px-3 sm:py-2.5 ${flash ? "price-flash" : ""}`}
+        >
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <p className="truncate text-[10px] font-semibold leading-tight text-[var(--fg)] sm:text-[11px]">
+              {q.name}
             </p>
-            <p
-              className={`tv-num shrink-0 text-[10px] font-semibold leading-none sm:text-[11px] ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
-            >
-              {up ? "▲" : "▼"} {formatMarketChangePercent(q.changePercent)}
-            </p>
+            <div className="flex min-w-0 items-baseline justify-between gap-2">
+              <p className="tv-num truncate text-[13px] font-semibold leading-none text-[var(--fg)] sm:text-sm">
+                {formatMarketPrice(q.price, q.id)}
+              </p>
+              <p
+                className={`tv-num shrink-0 text-[10px] font-semibold leading-none sm:text-[11px] ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+              >
+                {up ? "▲" : "▼"} {formatMarketChangePercent(q.changePercent)}
+              </p>
+            </div>
+          </div>
+          <div className="tape-spark mt-0.5 w-full min-w-0">
+            <Sparkline
+              data={spark}
+              up={up}
+              width={120}
+              height={28}
+              showArea
+              fluid
+              className="h-7 w-full"
+            />
           </div>
         </div>
-        <div className="tape-spark mt-0.5 w-full min-w-0">
-          <Sparkline
-            data={spark}
-            up={up}
-            width={120}
-            height={28}
-            showArea
-            fluid
-            className="h-7 w-full"
-          />
-        </div>
-      </div>
-    );
-  });
+      );
+    });
+  }
 
   const pauseTape = !sessionActive || !tapeInView;
 
@@ -334,8 +336,8 @@ export function IndianMarketTape() {
           </div>
         ) : (
           <div className="tape-track flex min-h-[96px] items-center gap-2 px-3">
-            {chips}
-            {sessionActive ? chips : null}
+            {renderTapeChips("a")}
+            {sessionActive ? renderTapeChips("b") : null}
           </div>
         )}
       </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { ArrowRight, LockKeyhole } from "lucide-react";
 import { AuthAccessStrip } from "@/components/auth/AuthAccessStrip";
 import { AuthOtpDisplay } from "@/components/auth/AuthOtpDisplay";
@@ -11,6 +11,22 @@ import { AuthShell } from "@/components/auth/AuthShell";
 type Props = {
   fromDashboard?: boolean;
 };
+
+function validatePassword(password: string): string | null {
+  if (password.length < 8) {
+    return "Password must be at least 8 characters.";
+  }
+  if (!/[A-Z]/.test(password)) {
+    return "Password must include an uppercase letter.";
+  }
+  if (!/[a-z]/.test(password)) {
+    return "Password must include a lowercase letter.";
+  }
+  if (!/[0-9]/.test(password)) {
+    return "Password must include a number.";
+  }
+  return null;
+}
 
 export function ChangePasswordForm({ fromDashboard = false }: Props) {
   const router = useRouter();
@@ -23,6 +39,7 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
   const [requesting, setRequesting] = useState(fromDashboard);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const redirectTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -34,7 +51,12 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
       }
       if (storedEmail) setEmail(storedEmail);
     });
-    return () => window.cancelAnimationFrame(frame);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (redirectTimerRef.current != null) {
+        window.clearTimeout(redirectTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -82,6 +104,11 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
       setError("Passwords do not match.");
       return;
     }
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/change-password", {
@@ -100,7 +127,12 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
       sessionStorage.removeItem("sp_login_email");
       setDone(true);
       setLoading(false);
-      setTimeout(() => router.push(data.redirect || "/login"), 1800);
+      if (redirectTimerRef.current != null) {
+        window.clearTimeout(redirectTimerRef.current);
+      }
+      redirectTimerRef.current = window.setTimeout(() => {
+        router.push(data.redirect || "/login");
+      }, 1800);
     } catch {
       setError("Network error");
       setLoading(false);
@@ -136,7 +168,7 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
         {requesting ? (
           <p className="auth-loading-note">Generating verification code…</p>
         ) : done ? (
-          <p className="auth-success my-6">
+          <p className="auth-success my-6" role="status">
             Password updated. Redirecting to sign in…
           </p>
         ) : (
@@ -144,7 +176,7 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
             {otp ? (
               <AuthOtpDisplay otp={otp} caption="Verification code" />
             ) : (
-              <p className="auth-error">
+              <p className="auth-error" role="alert">
                 No code available.{" "}
                 <Link href="/forgot-password" className="auth-link underline">
                   Request one
@@ -183,6 +215,7 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
                     type="password"
                     required
                     minLength={8}
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Min. 8 characters"
@@ -198,6 +231,7 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
                     type="password"
                     required
                     minLength={8}
+                    autoComplete="new-password"
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     placeholder="Re-enter password"
@@ -205,7 +239,11 @@ export function ChangePasswordForm({ fromDashboard = false }: Props) {
                 </div>
               </div>
 
-              {error ? <p className="auth-error">{error}</p> : null}
+              {error ? (
+                <p className="auth-error" role="alert">
+                  {error}
+                </p>
+              ) : null}
 
               <div className="auth-actions">
                 <button

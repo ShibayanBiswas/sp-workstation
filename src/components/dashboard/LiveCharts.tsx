@@ -158,6 +158,7 @@ export function LiveCharts() {
               key={tf.id}
               type="button"
               onClick={() => setTimeframe(tf.id)}
+              aria-pressed={timeframe === tf.id}
               className={`shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold tracking-wide transition sm:px-3 sm:text-xs ${
                 timeframe === tf.id
                   ? "bg-[color-mix(in_srgb,var(--gold)_20%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]"
@@ -170,6 +171,7 @@ export function LiveCharts() {
           <button
             type="button"
             onClick={() => setZoomEnabled((z) => !z)}
+            aria-pressed={zoomEnabled}
             title={
               zoomEnabled
                 ? "Disable pan and zoom"

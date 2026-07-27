@@ -1060,8 +1060,8 @@ export function CandlestickChart({
       }
 
       lastCandle = candles[candles.length - 1];
-      lastUnix = bars[bars.length - 1].time;
-      lastBarIndex = bars.length - 1;
+      lastUnix = uniqueBars[uniqueBars.length - 1].time;
+      lastBarIndex = uniqueBars.length - 1;
       renderLegend(
         lastCandle,
         lastUnix,

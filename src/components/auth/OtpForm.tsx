@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { ArrowRight, KeyRound } from "lucide-react";
 import { AuthAccessStrip } from "@/components/auth/AuthAccessStrip";
 import { AuthOtpDisplay } from "@/components/auth/AuthOtpDisplay";
@@ -15,6 +15,7 @@ export function OtpForm() {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const redirectTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -24,8 +25,22 @@ export function OtpForm() {
       // Prefill so display + entry never drift (local on-screen OTP).
       if (preview) setCode(preview.replace(/\D/g, "").slice(0, 6));
     });
-    return () => window.cancelAnimationFrame(frame);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (redirectTimerRef.current != null) {
+        window.clearTimeout(redirectTimerRef.current);
+      }
+    };
   }, []);
+
+  function scheduleRedirect(path: string, ms = 1200) {
+    if (redirectTimerRef.current != null) {
+      window.clearTimeout(redirectTimerRef.current);
+    }
+    redirectTimerRef.current = window.setTimeout(() => {
+      router.push(path);
+    }, ms);
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -43,7 +58,7 @@ export function OtpForm() {
         setError(data.error || "Invalid code");
         setLoading(false);
         if (data.redirect) {
-          setTimeout(() => router.push(data.redirect), 1200);
+          scheduleRedirect(data.redirect);
         }
         return;
       }
@@ -55,7 +70,7 @@ export function OtpForm() {
     } catch {
       setError("Verification failed. Returning to login…");
       setLoading(false);
-      setTimeout(() => router.push("/login"), 1200);
+      scheduleRedirect("/login");
     }
   }
 
@@ -115,7 +130,11 @@ export function OtpForm() {
               />
             </div>
 
-            {error ? <p className="auth-error">{error}</p> : null}
+            {error ? (
+              <p className="auth-error" role="alert">
+                {error}
+              </p>
+            ) : null}
 
             <div className="auth-actions">
               <button

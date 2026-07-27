@@ -1,31 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useMemo, useState } from "react";
 import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { AuthDisclaimerModal } from "@/components/auth/AuthDisclaimerModal";
 import { AuthAccessStrip } from "@/components/auth/AuthAccessStrip";
 import { AuthShell } from "@/components/auth/AuthShell";
 
+function noticeForReason(reason: string | null): string {
+  if (reason === "session_expired") {
+    return "Your session ended. Sign in again to continue on the desk.";
+  }
+  if (reason === "logged_out_elsewhere") {
+    return "Signed out — this account is active on another device. Only one workstation login is allowed at a time.";
+  }
+  return "";
+}
+
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [sessionNotice] = useState(() => {
-    if (typeof window === "undefined") return "";
-    const reason = new URLSearchParams(window.location.search).get("reason");
-    if (reason === "session_expired") {
-      return "Your session ended. Sign in again to continue on the desk.";
-    }
-    if (reason === "logged_out_elsewhere") {
-      return "Signed out — this account is active on another device. Only one workstation login is allowed at a time.";
-    }
-    return "";
-  });
+  const sessionNotice = useMemo(
+    () => noticeForReason(searchParams.get("reason")),
+    [searchParams]
+  );
 
   const noticeTitle = (() => {
     const e = error.toLowerCase();
@@ -154,7 +158,11 @@ export function LoginForm() {
             </div>
           </div>
 
-          {error ? <p className="auth-error">{error}</p> : null}
+          {error ? (
+            <p className="auth-error" role="alert">
+              {error}
+            </p>
+          ) : null}
 
           {error ? (
             <AuthDisclaimerModal
