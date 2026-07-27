@@ -269,13 +269,7 @@ async function main() {
         Number.isFinite(r.json.last.changePercent),
       `${tf} chart missing period changePercent`
     );
-    // Zoom Off: first bar open should match period reference (within tick noise).
-    const firstOpen = r.json.bars[0]?.open;
-    assert(
-      typeof firstOpen === "number" &&
-        Math.abs(firstOpen - r.json.last.reference) < 0.05,
-      `${tf} Zoom Off should start at period open (first ${firstOpen} vs ref ${r.json.last.reference})`
-    );
+    // Zoom Off view spans prior periods; header % stays vs active period open.
     pass(
       `${tf} period return ${Number(r.json.last.changePercent).toFixed(2)}% (ref ${r.json.last.reference}, ${r.json.bars.length} bars)`
     );

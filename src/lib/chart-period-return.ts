@@ -27,6 +27,9 @@ const LOOKBACK_SEC: Record<
   "5Y": 5 * 365 * 24 * 3600,
 };
 
+/** Zoom Off chart window starts this many prior periods before the active one. */
+export const ZOOM_OFF_VIEW_OFFSET = 4;
+
 const BASIS_LABEL: Record<ReturnBasis, string> = {
   day_open: "vs session open",
   prev_close: "vs prev close",
@@ -67,6 +70,54 @@ function barsFromCutoff(bars: OhlcBar[], cutoffUnix: number): OhlcBar[] {
   return sliced.length > 0 ? sliced : bars.slice(-1);
 }
 
+function shiftIstWeeks(fromUnix: number, weeks: number): number {
+  if (weeks <= 0) return startOfIstWeekUnix(fromUnix);
+  return startOfIstWeekUnix(fromUnix - weeks * 7 * 86_400);
+}
+
+function shiftIstMonths(fromUnix: number, months: number): number {
+  if (months <= 0) return startOfIstMonthUnix(fromUnix);
+  const dateStr = istDateString(fromUnix);
+  const [y, m] = dateStr.split("-").map(Number);
+  let month = m - months;
+  let year = y;
+  while (month <= 0) {
+    month += 12;
+    year -= 1;
+  }
+  const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
+  return Math.floor(new Date(`${monthStart}T00:00:00+05:30`).getTime() / 1000);
+}
+
+function uniqueIstTradingDays(bars: OhlcBar[]): string[] {
+  return [...new Set(bars.map((b) => istDateString(b.time)))].sort();
+}
+
+function viewStartFromTradingDays(
+  bars: OhlcBar[],
+  anchorDay: string,
+  daysBack: number
+): number {
+  const days = uniqueIstTradingDays(bars);
+  const idx = days.indexOf(anchorDay);
+  const anchorIdx = idx >= 0 ? idx : Math.max(days.length - 1, 0);
+  const startIdx = Math.max(0, anchorIdx - daysBack);
+  const dayStr = days[startIdx] ?? anchorDay;
+  return Math.floor(new Date(`${dayStr}T00:00:00+05:30`).getTime() / 1000);
+}
+
+function currentWeekAnchorUnix(bars: OhlcBar[], nowUnix: number): number {
+  const current = bars.filter((b) => b.time >= startOfIstWeekUnix(nowUnix));
+  if (current.length > 0) return startOfIstWeekUnix(nowUnix);
+  return startOfIstWeekUnix(bars[bars.length - 1]!.time);
+}
+
+function currentMonthAnchorUnix(bars: OhlcBar[], nowUnix: number): number {
+  const current = bars.filter((b) => b.time >= startOfIstMonthUnix(nowUnix));
+  if (current.length > 0) return startOfIstMonthUnix(nowUnix);
+  return startOfIstMonthUnix(bars[bars.length - 1]!.time);
+}
+
 /**
  * Zoom Off window: bars from the period start → latest print.
  *
@@ -75,41 +126,66 @@ function barsFromCutoff(bars: OhlcBar[], cutoffUnix: number): OhlcBar[] {
  * - 1M → IST calendar month from the 1st (current month if any, else last)
  * - 3M / 6M / 1Y / 5Y → rolling lookback from the latest print
  *
+ * Pass `viewOffset` (default 0) to start the chart earlier — e.g. 4 for the
+ * 4th-last week / month / lookback block while keeping period returns on the
+ * active window via `computeTimeframeReturn`.
+ *
  * Zoom On keeps the full fetched series (do not call this).
  */
 export function timeframePeriodBars(
   bars: OhlcBar[],
   timeframeId: ChartTimeframeId,
-  opts?: { now?: Date | number }
+  opts?: { now?: Date | number; viewOffset?: number }
 ): OhlcBar[] {
   if (bars.length === 0) return [];
 
   const last = bars[bars.length - 1]!;
   const nowUnix = resolveNowUnix(opts?.now);
+  const viewOffset = Math.max(0, opts?.viewOffset ?? 0);
 
   switch (timeframeId) {
-    case "1D":
-      return tradingSessionBars(bars, { now: opts?.now });
+    case "1D": {
+      const session = tradingSessionBars(bars, { now: opts?.now });
+      if (viewOffset <= 0) return session;
+      if (session.length === 0) return bars.slice(-1);
+      const anchorDay = istDateString(session[0]!.time);
+      const cutoff = viewStartFromTradingDays(bars, anchorDay, viewOffset);
+      return barsFromCutoff(bars, cutoff);
+    }
     case "1W": {
-      const current = bars.filter((b) => b.time >= startOfIstWeekUnix(nowUnix));
-      if (current.length > 0) return current;
-      return barsFromCutoff(bars, startOfIstWeekUnix(last.time));
+      const anchor = currentWeekAnchorUnix(bars, nowUnix);
+      const viewStart = shiftIstWeeks(anchor, viewOffset);
+      return barsFromCutoff(bars, viewStart);
     }
     case "1M": {
-      const current = bars.filter((b) => b.time >= startOfIstMonthUnix(nowUnix));
-      if (current.length > 0) return current;
-      return barsFromCutoff(bars, startOfIstMonthUnix(last.time));
+      const anchor = currentMonthAnchorUnix(bars, nowUnix);
+      const viewStart = shiftIstMonths(anchor, viewOffset);
+      return barsFromCutoff(bars, viewStart);
     }
     case "3M":
     case "6M":
     case "1Y":
-    case "5Y":
-      return barsFromCutoff(bars, last.time - LOOKBACK_SEC[timeframeId]);
+    case "5Y": {
+      const span = LOOKBACK_SEC[timeframeId] * (1 + viewOffset);
+      return barsFromCutoff(bars, last.time - span);
+    }
     default: {
       const _exhaustive: never = timeframeId;
       return _exhaustive;
     }
   }
+}
+
+/** Zoom Off chart clip — active period plus the prior four like-period windows. */
+export function timeframeViewBars(
+  bars: OhlcBar[],
+  timeframeId: ChartTimeframeId,
+  opts?: { now?: Date | number }
+): OhlcBar[] {
+  return timeframePeriodBars(bars, timeframeId, {
+    ...opts,
+    viewOffset: ZOOM_OFF_VIEW_OFFSET,
+  });
 }
 
 /** Open of the active / last completed trading session. */

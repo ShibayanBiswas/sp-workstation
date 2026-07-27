@@ -52,7 +52,7 @@ import {
 import {
   computeTimeframeReturn,
   returnBasisLabel,
-  timeframePeriodBars,
+  timeframeViewBars,
   type ReturnBasis,
 } from "@/lib/chart-period-return";
 import {
@@ -946,7 +946,7 @@ export function CandlestickChart({
         if (barsRef.current.length > 0) {
           historyCache.bars = barsRef.current.slice();
         }
-        const period = timeframePeriodBars(barsRef.current, tf.id);
+        const period = timeframeViewBars(barsRef.current, tf.id);
         if (period.length === 0) return;
 
         const startTime = period[0]!.time;
@@ -1092,13 +1092,13 @@ export function CandlestickChart({
         }
         // Zoom Off: always clip to this timeframe's period from its start.
         if (!zoomRef.current) {
-          incoming = timeframePeriodBars(incoming, tf.id);
+          incoming = timeframeViewBars(incoming, tf.id);
         }
 
         if (silent && barsRef.current.length > 0) {
           let merged = mergeBars(barsRef.current, incoming, intervalSec);
           if (!zoomRef.current) {
-            merged = timeframePeriodBars(merged, tf.id);
+            merged = timeframeViewBars(merged, tf.id);
           }
           const lastIncoming = incoming[incoming.length - 1];
           const prevLast = barsRef.current[barsRef.current.length - 1];

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import {
   computeTimeframeReturn,
-  timeframePeriodBars,
+  timeframeViewBars,
 } from "@/lib/chart-period-return";
 import { getTimeframe } from "@/lib/chart-timeframes";
 import { jsonDynamic } from "@/lib/json-dynamic";
@@ -103,10 +103,9 @@ export async function GET(req: Request) {
       ? snapFormingBarTip(ohlc.bars, intervalSec)
       : ohlc.bars.slice();
 
-  // Zoom Off default: one period from that timeframe's start (session / week /
-  // month / lookback). Zoom On (`full`) and history (`before`) keep extended series.
+  // Zoom Off default: active period plus four prior like-period windows.
   if (!inception && !isHistory) {
-    bars = timeframePeriodBars(bars, timeframe.id);
+    bars = timeframeViewBars(bars, timeframe.id);
   }
 
   if (bars.length === 0) {
