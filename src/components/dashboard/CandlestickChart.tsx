@@ -157,9 +157,12 @@ function fmtPct(n: number) {
 const LIVE_RIGHT_GAP_BARS = 14;
 /** Zoom On keeps a smaller trailing gap. */
 const ZOOM_RIGHT_GAP_BARS = 6;
-/** Thin candle bodies — never stretch to fill the pane when few bars. */
-const THIN_BAR_SPACING_MIN = 2.5;
-const THIN_BAR_SPACING_MAX = 6.5;
+/**
+ * Candle width ≈ TradingView default (lightweight-charts barSpacing default is 6).
+ * Cap slightly under that so bodies stay crisp/thin across all live TFs.
+ */
+const THIN_BAR_SPACING_MIN = 3;
+const THIN_BAR_SPACING_MAX = 5;
 
 function chartInteractionOptions(zoomEnabled: boolean) {
   return {
