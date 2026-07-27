@@ -98,15 +98,17 @@ export async function GET(req: Request) {
 
   // Re-assert interval buckets (history path / cache may predate snap).
   const intervalSec = yahooIntervalSeconds(timeframe.interval);
-  let bars =
+  const fullBars =
     timeframe.intraday && intervalSec != null && intervalSec < 86_400
       ? snapFormingBarTip(ohlc.bars, intervalSec)
       : ohlc.bars.slice();
 
-  // Zoom Off default: active period plus two prior like-period windows.
-  if (!inception && !isHistory) {
-    bars = timeframeViewBars(bars, timeframe.id);
-  }
+  // Zoom Off chart window: active period + two prior. Returns always use the
+  // active day/week/month/lookback open from the unclipped series.
+  let bars =
+    !inception && !isHistory
+      ? timeframeViewBars(fullBars, timeframe.id)
+      : fullBars;
 
   if (bars.length === 0) {
     return jsonDynamic(
@@ -155,15 +157,16 @@ export async function GET(req: Request) {
   const price = venue?.price ?? live?.price ?? lastBar.close;
   // Candle pane must track exchange LTP — not a lagged Yahoo close.
   bars = applyLiveCloseToBars(bars, price);
+  const returnBars = applyLiveCloseToBars(fullBars, price);
 
   const ohlcOpen =
     timeframe.id === "1D"
-      ? ohlcSessionOpen(bars) ??
-        sessionSparkPath(bars, 96)?.sessionOpen ??
+      ? ohlcSessionOpen(returnBars) ??
+        sessionSparkPath(returnBars, 96)?.sessionOpen ??
         null
       : null;
   const sessionIsToday =
-    timeframe.id === "1D" ? sessionBarsAreToday(bars) : true;
+    timeframe.id === "1D" ? sessionBarsAreToday(returnBars) : true;
   const venueIsToday =
     sessionIsToday ||
     hasTodaySessionPrint(venue?.marketTime ?? live?.marketTime);
@@ -174,13 +177,16 @@ export async function GET(req: Request) {
       ? resolveSessionOpen({
           venueOpen: venue?.dayOpen ?? live?.dayOpen ?? null,
           ohlcSessionOpen: ohlcOpen,
+          price,
           sessionIsToday,
           venueIsToday,
         })
       : (venue?.dayOpen ?? live?.dayOpen ?? null);
 
+  // Headline % is always vs active period open (day / week / month / lookback),
+  // never vs the Zoom Off view start.
   const period = computeTimeframeReturn(
-    bars,
+    returnBars,
     timeframe.id,
     price,
     sessionOpen
@@ -198,12 +204,16 @@ export async function GET(req: Request) {
     changePercent = vsOpen.changePercent;
     reference = sessionOpen;
     basis = "day_open";
+  } else if (period) {
+    change = period.change;
+    changePercent = period.changePercent;
+    reference = period.reference;
+    basis = period.basis;
   } else {
-    change = period?.change ?? live?.change ?? venue?.change ?? 0;
-    changePercent =
-      period?.changePercent ?? live?.changePercent ?? venue?.changePercent ?? 0;
-    reference = period?.reference ?? sessionOpen ?? null;
-    basis = period?.basis ?? "day_open";
+    change = 0;
+    changePercent = 0;
+    reference = null;
+    basis = "day_open";
   }
 
   const marketTime = venue?.marketTime ?? live?.marketTime ?? lastBar.time;

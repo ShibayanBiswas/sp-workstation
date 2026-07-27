@@ -114,6 +114,7 @@ function finalizeQuote(args: {
   const sessionOpen = resolveSessionOpen({
     venueOpen,
     ohlcSessionOpen: spark.ohlcOpen,
+    price,
     sessionIsToday: spark.sessionIsToday,
     venueIsToday,
   });

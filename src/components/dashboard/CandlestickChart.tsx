@@ -384,25 +384,17 @@ export function CandlestickChart({
           ? formatMarketPrice(fallbackPrice, indexId)
           : "—";
 
-  // Prefer Snapshot/tape for 1D (Zerodha-style vs prev close). Other TFs use period open.
+  // Headline Δ / % always vs active period open for the selected timeframe.
   const livePeriod =
-    timeframe === "1D" &&
     syncedQuote?.price != null &&
-    syncedQuote.change != null &&
-    syncedQuote.changePercent != null
+    periodReference != null &&
+    periodReference !== 0
       ? {
-          change: syncedQuote.change,
-          changePercent: syncedQuote.changePercent,
+          change: syncedQuote.price - periodReference,
+          changePercent:
+            ((syncedQuote.price - periodReference) / periodReference) * 100,
         }
-      : syncedQuote?.price != null &&
-          periodReference != null &&
-          periodReference !== 0
-        ? {
-            change: syncedQuote.price - periodReference,
-            changePercent:
-              ((syncedQuote.price - periodReference) / periodReference) * 100,
-          }
-        : null;
+      : null;
 
   const displayUp = livePeriod
     ? livePeriod.change >= 0
@@ -413,13 +405,9 @@ export function CandlestickChart({
   const displayChangePct = livePeriod
     ? formatMarketChangePercent(livePeriod.changePercent)
     : header.changePercent;
-  // 1D headline always vs session open (today or last trading day).
-  const basisHint =
-    timeframe !== "1D"
-      ? returnBasisLabel(returnBasis)
-      : awaitingPrint
-        ? "last session"
-        : returnBasisLabel("day_open");
+  const basisHint = returnBasisLabel(
+    returnBasis ?? (timeframe === "1D" ? "day_open" : null)
+  );
   const sessionPhrase = lastSessionPhrase(indexId);
 
   useEffect(() => {
