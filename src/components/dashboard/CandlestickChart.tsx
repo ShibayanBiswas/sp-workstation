@@ -5,6 +5,7 @@ import {
   CrosshairMode,
   createChart,
   LineStyle,
+  LineType,
   type CandlestickData,
   type IChartApi,
   type IPriceLine,
@@ -30,6 +31,7 @@ import {
   buildHighLowMarkers,
   computeBollingerBands,
   computeSessionVwapSeries,
+  computeSmaSeries,
   findPeriodExtremes,
   formatVolumeShort,
 } from "@/lib/chart-indicators";
@@ -92,8 +94,10 @@ type Props = {
 const TV_FONT =
   "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif";
 
-/** Sole SMA on charts — Bollinger middle band uses the same length. */
-const SMA_PERIOD = 5;
+/** SMA lookback in candles — never shown in the UI. */
+const SMA_PERIOD = 1;
+/** Bollinger length (internal only — not labeled on chart). */
+const BB_PERIOD = 5;
 const BOLLINGER_MULT = 2;
 
 function chartColors(theme: ThemeMode) {
@@ -618,16 +622,18 @@ export function CandlestickChart({
     // Overlays after candles so indicators paint on top (TradingView-style).
     const smaSeries = chart.addLineSeries({
       color: colors.sma,
-      lineWidth: 2,
+      lineWidth: 1,
+      lineType: LineType.Curved,
       priceLineVisible: false,
       lastValueVisible: false,
       crosshairMarkerVisible: true,
-      crosshairMarkerRadius: 3,
-      title: `SMA ${SMA_PERIOD}`,
+      crosshairMarkerRadius: 2,
+      title: "SMA",
     });
     const bbUpperSeries = chart.addLineSeries({
       color: colors.bb,
       lineWidth: 1,
+      lineType: LineType.Curved,
       lineStyle: LineStyle.Solid,
       priceLineVisible: false,
       lastValueVisible: false,
@@ -638,6 +644,7 @@ export function CandlestickChart({
     const bbLowerSeries = chart.addLineSeries({
       color: colors.bb,
       lineWidth: 1,
+      lineType: LineType.Curved,
       lineStyle: LineStyle.Solid,
       priceLineVisible: false,
       lastValueVisible: false,
@@ -714,7 +721,7 @@ export function CandlestickChart({
 
       const smaHtml =
         extras?.sma != null
-          ? item(`SMA ${SMA_PERIOD}`, fmt(extras.sma), colors.sma)
+          ? item("SMA", fmt(extras.sma), colors.sma)
           : "";
       const bbHtml =
         extras?.bbUpper != null && extras?.bbLower != null
@@ -744,12 +751,12 @@ export function CandlestickChart({
     const updateOverlayLines = (bars: OhlcBar[]) => {
       const bb = computeBollingerBands(
         bars,
-        SMA_PERIOD,
+        BB_PERIOD,
         BOLLINGER_MULT,
         tf.intraday
       );
-      // Middle band is SMA 5 — single SMA line for all timeframes.
-      smaSeries.setData(bb.middle);
+      // SMA is 1-candle (close trail); BB uses its own length — never labeled.
+      smaSeries.setData(computeSmaSeries(bars, SMA_PERIOD, tf.intraday));
       bbUpperSeries.setData(bb.upper);
       bbLowerSeries.setData(bb.lower);
 
@@ -804,27 +811,41 @@ export function CandlestickChart({
       let bbUpper = seriesExtras?.bbUpper ?? null;
       let bbLower = seriesExtras?.bbLower ?? null;
 
-      // Fallback when crosshair is idle — derive SMA 5 / BB from loaded bars.
+      // Fallback when crosshair is idle — derive SMA / BB from loaded bars.
       if (
         (sma == null || bbUpper == null || bbLower == null) &&
-        barIndex >= SMA_PERIOD - 1 &&
-        barsRef.current.length >= SMA_PERIOD
+        barsRef.current.length > 0
       ) {
-        const window = barsRef.current.slice(
-          barIndex - SMA_PERIOD + 1,
-          barIndex + 1
-        );
-        const mean =
-          window.reduce((acc, b) => acc + b.close, 0) / SMA_PERIOD;
-        let sq = 0;
-        for (const b of window) {
-          const d = b.close - mean;
-          sq += d * d;
+        if (sma == null && barIndex >= SMA_PERIOD - 1) {
+          const window = barsRef.current.slice(
+            Math.max(0, barIndex - SMA_PERIOD + 1),
+            barIndex + 1
+          );
+          if (window.length === SMA_PERIOD) {
+            sma =
+              window.reduce((acc, b) => acc + b.close, 0) / SMA_PERIOD;
+          }
         }
-        const sigma = Math.sqrt(sq / SMA_PERIOD);
-        sma = sma ?? mean;
-        bbUpper = bbUpper ?? mean + BOLLINGER_MULT * sigma;
-        bbLower = bbLower ?? mean - BOLLINGER_MULT * sigma;
+        if (
+          (bbUpper == null || bbLower == null) &&
+          barIndex >= BB_PERIOD - 1 &&
+          barsRef.current.length >= BB_PERIOD
+        ) {
+          const window = barsRef.current.slice(
+            barIndex - BB_PERIOD + 1,
+            barIndex + 1
+          );
+          const mean =
+            window.reduce((acc, b) => acc + b.close, 0) / BB_PERIOD;
+          let sq = 0;
+          for (const b of window) {
+            const d = b.close - mean;
+            sq += d * d;
+          }
+          const sigma = Math.sqrt(sq / BB_PERIOD);
+          bbUpper = bbUpper ?? mean + BOLLINGER_MULT * sigma;
+          bbLower = bbLower ?? mean - BOLLINGER_MULT * sigma;
+        }
       }
 
       return {
@@ -1486,7 +1507,7 @@ export function CandlestickChart({
                         ? "Awaiting today's print · chart shows last session · axis in IST"
                         : `Markets closed · showing ${sessionPhrase.toLowerCase()} · axis in IST`}
             {timeframe === "1D" ? " · VWAP" : ""}
-            {" · SMA 5 · BB"}
+            {" · SMA · BB"}
             {zoomEnabled ? " · double-click resets view" : ""}
           </p>
         </div>
