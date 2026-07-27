@@ -1,5 +1,5 @@
 import type { ChartTimeframe } from "@/lib/chart-timeframes";
-import { filterNseSessionBars, istDateString, tradingSessionBars } from "@/lib/chart-ist";
+import { filterCashSessionBars, tradingSessionBars } from "@/lib/chart-ist";
 import { LIVE_REFRESH_MS } from "@/lib/live-refresh";
 import { normalizeLiveQuote } from "@/lib/market-quote";
 import { fetchWithTimeout, UPSTREAM_TIMEOUT_MS } from "@/lib/fetch-timeout";
@@ -216,8 +216,7 @@ export function applyLiveCloseToBars(
 
 function parseYahooPayload(
   data: unknown,
-  intraday: boolean,
-  yahooSymbol?: string
+  intraday: boolean
 ): OhlcResult | null {
   const result = (data as { chart?: { result?: unknown[] } })?.chart
     ?.result?.[0] as
@@ -252,10 +251,9 @@ function parseYahooPayload(
     });
   }
 
-  const sanitized = filterNseSessionBars(
+  const sanitized = filterCashSessionBars(
     dedupeAndSortBars(bars),
-    intraday,
-    yahooSymbol
+    intraday
   );
   if (sanitized.length === 0) return null;
 
@@ -425,7 +423,7 @@ async function fetchOhlcCandidate(
 ): Promise<OhlcResult | null> {
   const data = await fetchYahooJson(ohlcPath(yahooSymbol, interval, range));
   if (!data) return null;
-  const parsed = parseYahooPayload(data, intraday, yahooSymbol);
+  const parsed = parseYahooPayload(data, intraday);
   if (!parsed?.bars.length) return null;
 
   // Only snap intraday tips (5m/15m/30m/1h). Daily/weekly already stable.
@@ -563,7 +561,7 @@ export async function fetchYahooOhlcBefore(
   );
   if (!data) return null;
 
-  let parsed = parseYahooPayload(data, timeframe.intraday, yahooSymbol);
+  let parsed = parseYahooPayload(data, timeframe.intraday);
 
   if (!parsed?.bars.length && timeframe.fallbacks?.length) {
     for (const fb of timeframe.fallbacks) {
@@ -574,7 +572,7 @@ export async function fetchYahooOhlcBefore(
         })
       );
       parsed = fbData
-        ? parseYahooPayload(fbData, timeframe.intraday, yahooSymbol)
+        ? parseYahooPayload(fbData, timeframe.intraday)
         : null;
       if (parsed?.bars.length) break;
     }
@@ -644,14 +642,6 @@ export function sessionSparkPath(
   }
   sampled.push(prices[prices.length - 1]!);
   return { prices: sampled, sessionOpen };
-}
-
-/** @deprecated Prefer sessionSparkPath — kept for any legacy callers. */
-export function sessionClosesForSparkline(
-  bars: OhlcBar[],
-  maxPoints = 78
-): number[] {
-  return sessionSparkPath(bars, maxPoints)?.prices.slice(1) ?? [];
 }
 
 /** Run async tasks with limited concurrency. */

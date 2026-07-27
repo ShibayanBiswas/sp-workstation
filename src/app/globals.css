@@ -611,23 +611,10 @@ a {
   flex-shrink: 0;
 }
 
-.quote-block:nth-child(1),
-.quote-block:nth-child(2),
-.quote-block:nth-child(3),
-.quote-block:nth-child(4),
-.quote-block:nth-child(5) {
-  animation: none;
-}
-
 .quote-hero {
   position: relative;
   overflow: hidden;
   box-shadow: none;
-}
-
-.quote-hero::before {
-  content: none;
-  display: none;
 }
 
 .quote-live-dot {
@@ -661,38 +648,6 @@ a {
 
 .quote-change-chip:hover {
   transform: scale(1.03);
-}
-
-@keyframes quote-rise {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes quote-sheen {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-@keyframes quote-hero-sweep {
-  0%,
-  55% {
-    transform: translateX(-130%) rotate(12deg);
-  }
-  80%,
-  100% {
-    transform: translateX(280%) rotate(12deg);
-  }
 }
 
 @keyframes quote-live-pulse {

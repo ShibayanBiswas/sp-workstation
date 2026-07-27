@@ -11,8 +11,12 @@ export type NormalizedQuote = {
   marketTime?: number;
 };
 
-export function priceDigitsForIndex(_indexId: string): number {
-  return 2;
+/** Decimal places for index quotes (cash indices use 2). */
+export function priceDigitsForIndex(indexId?: string): number {
+  switch (indexId) {
+    default:
+      return 2;
+  }
 }
 
 function roundTo(n: number, digits: number): number {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { AuthDisclaimerModal } from "@/components/auth/AuthDisclaimerModal";
 import { AuthAccessStrip } from "@/components/auth/AuthAccessStrip";
@@ -15,21 +15,17 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [sessionNotice, setSessionNotice] = useState("");
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const reason = params.get("reason");
+  const [sessionNotice] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const reason = new URLSearchParams(window.location.search).get("reason");
     if (reason === "session_expired") {
-      setSessionNotice(
-        "Your session ended. Sign in again to continue on the desk."
-      );
-    } else if (reason === "logged_out_elsewhere") {
-      setSessionNotice(
-        "Signed out — this account is active on another device. Only one workstation login is allowed at a time."
-      );
+      return "Your session ended. Sign in again to continue on the desk.";
     }
-  }, []);
+    if (reason === "logged_out_elsewhere") {
+      return "Signed out — this account is active on another device. Only one workstation login is allowed at a time.";
+    }
+    return "";
+  });
 
   const noticeTitle = (() => {
     const e = error.toLowerCase();

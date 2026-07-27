@@ -530,14 +530,28 @@ export function CandlestickChart({
           : "—";
 
   // Headline Δ / % always vs active period open for the selected timeframe.
+  // 1D prefers tape session open so chart Yahoo open never drifts from the desk.
+  const tapeDayOpen =
+    timeframe === "1D" &&
+    syncedQuote?.dayOpen != null &&
+    Number.isFinite(syncedQuote.dayOpen) &&
+    syncedQuote.dayOpen > 0
+      ? syncedQuote.dayOpen
+      : null;
+  const effectivePeriodReference = tapeDayOpen ?? periodReference;
+  const effectiveReturnBasis =
+    tapeDayOpen != null ? ("day_open" as const) : returnBasis;
+
   const livePeriod =
     syncedQuote?.price != null &&
-    periodReference != null &&
-    periodReference !== 0
+    effectivePeriodReference != null &&
+    effectivePeriodReference !== 0
       ? {
-          change: syncedQuote.price - periodReference,
+          change: syncedQuote.price - effectivePeriodReference,
           changePercent:
-            ((syncedQuote.price - periodReference) / periodReference) * 100,
+            ((syncedQuote.price - effectivePeriodReference) /
+              effectivePeriodReference) *
+            100,
         }
       : null;
 
@@ -551,7 +565,7 @@ export function CandlestickChart({
     ? formatMarketChangePercent(livePeriod.changePercent)
     : header.changePercent;
   const basisHint = returnBasisLabel(
-    returnBasis ?? (timeframe === "1D" ? "day_open" : null)
+    effectiveReturnBasis ?? (timeframe === "1D" ? "day_open" : null)
   );
   const sessionPhrase = lastSessionPhrase(indexId);
   const exchange = cashExchangeLabel(indexId);
@@ -574,9 +588,9 @@ export function CandlestickChart({
       : null;
   const sameSessionOpen =
     timeframe === "1D" &&
-    periodReference != null &&
+    effectivePeriodReference != null &&
     syncedQuote?.dayOpen != null &&
-    Math.abs(periodReference - syncedQuote.dayOpen) < 0.05;
+    Math.abs(effectivePeriodReference - syncedQuote.dayOpen) < 0.05;
 
   useEffect(() => {
     if (syncedQuote?.price == null) return;
@@ -591,32 +605,8 @@ export function CandlestickChart({
     }
     prevPriceRef.current = newPrice;
 
-    // 1D headline must share the tape's session open (NSE/BSE venue),
-    // not a lagged Yahoo first-bar open from the chart poll.
-    if (
-      timeframe === "1D" &&
-      syncedQuote.dayOpen != null &&
-      Number.isFinite(syncedQuote.dayOpen) &&
-      syncedQuote.dayOpen > 0
-    ) {
-      setPeriodReference(syncedQuote.dayOpen);
-      setReturnBasis("day_open");
-    }
-
     // Keep forming candle + quote panel OHLC / SMA / BB / VWAP glued to tape.
     applyLiveTipRef.current?.(newPrice);
-
-    if (syncedQuote.marketTime != null) {
-      const stamp = formatIstDateTime(
-        syncedQuote.marketTime,
-        getTimeframe(timeframe).axisLabelMode
-      );
-      if (stamp) {
-        setHeader((h) =>
-          h.asOf === stamp && !h.hoverTime ? h : { ...h, asOf: stamp }
-        );
-      }
-    }
 
     return () => {
       if (flashTimer) window.clearTimeout(flashTimer);
@@ -1871,8 +1861,8 @@ export function CandlestickChart({
                 {sameSessionOpen || timeframe === "1D" ? "OPEN" : "PERIOD OPEN"}
               </p>
               <p className="tv-num mt-0.5 text-sm font-semibold tabular-nums text-[var(--fg)]">
-                {periodReference != null
-                  ? formatMarketPrice(periodReference, indexId)
+                {effectivePeriodReference != null
+                  ? formatMarketPrice(effectivePeriodReference, indexId)
                   : "—"}
               </p>
             </div>

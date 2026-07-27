@@ -25,25 +25,18 @@ export function isCashSessionMinute(unixSec: number): boolean {
   return total >= 9 * 60 + 15 && total <= 15 * 60 + 30;
 }
 
-/** @deprecated Prefer isCashSessionMinute — NSE/BSE share equity hours. */
-export const isNseSessionMinute = isCashSessionMinute;
-
 /**
  * Keep only bars inside Indian cash-market hours for intraday charts.
  * Applies to both NSE (^NSEI, …) and BSE (^BSESN) Yahoo series — same clock.
  */
 export function filterCashSessionBars(
   bars: OhlcBar[],
-  intraday: boolean,
-  _yahooSymbol?: string
+  intraday: boolean
 ): OhlcBar[] {
   if (!intraday) return bars;
   const filtered = bars.filter((b) => isCashSessionMinute(b.time));
   return filtered.length > 0 ? filtered : bars;
 }
-
-/** @deprecated Prefer filterCashSessionBars. */
-export const filterNseSessionBars = filterCashSessionBars;
 
 /**
  * Bars for a single trading day — never mixes sessions.

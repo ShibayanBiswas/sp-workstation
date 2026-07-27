@@ -69,8 +69,13 @@ export async function verifyPassword(
 export async function createSessionToken(
   payload: SessionPayload
 ): Promise<string> {
-  const { exp: _exp, ...claims } = payload;
-  return new SignJWT({ ...claims })
+  return new SignJWT({
+    userId: payload.userId,
+    email: payload.email,
+    name: payload.name,
+    role: payload.role,
+    sid: payload.sid,
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_MAX_AGE_SEC}s`)
@@ -119,49 +124,6 @@ export function clearCookiesOnResponse(res: NextResponse) {
     maxAge: 0,
   });
   res.cookies.set(PENDING_COOKIE, "", {
-    ...cookieBase,
-    secure: cookieSecure(),
-    maxAge: 0,
-  });
-}
-
-/** @deprecated Prefer applySessionCookie on the route NextResponse. */
-export async function setSessionCookie(token: string) {
-  const jar = await cookies();
-  jar.set(COOKIE_NAME, token, {
-    ...cookieBase,
-    secure: cookieSecure(),
-    maxAge: SESSION_MAX_AGE_SEC,
-  });
-}
-
-/** @deprecated Prefer applyPendingCookie on the route NextResponse. */
-export async function setPendingCookie(token: string) {
-  const jar = await cookies();
-  jar.set(PENDING_COOKIE, token, {
-    ...cookieBase,
-    secure: cookieSecure(),
-    maxAge: 60 * 10,
-  });
-}
-
-export async function clearAuthCookies() {
-  const jar = await cookies();
-  jar.set(COOKIE_NAME, "", {
-    ...cookieBase,
-    secure: cookieSecure(),
-    maxAge: 0,
-  });
-  jar.set(PENDING_COOKIE, "", {
-    ...cookieBase,
-    secure: cookieSecure(),
-    maxAge: 0,
-  });
-}
-
-export async function clearPendingCookie() {
-  const jar = await cookies();
-  jar.set(PENDING_COOKIE, "", {
     ...cookieBase,
     secure: cookieSecure(),
     maxAge: 0,
