@@ -1674,19 +1674,11 @@ export function CandlestickChart({
       </div>
 
       <aside className="live-chart-quote order-1 lg:order-2">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-90"
-          aria-hidden
-          style={{
-            background:
-              "radial-gradient(ellipse 90% 55% at 100% 0%, color-mix(in srgb, var(--gold) 16%, transparent), transparent 58%), radial-gradient(ellipse 70% 50% at 0% 100%, color-mix(in srgb, var(--gold) 8%, transparent), transparent 60%)",
-          }}
-        />
         <div className="live-chart-quote-scroll">
           <div className="quote-block flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               {exchange ? (
-                <span className="shrink-0 rounded-md border border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em] text-[var(--gold-deep)] dark:text-[var(--gold)]">
+                <span className="shrink-0 rounded-md border border-[var(--border)] bg-[var(--bg-muted)] px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em] text-[var(--fg-muted)]">
                   {exchange}
                 </span>
               ) : null}
@@ -1727,7 +1719,7 @@ export function CandlestickChart({
           </div>
 
           <div
-            className={`quote-block quote-hero rounded-xl border border-[color-mix(in_srgb,var(--gold)_22%,var(--border))] bg-[color-mix(in_srgb,var(--bg-elevated)_78%,transparent)] px-3 py-2.5 backdrop-blur-sm ${priceFlash ? "price-flash" : ""}`}
+            className={`quote-block rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 ${priceFlash ? "price-flash" : ""}`}
           >
             <div className="relative z-[1] flex flex-wrap items-end justify-between gap-2">
               <div className="min-w-0">

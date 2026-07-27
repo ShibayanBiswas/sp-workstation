@@ -78,23 +78,8 @@ export function Greeting({ name }: { name: string }) {
   const { greet, dateLine, weekday, first, tagline } = buildGreeting(name, now);
 
   return (
-    <section className="panel-stable panel-luxe greeting-panel-luxe relative overflow-hidden rounded-2xl px-4 py-5 sm:px-6 sm:py-6 md:px-9 md:py-8">
-      <div
-        className="greeting-orb pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full opacity-70"
-        style={{
-          background:
-            "radial-gradient(circle, color-mix(in srgb, var(--gold) 26%, transparent), transparent 68%)",
-        }}
-      />
-      <div
-        className="pointer-events-none absolute -bottom-24 left-1/4 h-48 w-48 rounded-full opacity-40"
-        style={{
-          background:
-            "radial-gradient(circle, color-mix(in srgb, var(--gold) 14%, transparent), transparent 70%)",
-        }}
-      />
-
-      <div className="relative mb-4 w-fit max-w-full rounded-xl border border-[color-mix(in_srgb,var(--gold)_20%,var(--border))] bg-[color-mix(in_srgb,var(--bg-elevated)_82%,transparent)] px-3 py-2 shadow-[0_10px_28px_color-mix(in_srgb,var(--ink)_4%,transparent)] backdrop-blur-sm sm:px-4 sm:py-2.5 md:absolute md:right-9 md:top-6 md:mb-0">
+    <section className="panel-stable relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3.5 sm:px-5 sm:py-4">
+      <div className="relative mb-3 w-fit max-w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-1.5 sm:px-3.5 sm:py-2 md:absolute md:right-5 md:top-4 md:mb-0">
         <p className="section-kicker">Session date</p>
         <p
           className="mt-0.5 text-sm font-medium text-[var(--fg-muted)] sm:text-base"
@@ -105,11 +90,11 @@ export function Greeting({ name }: { name: string }) {
         <p className="fin-num text-xs text-[var(--fg)] sm:text-sm">{dateLine}</p>
       </div>
 
-      <div className="relative max-w-3xl pr-0 pt-0 md:pr-[240px] md:pt-1">
-        <p className="section-kicker section-kicker-alive text-[var(--gold-deep)] dark:text-[var(--gold)]">
+      <div className="relative max-w-3xl pr-0 md:pr-[220px]">
+        <p className="section-kicker text-[var(--fg-subtle)]">
           Structured Products · Anand Rathi Wealth
         </p>
-        <h1 className="mt-2 text-[1.7rem] leading-[1.08] sm:text-[2.05rem] sm:leading-[1.05] md:text-[2.85rem]">
+        <h1 className="mt-1.5 text-[1.6rem] leading-[1.08] sm:text-[1.95rem] sm:leading-[1.05] md:text-[2.55rem]">
           <span
             className="block text-[var(--fg-muted)]"
             style={{ fontFamily: "var(--font-display)" }}
@@ -117,13 +102,13 @@ export function Greeting({ name }: { name: string }) {
             {greet},
           </span>
           <span
-            className="gold-text gold-text-shimmer block"
+            className="block text-[var(--fg)]"
             style={{ fontFamily: "var(--font-display)" }}
           >
             {first}
           </span>
         </h1>
-        <p className="mt-3 max-w-2xl border-l-2 border-[color-mix(in_srgb,var(--gold)_55%,transparent)] pl-3 text-sm leading-relaxed text-[var(--fg-muted)] sm:mt-3.5 sm:pl-4 md:text-[15px]">
+        <p className="mt-2.5 max-w-2xl border-l-2 border-[var(--border)] pl-3 text-sm leading-relaxed text-[var(--fg-muted)] md:text-[15px]">
           {tagline}
         </p>
       </div>
