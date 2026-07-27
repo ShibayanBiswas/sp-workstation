@@ -54,22 +54,23 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
   {
     id: "1W",
     label: "1W",
-    interval: "30m",
-    range: "1mo",
-    inceptionRange: "1y",
+    // Daily bars for the IST week — Monday Zoom Off = 1 forming candle that
+    // updates through the day; Tue–Fri add one candle per session.
+    interval: "1d",
+    range: "6mo",
+    inceptionRange: "10y",
     fallbacks: [
-      { interval: "1h", range: "3mo" },
-      { interval: "15m", range: "5d" },
+      { interval: "1d", range: "1y" },
+      { interval: "1d", range: "2y" },
     ],
     inceptionFallbacks: [
-      { interval: "1h", range: "2y" },
-      { interval: "1d", range: "10y" },
+      { interval: "1d", range: "5y" },
       { interval: "1wk", range: "max" },
     ],
-    intraday: true,
+    intraday: false,
     axisLabelMode: "day",
-    defaultVisibleBars: 130,
-    historyChunkSec: 120 * 24 * 3600,
+    defaultVisibleBars: 60,
+    historyChunkSec: 365 * 24 * 3600,
   },
   {
     id: "1M",

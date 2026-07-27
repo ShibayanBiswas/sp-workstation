@@ -472,8 +472,8 @@ export function CandlestickChart({
       setReturnBasis("day_open");
     }
 
-    // Keep the forming candle glued to tape LTP between chart polls.
-    if (timeframe !== "1D") return;
+    // Keep the forming candle glued to tape LTP between chart polls
+    // (1D intraday tip, and daily tip on 1W/1M/… while the session is live).
     const series = candleRef.current;
     const bars = barsRef.current;
     if (!series || bars.length === 0) return;
