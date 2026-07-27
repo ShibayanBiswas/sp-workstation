@@ -113,7 +113,7 @@ function chartColors(theme: ThemeMode) {
       watermark: "rgba(255, 255, 255, 0.045)",
       vwap: "#b388ff",
       sma: "#f0b429",
-      bb: "rgba(240, 180, 41, 0.55)",
+      bb: "#42a5f5",
       refLine: "rgba(229, 207, 148, 0.75)",
       highLine: "rgba(38, 166, 154, 0.55)",
       lowLine: "rgba(239, 83, 80, 0.55)",
@@ -134,7 +134,7 @@ function chartColors(theme: ThemeMode) {
     watermark: "rgba(19, 23, 34, 0.055)",
     vwap: "#7b1fa2",
     sma: "#c98500",
-    bb: "rgba(201, 133, 0, 0.5)",
+    bb: "#1e88e5",
     refLine: "rgba(180, 148, 72, 0.85)",
     highLine: "rgba(8, 153, 129, 0.55)",
     lowLine: "rgba(242, 54, 69, 0.55)",
@@ -181,17 +181,34 @@ function fitChartFullWidth(
 ) {
   const scaleWidth = 72;
   const width = Math.max(container.clientWidth - scaleWidth, 200);
-  const spacing = Math.max(4, Math.min(14, width / Math.max(barCount, 1)));
-  const fixEdges = opts?.fixEdges !== false;
+  // Sparse windows (1M ~18 bars) must not stretch into fat slabs.
+  // Cap bar width; when that leaves empty space, pin to the right edge.
+  const maxSpacing = barCount <= 25 ? 7 : barCount <= 50 ? 8 : 11;
+  const natural = width / Math.max(barCount, 1);
+  const spacing = Math.max(3, Math.min(maxSpacing, natural));
+  const wouldStretch = natural > maxSpacing + 0.5;
+  const fixEdges =
+    opts?.fixEdges === false ? false : !wouldStretch;
+
   chart.applyOptions({
     timeScale: {
-      rightOffset: 0,
+      rightOffset: wouldStretch ? 2 : 0,
       fixLeftEdge: fixEdges,
-      fixRightEdge: fixEdges,
+      fixRightEdge: opts?.fixEdges === false ? false : true,
       barSpacing: spacing,
     },
   });
-  chart.timeScale().fitContent();
+
+  if (wouldStretch) {
+    // Keep recent bars at a readable width; leave empty space on the left.
+    const visibleBars = Math.max(barCount, Math.floor(width / spacing));
+    chart.timeScale().setVisibleLogicalRange({
+      from: barCount - visibleBars,
+      to: barCount - 1 + 0.5,
+    });
+  } else {
+    chart.timeScale().fitContent();
+  }
 }
 
 function easeOutCubic(t: number) {
@@ -582,20 +599,22 @@ export function CandlestickChart({
     });
     const bbUpperSeries = chart.addLineSeries({
       color: colors.bb,
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
+      lineWidth: 2,
+      lineStyle: LineStyle.Solid,
       priceLineVisible: false,
       lastValueVisible: false,
-      crosshairMarkerVisible: false,
+      crosshairMarkerVisible: true,
+      crosshairMarkerRadius: 3,
       title: "BB Upper",
     });
     const bbLowerSeries = chart.addLineSeries({
       color: colors.bb,
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
+      lineWidth: 2,
+      lineStyle: LineStyle.Solid,
       priceLineVisible: false,
       lastValueVisible: false,
-      crosshairMarkerVisible: false,
+      crosshairMarkerVisible: true,
+      crosshairMarkerRadius: 3,
       title: "BB Lower",
     });
     const vwapSeries = chart.addLineSeries({
