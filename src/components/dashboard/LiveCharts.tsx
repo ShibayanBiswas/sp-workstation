@@ -29,6 +29,7 @@ function marketBadgeClass(status: MarketStatus, awaiting = false) {
     case "pre-open":
       return "bg-amber-500/15 text-amber-700 dark:text-amber-400";
     case "weekend":
+    case "holiday":
     case "closed":
       return "bg-[var(--bg-muted)] text-[var(--fg-subtle)]";
     default: {
@@ -232,7 +233,7 @@ export function LiveCharts() {
           syncedAsOf={asOf}
         />
       ) : (
-        <div className="live-chart-pane flex items-center justify-center text-sm text-[var(--fg-subtle)] lg:h-[460px]">
+        <div className="live-chart-pane flex items-center justify-center text-sm text-[var(--fg-subtle)] lg:h-[480px]">
           <span className={instrumentLive ? "animate-pulse-live" : ""}>
             Preparing chart…
           </span>

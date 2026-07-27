@@ -1,4 +1,9 @@
-export type MarketStatus = "open" | "pre-open" | "closed" | "weekend";
+export type MarketStatus =
+  | "open"
+  | "pre-open"
+  | "closed"
+  | "weekend"
+  | "holiday";
 
 const IST = "Asia/Kolkata";
 
@@ -105,7 +110,7 @@ export function hasTodaySessionPrint(
 export function getCashMarketStatus(now = new Date()): MarketStatus {
   const { day, minutes } = istMinutesOfDay(now);
   if (day === 0 || day === 6) return "weekend";
-  if (isCashHoliday(now)) return "closed";
+  if (isCashHoliday(now)) return "holiday";
 
   if (minutes >= 9 * 60 && minutes < 9 * 60 + 15) return "pre-open";
   if (minutes >= 9 * 60 + 15 && minutes <= 15 * 60 + 30) return "open";
@@ -219,6 +224,8 @@ export function marketStatusLabel(status: MarketStatus): string {
       return "Pre-Open Session";
     case "weekend":
       return "Weekend — Closed";
+    case "holiday":
+      return "Holiday — Closed";
     case "closed":
       return "Markets Closed";
     default: {

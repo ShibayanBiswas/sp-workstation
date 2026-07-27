@@ -35,6 +35,10 @@ function buildGreeting(name: string, now: Date) {
       tagline =
         "Markets are closed for the weekend — last session figures are shown below.";
       break;
+    case "holiday":
+      tagline =
+        "Markets are closed for a cash holiday — last session figures are shown below.";
+      break;
     case "closed":
       tagline =
         "Cash markets are closed — review the last session and prepare for the next open.";

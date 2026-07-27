@@ -18,6 +18,7 @@ function statusColor(status: MarketStatus) {
       return "bg-amber-500";
     case "closed":
     case "weekend":
+    case "holiday":
       return "bg-[var(--fg-subtle)]";
     default: {
       const _exhaustive: never = status;

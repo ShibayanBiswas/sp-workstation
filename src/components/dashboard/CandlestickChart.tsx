@@ -1642,7 +1642,15 @@ export function CandlestickChart({
                 {instrumentLive ? (
                   <span className="quote-live-dot" aria-hidden />
                 ) : null}
-                {instrumentLive ? "LIVE" : awaitingPrint ? "OPEN SOON" : "CLOSED"}
+                {instrumentLive
+                  ? "LIVE"
+                  : awaitingPrint
+                    ? "OPEN SOON"
+                    : marketStatus === "holiday"
+                      ? "HOLIDAY"
+                      : marketStatus === "weekend"
+                        ? "WEEKEND"
+                        : "CLOSED"}
               </span>
             </div>
             <button
@@ -1664,7 +1672,7 @@ export function CandlestickChart({
                   LAST TRADED
                 </p>
                 <span
-                  className={`tv-num mt-1 block text-[1.85rem] font-semibold leading-none tracking-tight sm:text-[2.15rem] ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+                  className={`tv-num mt-1 block text-[1.55rem] font-semibold leading-none tracking-tight sm:text-[1.85rem] ${displayUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
                 >
                   {displayPrice}
                 </span>
@@ -1859,7 +1867,7 @@ export function CandlestickChart({
             ) : null}
           </div>
 
-          <div className="quote-block mt-auto space-y-1.5 pt-1">
+          <div className="quote-block space-y-1 pt-0.5">
             <div className="flex flex-wrap gap-1.5">
               <span className="rounded-md border border-[var(--border)] bg-[var(--bg-muted)] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[var(--fg-muted)] transition hover:scale-[1.03]">
                 {timeframe}

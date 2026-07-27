@@ -90,6 +90,10 @@ export function LiveSyncIndicator({
     label = stamp
       ? `Weekend · last session ${stamp} IST`
       : "Weekend · markets closed";
+  } else if (status === "holiday") {
+    label = stamp
+      ? `Holiday · last session ${stamp} IST`
+      : "Holiday · markets closed";
   } else {
     label = stamp
       ? `Closed · last session ${stamp} IST`
@@ -100,7 +104,11 @@ export function LiveSyncIndicator({
     ? "This index has no print for today's IST session yet — showing the last available session"
     : sessionActive
       ? "Prices refresh automatically during the market session"
-      : "NSE/BSE cash markets are closed — showing the last session print";
+      : status === "holiday"
+        ? "NSE/BSE cash holiday — showing the last trading session"
+        : status === "weekend"
+          ? "Weekend — showing the last trading session"
+          : "NSE/BSE cash markets are closed — showing the last session print";
 
   return (
     <div

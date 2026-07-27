@@ -7,7 +7,7 @@ export const LIVE_REFRESH_MS = 15_000;
 export const CLOSED_REFRESH_MS = 15 * 60_000;
 
 export function refreshIntervalForStatus(
-  status: "open" | "pre-open" | "closed" | "weekend"
+  status: "open" | "pre-open" | "closed" | "weekend" | "holiday"
 ): number {
   return status === "open" || status === "pre-open"
     ? LIVE_REFRESH_MS
