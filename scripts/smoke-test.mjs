@@ -256,7 +256,7 @@ async function main() {
   );
 
   // 8b. Timeframe period returns include a reference open for each window
-  for (const tf of ["1W", "1M", "3M", "6M", "1Y"]) {
+  for (const tf of ["1W", "1M", "3M", "6M", "1Y", "5Y"]) {
     const r = await request(`/api/chart?indexId=nifty&timeframe=${tf}`);
     assert(r.status === 200, `${tf} chart failed: ${r.status}`);
     assert(r.json?.bars?.length > 0, `${tf} chart bars missing`);
@@ -279,7 +279,29 @@ async function main() {
     pass(
       `${tf} period return ${Number(r.json.last.changePercent).toFixed(2)}% (ref ${r.json.last.reference}, ${r.json.bars.length} bars)`
     );
+
+    // Zoom On should expand history vs Zoom Off (never shrink).
+    const full = await request(`/api/chart?indexId=nifty&timeframe=${tf}&full=1`);
+    assert(full.status === 200, `${tf} Zoom On failed: ${full.status}`);
+    assert(
+      (full.json?.bars?.length ?? 0) >= (r.json.bars?.length ?? 0),
+      `${tf} Zoom On should have at least as many bars as Zoom Off (${full.json?.bars?.length} < ${r.json.bars.length})`
+    );
+    pass(
+      `${tf} Zoom On ${full.json.bars.length} bars (≥ Off ${r.json.bars.length})`
+    );
   }
+
+  // 1D Zoom On expands beyond the session window.
+  const chartFull = await request("/api/chart?indexId=nifty&timeframe=1D&full=1");
+  assert(chartFull.status === 200, `1D Zoom On failed: ${chartFull.status}`);
+  assert(
+    (chartFull.json?.bars?.length ?? 0) > (chart.json.bars?.length ?? 0),
+    `1D Zoom On should expand past session (${chartFull.json?.bars?.length} vs Off ${chart.json.bars.length})`
+  );
+  pass(
+    `1D Zoom On ${chartFull.json.bars.length} bars (> Off ${chart.json.bars.length})`
+  );
 
   // Month-to-date open should differ from today's session open in normal weeks.
   const chartMonth = await request("/api/chart?indexId=nifty&timeframe=1M");

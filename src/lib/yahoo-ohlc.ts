@@ -110,16 +110,35 @@ function dedupeAndSortBars(bars: OhlcBar[]): OhlcBar[] {
 
 /** Yahoo interval string → seconds (e.g. 5m → 300). */
 export function yahooIntervalSeconds(interval: string): number | null {
-  const m = interval.trim().match(/^(\d+)(m|h|d|wk)$/i);
+  const trimmed = interval.trim().toLowerCase();
+  // Match `mo` before `m` so "1mo" is monthly, not minute.
+  const m = trimmed.match(/^(\d+)(mo|wk|m|h|d)$/);
   if (!m) return null;
   const n = Number(m[1]);
   if (!Number.isFinite(n) || n <= 0) return null;
-  const unit = m[2]!.toLowerCase();
+  const unit = m[2]!;
   if (unit === "m") return n * 60;
   if (unit === "h") return n * 3600;
   if (unit === "d") return n * 86_400;
   if (unit === "wk") return n * 7 * 86_400;
+  if (unit === "mo") return n * 30 * 86_400;
   return null;
+}
+
+/** True when Yahoo returned sparsely-spaced bars vs the requested interval. */
+export function isDownsampledSeries(
+  bars: OhlcBar[],
+  interval: string
+): boolean {
+  if (bars.length < 3) return false;
+  const expected = yahooIntervalSeconds(interval);
+  // Intraday series have large overnight/weekend gaps — avg-gap check is unreliable.
+  if (expected == null || expected < 86_400) return false;
+  const first = bars[0]!.time;
+  const last = bars[bars.length - 1]!.time;
+  const avgGap = (last - first) / (bars.length - 1);
+  // Allow weekends/holidays (~2.75× for daily). Monthly-spaced "daily" fails.
+  return avgGap > expected * 2.75;
 }
 
 /**
@@ -420,6 +439,50 @@ async function fetchOhlcCandidate(
   return parsed;
 }
 
+/** Minimum history span we want when Zoom On / inception loads. */
+function inceptionMinSpanDays(timeframeId: ChartTimeframe["id"]): number {
+  switch (timeframeId) {
+    case "1D":
+      return 40;
+    case "1W":
+      return 180;
+    case "1M":
+    case "3M":
+      return 365 * 3;
+    case "6M":
+    case "1Y":
+      return 365 * 5;
+    case "5Y":
+      return 365 * 8;
+    default: {
+      const _exhaustive: never = timeframeId;
+      return _exhaustive;
+    }
+  }
+}
+
+function inceptionCandidateScore(
+  bars: OhlcBar[],
+  candidateInterval: string,
+  timeframe: ChartTimeframe
+): number {
+  if (isDownsampledSeries(bars, candidateInterval)) {
+    return -1;
+  }
+
+  const first = bars[0]?.time ?? 0;
+  const last = bars[bars.length - 1]?.time ?? 0;
+  const spanDays = Math.max(0, (last - first) / 86_400);
+  const native = candidateInterval === timeframe.interval;
+  const minSpan = inceptionMinSpanDays(timeframe.id);
+  const spanOk = spanDays >= minSpan * 0.5;
+
+  // Prefer native interval only when Yahoo actually delivered enough history.
+  // Otherwise (e.g. 30m capped ~60d) favor longer-span fallbacks.
+  const nativeBoost = native && spanOk ? 1_000_000 : 0;
+  return bars.length + nativeBoost + spanDays * (native && spanOk ? 10 : 200);
+}
+
 export async function fetchYahooOhlc(
   yahooSymbol: string,
   timeframe: ChartTimeframe,
@@ -430,21 +493,54 @@ export async function fetchYahooOhlc(
   const cached = getCached<OhlcResult>(cacheKey, OHLC_CACHE_MS);
   if (cached) return cached;
 
+  let best: OhlcResult | null = null;
+  let bestScore = -1;
+
   for (const candidate of timeframeCandidates(timeframe, opts)) {
     const parsed = await fetchOhlcCandidate(
       yahooSymbol,
       candidate.interval,
       candidate.range,
       // Daily/weekly inception fallbacks are not intraday even if the TF is.
-      timeframe.intraday && !candidate.interval.endsWith("d") && candidate.interval !== "1wk"
+      timeframe.intraday &&
+        !candidate.interval.endsWith("d") &&
+        candidate.interval !== "1wk" &&
+        candidate.interval !== "1mo"
     );
-    if (parsed?.bars.length) {
+    if (!parsed?.bars.length) continue;
+
+    // Zoom Off: first working candidate wins (minimize Yahoo load).
+    if (!opts?.inception) {
       setCached(cacheKey, parsed);
       return parsed;
     }
+
+    const score = inceptionCandidateScore(
+      parsed.bars,
+      candidate.interval,
+      timeframe
+    );
+    if (score < 0) continue;
+
+    if (score > bestScore) {
+      best = parsed;
+      bestScore = score;
+    }
+
+    // Good enough dense native series with enough span — stop hunting.
+    if (
+      candidate.interval === timeframe.interval &&
+      parsed.bars.length >= 500
+    ) {
+      const first = parsed.bars[0]?.time ?? 0;
+      const last = parsed.bars[parsed.bars.length - 1]?.time ?? 0;
+      const spanDays = (last - first) / 86_400;
+      if (spanDays >= inceptionMinSpanDays(timeframe.id) * 0.5) break;
+    }
   }
 
-  return null;
+  if (best) setCached(cacheKey, best);
+  return best;
 }
 
 /** Fetch older candles before `beforeUnix` for scroll-back history. */

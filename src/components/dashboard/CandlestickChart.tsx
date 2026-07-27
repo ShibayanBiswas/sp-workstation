@@ -28,11 +28,12 @@ import {
 } from "@/lib/chart-ist";
 import {
   buildHighLowMarkers,
+  computeBollingerBands,
   computeSessionVwapSeries,
   findPeriodExtremes,
   formatVolumeShort,
 } from "@/lib/chart-indicators";
-import { buildChartSeries, barToChartTime } from "@/lib/chart-series";
+import { buildChartSeries, barToChartTime, resolveBarVolume } from "@/lib/chart-series";
 import {
   applyLiveCloseToBars,
   snapFormingBarTip,
@@ -91,6 +92,10 @@ type Props = {
 const TV_FONT =
   "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif";
 
+/** Sole SMA on charts — Bollinger middle band uses the same length. */
+const SMA_PERIOD = 5;
+const BOLLINGER_MULT = 2;
+
 function chartColors(theme: ThemeMode) {
   if (theme === "dark") {
     return {
@@ -107,6 +112,8 @@ function chartColors(theme: ThemeMode) {
       muted: "#787b86",
       watermark: "rgba(255, 255, 255, 0.045)",
       vwap: "#b388ff",
+      sma: "#f0b429",
+      bb: "rgba(240, 180, 41, 0.55)",
       refLine: "rgba(229, 207, 148, 0.75)",
       highLine: "rgba(38, 166, 154, 0.55)",
       lowLine: "rgba(239, 83, 80, 0.55)",
@@ -126,6 +133,8 @@ function chartColors(theme: ThemeMode) {
     muted: "#787b86",
     watermark: "rgba(19, 23, 34, 0.055)",
     vwap: "#7b1fa2",
+    sma: "#c98500",
+    bb: "rgba(201, 133, 0, 0.5)",
     refLine: "rgba(180, 148, 72, 0.85)",
     highLine: "rgba(8, 153, 129, 0.55)",
     lowLine: "rgba(242, 54, 69, 0.55)",
@@ -553,10 +562,37 @@ export function CandlestickChart({
       priceScaleId: "vol",
     });
     volumeSeries.priceScale().applyOptions({
-      scaleMargins: { top: 0.84, bottom: 0 },
+      scaleMargins: { top: 0.76, bottom: 0 },
     });
 
-    // Overlays after candles so VWAP paints on top (TradingView-style).
+    // Overlays after candles so indicators paint on top (TradingView-style).
+    const smaSeries = chart.addLineSeries({
+      color: colors.sma,
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: true,
+      crosshairMarkerRadius: 3,
+      title: `SMA ${SMA_PERIOD}`,
+    });
+    const bbUpperSeries = chart.addLineSeries({
+      color: colors.bb,
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      title: "BB Upper",
+    });
+    const bbLowerSeries = chart.addLineSeries({
+      color: colors.bb,
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      title: "BB Lower",
+    });
     const vwapSeries = chart.addLineSeries({
       color: colors.vwap,
       lineWidth: 1,
@@ -589,6 +625,9 @@ export function CandlestickChart({
         volume?: number | null;
         prevClose?: number | null;
         vwap?: number | null;
+        sma?: number | null;
+        bbUpper?: number | null;
+        bbLower?: number | null;
       }
     ) => {
       const el = legendRef.current;
@@ -608,9 +647,26 @@ export function CandlestickChart({
         barChangeHtml = item("Δ", `${fmtPct(pct)}`, chgColor);
       }
 
-      const volHtml =
-        extras?.volume != null && extras.volume > 0
-          ? item("Vol", formatVolumeShort(extras.volume), colors.text)
+      const volHtml = item(
+        "Vol",
+        formatVolumeShort(resolveBarVolume({
+          time: 0,
+          open: bar.open,
+          high: bar.high,
+          low: bar.low,
+          close: bar.close,
+          volume: extras?.volume ?? undefined,
+        })),
+        colors.text
+      );
+
+      const smaHtml =
+        extras?.sma != null
+          ? item(`SMA ${SMA_PERIOD}`, fmt(extras.sma), colors.sma)
+          : "";
+      const bbHtml =
+        extras?.bbUpper != null && extras?.bbLower != null
+          ? `${item("BB U", fmt(extras.bbUpper), colors.bb)}${item("BB L", fmt(extras.bbLower), colors.bb)}`
           : "";
 
       const vwapHtml =
@@ -627,11 +683,24 @@ export function CandlestickChart({
           ${item("C", fmt(bar.close))}
           ${barChangeHtml}
           ${volHtml}
+          ${smaHtml}
+          ${bbHtml}
           ${vwapHtml}
         </div>`;
     };
 
     const updateOverlayLines = (bars: OhlcBar[]) => {
+      const bb = computeBollingerBands(
+        bars,
+        SMA_PERIOD,
+        BOLLINGER_MULT,
+        tf.intraday
+      );
+      // Middle band is SMA 5 — single SMA line for all timeframes.
+      smaSeries.setData(bb.middle);
+      bbUpperSeries.setData(bb.upper);
+      bbLowerSeries.setData(bb.lower);
+
       if (tf.intraday) {
         vwapSeries.applyOptions({ visible: true });
         vwapSeries.setData(computeSessionVwapSeries(bars, true));
@@ -671,14 +740,48 @@ export function CandlestickChart({
       barIndex: number,
       seriesExtras?: {
         vwap?: number | null;
+        sma?: number | null;
+        bbUpper?: number | null;
+        bbLower?: number | null;
       }
     ) => {
       const bar = barsRef.current[barIndex];
       const prev = barIndex > 0 ? barsRef.current[barIndex - 1] : null;
+
+      let sma = seriesExtras?.sma ?? null;
+      let bbUpper = seriesExtras?.bbUpper ?? null;
+      let bbLower = seriesExtras?.bbLower ?? null;
+
+      // Fallback when crosshair is idle — derive SMA 5 / BB from loaded bars.
+      if (
+        (sma == null || bbUpper == null || bbLower == null) &&
+        barIndex >= SMA_PERIOD - 1 &&
+        barsRef.current.length >= SMA_PERIOD
+      ) {
+        const window = barsRef.current.slice(
+          barIndex - SMA_PERIOD + 1,
+          barIndex + 1
+        );
+        const mean =
+          window.reduce((acc, b) => acc + b.close, 0) / SMA_PERIOD;
+        let sq = 0;
+        for (const b of window) {
+          const d = b.close - mean;
+          sq += d * d;
+        }
+        const sigma = Math.sqrt(sq / SMA_PERIOD);
+        sma = sma ?? mean;
+        bbUpper = bbUpper ?? mean + BOLLINGER_MULT * sigma;
+        bbLower = bbLower ?? mean - BOLLINGER_MULT * sigma;
+      }
+
       return {
         volume: bar?.volume ?? null,
         prevClose: prev?.close ?? null,
         vwap: seriesExtras?.vwap ?? null,
+        sma,
+        bbUpper,
+        bbLower,
       };
     };
 
@@ -1160,6 +1263,15 @@ export function CandlestickChart({
       const vwapPt = param.seriesData.get(vwapSeries) as
         | LineData<Time>
         | undefined;
+      const smaPt = param.seriesData.get(smaSeries) as
+        | LineData<Time>
+        | undefined;
+      const bbUpperPt = param.seriesData.get(bbUpperSeries) as
+        | LineData<Time>
+        | undefined;
+      const bbLowerPt = param.seriesData.get(bbLowerSeries) as
+        | LineData<Time>
+        | undefined;
 
       let barIndex = lastBarIndex;
       if (typeof param.time === "string") {
@@ -1175,6 +1287,9 @@ export function CandlestickChart({
       renderLegend(candle ?? lastCandle, hoverUnix, {
         ...legendExtrasForBar(barIndex),
         vwap: vwapPt?.value ?? null,
+        sma: smaPt?.value ?? null,
+        bbUpper: bbUpperPt?.value ?? null,
+        bbLower: bbLowerPt?.value ?? null,
       });
       setHeader((h) => ({
         ...h,
@@ -1268,6 +1383,7 @@ export function CandlestickChart({
                         ? "Awaiting today's print · chart shows last session · axis in IST"
                         : `Markets closed · showing ${sessionPhrase.toLowerCase()} · axis in IST`}
             {timeframe === "1D" ? " · VWAP" : ""}
+            {" · SMA 5 · BB"}
             {zoomEnabled ? " · double-click resets view" : ""}
           </p>
         </div>

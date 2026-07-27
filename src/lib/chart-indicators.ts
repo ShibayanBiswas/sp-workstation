@@ -33,6 +33,56 @@ export function computeSmaSeries(
 }
 
 /**
+ * Bollinger Bands for the matching SMA period.
+ * Middle = SMA(N); Upper/Lower = SMA ± mult × population σ of closes.
+ */
+export function computeBollingerBands(
+  bars: OhlcBar[],
+  period: number,
+  mult: number,
+  intraday: boolean
+): {
+  middle: ChartLinePoint[];
+  upper: ChartLinePoint[];
+  lower: ChartLinePoint[];
+} {
+  if (period < 1 || bars.length === 0) {
+    return { middle: [], upper: [], lower: [] };
+  }
+
+  const middle: ChartLinePoint[] = [];
+  const upper: ChartLinePoint[] = [];
+  const lower: ChartLinePoint[] = [];
+  let sum = 0;
+
+  for (let i = 0; i < bars.length; i++) {
+    sum += bars[i].close;
+    if (i >= period) sum -= bars[i - period].close;
+    const time = barToChartTime(bars[i], intraday);
+
+    if (i < period - 1) {
+      middle.push({ time });
+      upper.push({ time });
+      lower.push({ time });
+      continue;
+    }
+
+    const mean = sum / period;
+    let sq = 0;
+    for (let j = i - period + 1; j <= i; j++) {
+      const d = bars[j].close - mean;
+      sq += d * d;
+    }
+    const sigma = Math.sqrt(sq / period);
+    middle.push({ time, value: mean });
+    upper.push({ time, value: mean + mult * sigma });
+    lower.push({ time, value: mean - mult * sigma });
+  }
+
+  return { middle, upper, lower };
+}
+
+/**
  * Session VWAP using typical price × volume.
  * Resets on each IST calendar day (standard intraday VWAP).
  */
