@@ -108,8 +108,7 @@ export async function GET(req: Request) {
       ? snapFormingBarTip(ohlc.bars, intervalSec)
       : ohlc.bars.slice();
 
-  // Zoom Off default: active period plus prior like-period window(s)
-  // (1 for most TFs; 2 for 1M / 3M).
+  // Zoom Off default: active period from its open (1M/3M: two windows).
   let bars =
     !inception && !isHistory
       ? timeframeViewBars(fullBars, timeframe.id)
