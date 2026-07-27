@@ -582,22 +582,22 @@ export function CandlestickChart({
     });
     const bbUpperSeries = chart.addLineSeries({
       color: colors.bb,
-      lineWidth: 2,
+      lineWidth: 1,
       lineStyle: LineStyle.Solid,
       priceLineVisible: false,
       lastValueVisible: false,
       crosshairMarkerVisible: true,
-      crosshairMarkerRadius: 3,
+      crosshairMarkerRadius: 2,
       title: "BB Upper",
     });
     const bbLowerSeries = chart.addLineSeries({
       color: colors.bb,
-      lineWidth: 2,
+      lineWidth: 1,
       lineStyle: LineStyle.Solid,
       priceLineVisible: false,
       lastValueVisible: false,
       crosshairMarkerVisible: true,
-      crosshairMarkerRadius: 3,
+      crosshairMarkerRadius: 2,
       title: "BB Lower",
     });
     const vwapSeries = chart.addLineSeries({
