@@ -154,15 +154,16 @@ function fmtPct(n: number) {
 }
 
 /** Vacant bars on the right — new candles form into this room. */
-const LIVE_RIGHT_GAP_BARS = 14;
+const LIVE_RIGHT_GAP_BARS = 12;
 /** Zoom On keeps a smaller trailing gap. */
 const ZOOM_RIGHT_GAP_BARS = 6;
 /**
- * Candle width ≈ TradingView default (lightweight-charts barSpacing default is 6).
- * Cap slightly under that so bodies stay crisp/thin across all live TFs.
+ * Fixed candle pitch (px) — TradingView-thin.
+ * Must stay fixed: putting the right gap into setVisibleLogicalRange makes
+ * LWC stretch barSpacing and fatten 1D/1W when few bars exist.
  */
-const THIN_BAR_SPACING_MIN = 3;
-const THIN_BAR_SPACING_MAX = 5;
+const TV_BAR_SPACING = 4;
+const TV_BAR_SPACING_MIN = 2;
 
 function chartInteractionOptions(zoomEnabled: boolean) {
   return {
@@ -186,10 +187,25 @@ function chartInteractionOptions(zoomEnabled: boolean) {
   };
 }
 
+/** Re-assert thin pitch + right runway (call after any fit/range change). */
+function applyThinCandleScale(
+  chart: IChartApi,
+  opts: { zoomEnabled: boolean; rightGap: number }
+) {
+  chart.timeScale().applyOptions({
+    barSpacing: TV_BAR_SPACING,
+    minBarSpacing: TV_BAR_SPACING_MIN,
+    rightOffset: opts.rightGap,
+    fixLeftEdge: !opts.zoomEnabled,
+    fixRightEdge: false,
+    shiftVisibleRangeOnNewBar: true,
+  });
+}
+
 /**
  * Thin candles + vacant right runway for forming bars.
- * Zoom Off anchors the left at the period start; right stays open so each
- * new print slides into the reserved gap (TradingView-style).
+ * Zoom Off anchors the left at the period start; rightOffset (not an expanded
+ * logical range) reserves empty slots so 1D/1W stay thin early in the period.
  */
 function layoutLiveChart(
   chart: IChartApi,
@@ -198,41 +214,27 @@ function layoutLiveChart(
   opts?: { zoomEnabled?: boolean; preserveScroll?: boolean }
 ) {
   if (barCount <= 0) return;
+  void container;
 
   const zoomEnabled = opts?.zoomEnabled === true;
   const rightGap = zoomEnabled ? ZOOM_RIGHT_GAP_BARS : LIVE_RIGHT_GAP_BARS;
-  const scaleWidth = 72;
-  const width = Math.max(container.clientWidth - scaleWidth, 200);
-  // Size bars for data + right gap so early-session 1D stays thin, not fat.
-  const natural = width / Math.max(barCount + rightGap, 1);
-  const spacing = Math.max(
-    THIN_BAR_SPACING_MIN,
-    Math.min(THIN_BAR_SPACING_MAX, natural)
-  );
 
-  chart.applyOptions({
-    timeScale: {
-      rightOffset: rightGap,
-      fixLeftEdge: !zoomEnabled,
-      fixRightEdge: false,
-      barSpacing: spacing,
-      shiftVisibleRangeOnNewBar: true,
-    },
-  });
-
+  applyThinCandleScale(chart, { zoomEnabled, rightGap });
   if (opts?.preserveScroll) return;
 
   if (zoomEnabled) {
     chart.timeScale().fitContent();
-    chart.timeScale().applyOptions({ rightOffset: rightGap });
+    applyThinCandleScale(chart, { zoomEnabled: true, rightGap });
     return;
   }
 
-  // Period view: show open → latest, with empty slots on the right.
+  // Data window only — right vacant space comes from rightOffset, not `to`.
+  const last = Math.max(barCount - 1, 0);
   chart.timeScale().setVisibleLogicalRange({
-    from: -0.35,
-    to: Math.max(barCount - 1, 0) + rightGap,
+    from: -0.25,
+    to: last + 0.35,
   });
+  applyThinCandleScale(chart, { zoomEnabled: false, rightGap });
 }
 
 function easeOutCubic(t: number) {
@@ -549,8 +551,8 @@ export function CandlestickChart({
         rightOffset: LIVE_RIGHT_GAP_BARS,
         fixLeftEdge: !zoomRef.current,
         fixRightEdge: false,
-        barSpacing: THIN_BAR_SPACING_MAX,
-        minBarSpacing: THIN_BAR_SPACING_MIN,
+        barSpacing: TV_BAR_SPACING,
+        minBarSpacing: TV_BAR_SPACING_MIN,
         tickMarkMaxCharacterLength: tf.axisLabelMode === "day" ? 8 : 10,
         tickMarkFormatter: (time: Time) =>
           axisTickFormatter(timeToUnix(time)),
@@ -870,6 +872,8 @@ export function CandlestickChart({
           rightOffset: zoomRef.current
             ? ZOOM_RIGHT_GAP_BARS
             : LIVE_RIGHT_GAP_BARS,
+          barSpacing: TV_BAR_SPACING,
+          minBarSpacing: TV_BAR_SPACING_MIN,
           fixRightEdge: false,
           shiftVisibleRangeOnNewBar: true,
         });
@@ -1068,6 +1072,8 @@ export function CandlestickChart({
               fixLeftEdge: false,
               fixRightEdge: false,
               rightOffset: ZOOM_RIGHT_GAP_BARS,
+              barSpacing: TV_BAR_SPACING,
+              minBarSpacing: TV_BAR_SPACING_MIN,
               shiftVisibleRangeOnNewBar: true,
             },
           });
@@ -1199,6 +1205,8 @@ export function CandlestickChart({
             lastBarIndex = merged.length - 1;
             chart.timeScale().applyOptions({
               rightOffset: LIVE_RIGHT_GAP_BARS,
+              barSpacing: TV_BAR_SPACING,
+              minBarSpacing: TV_BAR_SPACING_MIN,
               fixRightEdge: false,
               shiftVisibleRangeOnNewBar: true,
             });
