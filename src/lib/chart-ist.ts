@@ -6,8 +6,8 @@ const IST = "Asia/Kolkata";
 
 export type AxisLabelMode = "time" | "day" | "date";
 
-/** NSE cash session: 09:15 – 15:30 IST (inclusive). */
-export function isNseSessionMinute(unixSec: number): boolean {
+/** NSE/BSE equity cash session: 09:15 – 15:30 IST (inclusive). */
+export function isCashSessionMinute(unixSec: number): boolean {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: IST,
     hour: "2-digit",
@@ -25,16 +25,25 @@ export function isNseSessionMinute(unixSec: number): boolean {
   return total >= 9 * 60 + 15 && total <= 15 * 60 + 30;
 }
 
-/** Keep only bars inside Indian cash-market hours for intraday charts. */
-export function filterNseSessionBars(
+/** @deprecated Prefer isCashSessionMinute — NSE/BSE share equity hours. */
+export const isNseSessionMinute = isCashSessionMinute;
+
+/**
+ * Keep only bars inside Indian cash-market hours for intraday charts.
+ * Applies to both NSE (^NSEI, …) and BSE (^BSESN) Yahoo series — same clock.
+ */
+export function filterCashSessionBars(
   bars: OhlcBar[],
   intraday: boolean,
   _yahooSymbol?: string
 ): OhlcBar[] {
   if (!intraday) return bars;
-  const filtered = bars.filter((b) => isNseSessionMinute(b.time));
+  const filtered = bars.filter((b) => isCashSessionMinute(b.time));
   return filtered.length > 0 ? filtered : bars;
 }
+
+/** @deprecated Prefer filterCashSessionBars. */
+export const filterNseSessionBars = filterCashSessionBars;
 
 /**
  * Bars for a single trading day — never mixes sessions.

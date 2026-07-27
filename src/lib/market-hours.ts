@@ -2,6 +2,30 @@ export type MarketStatus = "open" | "pre-open" | "closed" | "weekend";
 
 const IST = "Asia/Kolkata";
 
+/**
+ * NSE + BSE equity cash holidays (weekday closures).
+ * Both exchanges share this calendar for cash indices (Nifty, Sensex, sectors, VIX).
+ * Source: NSE holiday circular for 2026 (BSE mirrors for cash equities).
+ * Weekend-only observances are omitted — weekends already return "weekend".
+ */
+const CASH_HOLIDAYS_IST = new Set<string>([
+  "2026-01-26", // Republic Day
+  "2026-03-03", // Holi
+  "2026-03-26", // Shri Ram Navami
+  "2026-03-31", // Shri Mahavir Jayanti
+  "2026-04-03", // Good Friday
+  "2026-04-14", // Dr. Baba Saheb Ambedkar Jayanti
+  "2026-05-01", // Maharashtra Day
+  "2026-05-28", // Bakri Id
+  "2026-06-26", // Muharram
+  "2026-09-14", // Ganesh Chaturthi
+  "2026-10-02", // Mahatma Gandhi Jayanti
+  "2026-10-20", // Dussehra
+  "2026-11-10", // Diwali-Balipratipada
+  "2026-11-24", // Prakash Gurpurb Sri Guru Nanak Dev
+  "2026-12-25", // Christmas
+]);
+
 function istMinutesOfDay(now: Date): { day: number; minutes: number } {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: IST,
@@ -40,6 +64,15 @@ export function istCalendarDate(input: Date | number = new Date()): string {
   return d.toLocaleDateString("en-CA", { timeZone: IST });
 }
 
+/** True when the IST calendar date is a declared NSE/BSE cash holiday. */
+export function isCashHoliday(
+  input: Date | number | string = new Date()
+): boolean {
+  const day =
+    typeof input === "string" ? input : istCalendarDate(input);
+  return CASH_HOLIDAYS_IST.has(day);
+}
+
 /** True when unix seconds fall on today's IST calendar day. */
 export function isSameIstDay(
   unixSec: number | null | undefined,
@@ -61,14 +94,26 @@ export function hasTodaySessionPrint(
   return isSameIstDay(marketTime, now);
 }
 
-export function getNseMarketStatus(now = new Date()): MarketStatus {
+/**
+ * NSE + BSE equity cash session clock (identical hours):
+ * - Pre-open 09:00–09:14 IST
+ * - Continuous 09:15–15:30 IST
+ * - Weekends + declared cash holidays → not trading
+ *
+ * Sensex (BSE) and Nifty family (NSE) both use this clock.
+ */
+export function getCashMarketStatus(now = new Date()): MarketStatus {
   const { day, minutes } = istMinutesOfDay(now);
   if (day === 0 || day === 6) return "weekend";
+  if (isCashHoliday(now)) return "closed";
 
   if (minutes >= 9 * 60 && minutes < 9 * 60 + 15) return "pre-open";
   if (minutes >= 9 * 60 + 15 && minutes <= 15 * 60 + 30) return "open";
   return "closed";
 }
+
+/** @deprecated Prefer getCashMarketStatus — NSE/BSE cash share one clock. */
+export const getNseMarketStatus = getCashMarketStatus;
 
 const CASH_CLOSE_MINUTES = 15 * 60 + 30; // 15:30 IST
 
@@ -78,26 +123,41 @@ function subtractIstCalendarDays(yyyyMmDd: string, days: number): string {
   return istCalendarDate(base);
 }
 
+/** Walk back from an IST date to the previous weekday that is not a cash holiday. */
+function previousCashSessionDay(yyyyMmDd: string): string {
+  let cursor = yyyyMmDd;
+  for (let i = 0; i < 14; i++) {
+    cursor = subtractIstCalendarDays(cursor, 1);
+    const istDow = new Date(`${cursor}T12:00:00+05:30`).toLocaleDateString(
+      "en-US",
+      { timeZone: IST, weekday: "short" }
+    );
+    if (istDow === "Sat" || istDow === "Sun") continue;
+    if (isCashHoliday(cursor)) continue;
+    return cursor;
+  }
+  return cursor;
+}
+
 /**
  * Unix seconds for the most recent completed NSE/BSE cash close (15:30 IST).
- * Used for closed / pre-open / weekend “last session” stamps when the feed
- * has no print timestamp (NSE) or the stamp is missing (BSE fallback).
+ * Used for closed / pre-open / weekend / holiday “last session” stamps when the
+ * feed has no print timestamp (NSE) or the stamp is missing (BSE fallback).
+ * Skips weekends and declared cash holidays.
  */
 export function lastCashSessionCloseUnix(now = new Date()): number {
   const { day, minutes } = istMinutesOfDay(now);
   const today = istCalendarDate(now);
+  const isWeekday = day >= 1 && day <= 5;
+  const tradingToday = isWeekday && !isCashHoliday(now);
 
-  let daysBack = 0;
-  if (day === 0) {
-    daysBack = 2; // Sunday → Friday
-  } else if (day === 6) {
-    daysBack = 1; // Saturday → Friday
-  } else if (minutes < CASH_CLOSE_MINUTES) {
-    // Before today's close — last completed session is the previous weekday.
-    daysBack = day === 1 ? 3 : 1; // Monday → Friday
-  }
+  // After today's continuous session close on a trading day → today 15:30.
+  // Otherwise → previous cash session day (skips weekends + holidays).
+  const sessionDay =
+    tradingToday && minutes >= CASH_CLOSE_MINUTES
+      ? today
+      : previousCashSessionDay(today);
 
-  const sessionDay = daysBack === 0 ? today : subtractIstCalendarDays(today, daysBack);
   return Math.floor(
     new Date(`${sessionDay}T15:30:00+05:30`).getTime() / 1000
   );
@@ -109,7 +169,7 @@ export function lastCashSessionCloseUnix(now = new Date()): number {
  * - otherwise → last cash close (never the page-load clock before open)
  */
 export function cashQuoteMarketTime(
-  status: MarketStatus = getNseMarketStatus(),
+  status: MarketStatus = getCashMarketStatus(),
   now = new Date()
 ): number {
   if (status === "open") {

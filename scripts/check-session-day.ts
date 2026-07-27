@@ -132,6 +132,14 @@ const all = [...wed, ...thu, ...friMid];
     venueIsToday: true,
   });
   assert(laggedOhlc === 75708.19, "venue today beats lagged Yahoo OHLC");
+  // Yahoo already on today but BSE stamp still Friday — OHLC wins.
+  const laggedVenue = resolveSessionOpen({
+    venueOpen: 75708.19,
+    ohlcSessionOpen: 76608.98,
+    sessionIsToday: true,
+    venueIsToday: false,
+  });
+  assert(laggedVenue === 76608.98, "Yahoo today beats stale BSE open");
   const vs = changeVersusSessionOpen(23700, 23674.4);
   assert(vs.change > 0 && vs.changePercent > 0, "vs open positive");
 }

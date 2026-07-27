@@ -1,11 +1,14 @@
 /**
  * BSE India live Sensex — LTP + session open from BSE (day % applied upstream).
  * RealTimeBseIndiaAPI/GetSensexData (official BSE print).
+ *
+ * Note: BSE `chg` / `perchg` are vs previous close (Zerodha/TV default).
+ * We recompute day % vs I_open so tape/snapshot/1D match the trading-day open.
  */
 
 import {
   cashQuoteMarketTime,
-  getNseMarketStatus,
+  getCashMarketStatus,
 } from "@/lib/market-hours";
 import { fetchWithTimeout, UPSTREAM_TIMEOUT_MS } from "@/lib/fetch-timeout";
 
@@ -25,6 +28,7 @@ type Cache = { at: number; quote: BseSensexQuote };
 let cache: Cache | null = null;
 /** Align with NSE short TTL so markets + chart share one Sensex print. */
 const CACHE_MS = 8_000;
+let inflight: Promise<BseSensexQuote | null> | null = null;
 
 function num(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -84,14 +88,15 @@ function parseSensex(data: unknown): BseSensexQuote | null {
   if (price == null || dayOpen == null || dayOpen === 0) return null;
 
   // Day % vs today's open (matches sparklines / 1D Open line).
+  // Do NOT use BSE perchg — that field is vs previous close.
   const change = price - dayOpen;
   const changePercent = (change / dayOpen) * 100;
 
   const stamped = parseBseStamp(r.dttm);
-  const status = getNseMarketStatus();
-  // While cash is live, prefer BSE's dttm. When closed/pre-open/weekend, always
-  // use the canonical 15:30 IST cash close so Sensex doesn't show 4:00 pm while
-  // NSE cards show 3:30 pm.
+  const status = getCashMarketStatus();
+  // While cash is live, prefer BSE's dttm. When closed/pre-open/weekend/holiday,
+  // always use the canonical 15:30 IST cash close so Sensex doesn't show 4:00 pm
+  // (BSE post-close window) while NSE cards show 3:30 pm.
   const marketTime =
     status === "open"
       ? (stamped ?? cashQuoteMarketTime(status))
@@ -107,14 +112,7 @@ function parseSensex(data: unknown): BseSensexQuote | null {
   };
 }
 
-/** Live Sensex quote from BSE (day % vs today's open). */
-export async function fetchBseSensexQuote(opts?: {
-  fresh?: boolean;
-}): Promise<BseSensexQuote | null> {
-  void opts;
-  if (cache && Date.now() - cache.at < CACHE_MS) {
-    return cache.quote;
-  }
+async function loadBseSensex(): Promise<BseSensexQuote | null> {
   const raw = await fetchBseSensexRaw();
   if (!raw) return cache?.quote ?? null;
   const quote = parseSensex(raw);
@@ -122,4 +120,19 @@ export async function fetchBseSensexQuote(opts?: {
     cache = { at: Date.now(), quote };
   }
   return quote ?? cache?.quote ?? null;
+}
+
+/** Live Sensex quote from BSE (day % vs today's open). */
+export async function fetchBseSensexQuote(opts?: {
+  fresh?: boolean;
+}): Promise<BseSensexQuote | null> {
+  const fresh = opts?.fresh === true;
+  if (!fresh && cache && Date.now() - cache.at < CACHE_MS) {
+    return cache.quote;
+  }
+  if (inflight) return inflight;
+  inflight = loadBseSensex().finally(() => {
+    inflight = null;
+  });
+  return inflight;
 }

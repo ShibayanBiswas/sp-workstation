@@ -6,7 +6,12 @@ import {
 } from "@/lib/chart-period-return";
 import { getTimeframe } from "@/lib/chart-timeframes";
 import { jsonDynamic } from "@/lib/json-dynamic";
-import { hasTodaySessionPrint } from "@/lib/market-hours";
+import {
+  cashQuoteMarketTime,
+  getCashMarketStatus,
+  hasTodaySessionPrint,
+  lastCashSessionCloseUnix,
+} from "@/lib/market-hours";
 import {
   fetchYahooOhlc,
   fetchYahooOhlcBefore,
@@ -22,7 +27,7 @@ import {
   resolveSessionOpen,
   sessionBarsAreToday,
 } from "@/lib/session-open";
-import { INDIAN_MARKET_INDICES, getIndexById } from "@/data/indian-markets";
+import { INDIAN_MARKET_INDICES, cashExchangeLabel, getIndexById } from "@/data/indian-markets";
 import {
   fetchNseIndexQuotes,
   nseIndexNameForId,
@@ -167,9 +172,25 @@ export async function GET(req: Request) {
       : null;
   const sessionIsToday =
     timeframe.id === "1D" ? sessionBarsAreToday(returnBars) : true;
-  const venueIsToday =
-    sessionIsToday ||
-    hasTodaySessionPrint(venue?.marketTime ?? live?.marketTime);
+
+  const nseOpenMoved =
+    nse != null &&
+    nse.previousClose > 0 &&
+    Math.abs(nse.dayOpen - nse.previousClose) >= 0.05;
+  const nseLtpMoved =
+    nse != null &&
+    nse.previousClose > 0 &&
+    Math.abs(nse.price - nse.previousClose) >= 0.05;
+  const nseConfirmedToday =
+    nse != null && !bse && (sessionIsToday || nseOpenMoved || nseLtpMoved);
+
+  // Venue "today" from exchange stamp (BSE dttm) or NSE confirmation — never
+  // from Yahoo alone, so a stale BSE I_open cannot win early open.
+  const venueIsToday = bse
+    ? hasTodaySessionPrint(bse.marketTime)
+    : nse
+      ? nseConfirmedToday
+      : hasTodaySessionPrint(live?.marketTime);
 
   // Day % / Open line = venue session open while today; else last session OHLC open.
   const sessionOpen =
@@ -216,8 +237,21 @@ export async function GET(req: Request) {
     basis = "day_open";
   }
 
-  const marketTime = venue?.marketTime ?? live?.marketTime ?? lastBar.time;
-  const sessionPrinted = hasTodaySessionPrint(marketTime);
+  const marketTimeRaw = venue?.marketTime ?? live?.marketTime ?? lastBar.time;
+  let marketTime = marketTimeRaw;
+  let sessionPrinted = hasTodaySessionPrint(marketTimeRaw);
+
+  if (timeframe.id === "1D" && nse && !bse) {
+    sessionPrinted = nseConfirmedToday;
+    marketTime = sessionPrinted
+      ? cashQuoteMarketTime(getCashMarketStatus())
+      : lastCashSessionCloseUnix();
+  } else if (timeframe.id === "1D" && bse) {
+    sessionPrinted = hasTodaySessionPrint(bse.marketTime);
+    marketTime = sessionPrinted
+      ? (bse.marketTime ?? cashQuoteMarketTime(getCashMarketStatus()))
+      : (bse.marketTime ?? lastCashSessionCloseUnix());
+  }
 
   return jsonDynamic({
     indexId: index.id,
@@ -227,7 +261,7 @@ export async function GET(req: Request) {
     hasMore,
     earliestTime: earliest,
     currency: ohlc.currency,
-    exchange: ohlc.exchange,
+    exchange: cashExchangeLabel(index.id) ?? ohlc.exchange,
     last: {
       price,
       change,

@@ -6,7 +6,7 @@
 
 import { istDateString } from "@/lib/chart-ist";
 import type { MarketStatus } from "@/lib/market-hours";
-import { getNseMarketStatus } from "@/lib/market-hours";
+import { getCashMarketStatus } from "@/lib/market-hours";
 import type { OhlcBar } from "@/lib/yahoo-ohlc";
 
 export type SessionSparkSelection = {
@@ -54,7 +54,7 @@ export function selectTapeSessionBars(
       : typeof opts.now === "number"
         ? new Date(opts.now * 1000)
         : opts.now;
-  const status = opts?.status ?? getNseMarketStatus(now);
+  const status = opts?.status ?? getCashMarketStatus(now);
   const today = istDateString(Math.floor(now.getTime() / 1000));
   const byDay = barsByIstDay(bars);
   const days = [...byDay.keys()].sort();

@@ -1,11 +1,14 @@
 /**
  * NSE India live indices — LTP + session open from NSE (day % applied upstream).
  * Warm a cookie session, then pull /api/allIndices.
+ *
+ * NSE omits print timestamps. Callers should combine with Yahoo "today bars"
+ * (see markets finalizeQuote) to decide sessionPrinted / awaiting-print.
  */
 
 import {
   cashQuoteMarketTime,
-  getNseMarketStatus,
+  getCashMarketStatus,
 } from "@/lib/market-hours";
 import { fetchWithTimeout, UPSTREAM_TIMEOUT_MS } from "@/lib/fetch-timeout";
 
@@ -41,6 +44,7 @@ type Cache = { at: number; byId: Map<string, NseIndexQuote> };
 let cache: Cache | null = null;
 /** Short TTL — client polls ~15s during open; share across markets+chart. */
 const CACHE_MS = 8_000;
+let inflight: Promise<Map<string, NseIndexQuote>> | null = null;
 
 function num(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -128,9 +132,12 @@ function parseAllIndices(data: unknown): Map<string, NseIndexQuote> {
     if (name) byName.set(name, row);
   }
 
-  // NSE omits print timestamps. During the live session use "now"; otherwise
-  // stamp the last cash close (15:30 IST) — never the pre-open fetch clock.
-  const marketTime = cashQuoteMarketTime(getNseMarketStatus());
+  // NSE omits print timestamps. Do not stamp "now" here — that falsely marks
+  // holiday/early-open quotes as sessionPrinted. Callers confirm today via
+  // Yahoo bars / open-vs-prevClose, then apply cashQuoteMarketTime.
+  const status = getCashMarketStatus();
+  const marketTime =
+    status === "open" ? undefined : cashQuoteMarketTime(status);
 
   for (const [id, nseName] of Object.entries(NSE_INDEX_BY_ID)) {
     const row = byName.get(nseName);
@@ -141,6 +148,7 @@ function parseAllIndices(data: unknown): Map<string, NseIndexQuote> {
     if (price == null || dayOpen == null || dayOpen === 0) continue;
 
     // Day % vs today's open (matches sparklines / 1D Open line).
+    // NSE percentChange is vs previous close — do not use it here.
     const change = price - dayOpen;
     const changePercent = (change / dayOpen) * 100;
 
@@ -156,22 +164,30 @@ function parseAllIndices(data: unknown): Map<string, NseIndexQuote> {
   return byId;
 }
 
-/**
- * Fresh map of workstation index id → NSE live quote (day % vs today's open).
- * Short TTL is always honored so /api/markets and /api/chart share one print.
- */
-export async function fetchNseIndexQuotes(opts?: {
-  fresh?: boolean;
-}): Promise<Map<string, NseIndexQuote>> {
-  void opts;
-  if (cache && Date.now() - cache.at < CACHE_MS) {
-    return cache.byId;
-  }
+async function loadNseQuotes(): Promise<Map<string, NseIndexQuote>> {
   const raw = await fetchNseAllIndicesRaw();
   if (!raw) return cache?.byId ?? new Map();
   const byId = parseAllIndices(raw);
   if (byId.size > 0) {
     cache = { at: Date.now(), byId };
   }
-  return byId;
+  return byId.size > 0 ? byId : (cache?.byId ?? new Map());
+}
+
+/**
+ * Fresh map of workstation index id → NSE live quote (day % vs today's open).
+ * Short TTL + single-flight so /api/markets and /api/chart share one print.
+ */
+export async function fetchNseIndexQuotes(opts?: {
+  fresh?: boolean;
+}): Promise<Map<string, NseIndexQuote>> {
+  const fresh = opts?.fresh === true;
+  if (!fresh && cache && Date.now() - cache.at < CACHE_MS) {
+    return cache.byId;
+  }
+  if (inflight) return inflight;
+  inflight = loadNseQuotes().finally(() => {
+    inflight = null;
+  });
+  return inflight;
 }

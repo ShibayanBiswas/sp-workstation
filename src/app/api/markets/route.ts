@@ -1,7 +1,9 @@
 import { getSession } from "@/lib/auth";
 import {
-  getNseMarketStatus,
+  getCashMarketStatus,
   hasTodaySessionPrint,
+  lastCashSessionCloseUnix,
+  cashQuoteMarketTime,
   type MarketStatus,
 } from "@/lib/market-hours";
 import { INDIAN_MARKET_INDICES, sortByDisplayOrder } from "@/data/indian-markets";
@@ -137,7 +139,20 @@ function finalizeQuote(args: {
     status,
   } = args;
 
-  const venueIsToday = hasTodaySessionPrint(marketTime);
+  // NSE has no stamp — treat as venue-today once Yahoo or open/LTP confirm.
+  const openMoved =
+    venueOpen != null &&
+    previousClose > 0 &&
+    Math.abs(venueOpen - previousClose) >= 0.05;
+  const ltpMoved =
+    previousClose > 0 && Math.abs(livePrice - previousClose) >= 0.05;
+  const nseConfirmedToday =
+    source === "nse" &&
+    status === "open" &&
+    (spark.sessionIsToday || openMoved || ltpMoved);
+
+  const venueIsToday =
+    hasTodaySessionPrint(marketTime) || nseConfirmedToday;
   const showPriorSession =
     status !== "open" || (!spark.sessionIsToday && !venueIsToday);
 
@@ -176,14 +191,30 @@ function finalizeQuote(args: {
     sparkline = quickSpark(open, price);
   }
 
+  // NSE has no print stamp — confirm today's session via Yahoo bars or a
+  // venue open that has diverged from previous close (live open printed).
+  // Sensex (BSE) keeps its real dttm via hasTodaySessionPrint.
+  let resolvedMarketTime = marketTime;
+  let sessionPrinted = hasTodaySessionPrint(marketTime);
+  if (source === "nse" && status === "open") {
+    sessionPrinted = nseConfirmedToday;
+    resolvedMarketTime = nseConfirmedToday
+      ? cashQuoteMarketTime(status)
+      : lastCashSessionCloseUnix();
+  } else if (source === "bse" && status === "open" && !sessionPrinted) {
+    // BSE stamp still on prior day — awaiting today's Sensex print.
+    resolvedMarketTime = marketTime ?? lastCashSessionCloseUnix();
+  } else if (source === "nse" && status !== "open") {
+    resolvedMarketTime = marketTime ?? lastCashSessionCloseUnix();
+    sessionPrinted = false;
+  }
+
   const priced = normalizeLiveQuote({
     price,
     dayOpen: open,
     previousClose,
-    marketTime,
+    marketTime: resolvedMarketTime,
   });
-
-  const sessionPrinted = hasTodaySessionPrint(marketTime);
 
   return {
     id: index.id,
@@ -232,7 +263,7 @@ export async function GET() {
     return jsonDynamic({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const status = getNseMarketStatus();
+  const status = getCashMarketStatus();
 
   const [nseMap, bseSensex] = await Promise.all([
     fetchNseIndexQuotes({ fresh: true }),

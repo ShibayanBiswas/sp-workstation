@@ -67,7 +67,7 @@ type ThemeMode = "light" | "dark";
 
 type SyncedQuote = {
   price: number | null;
-  /** Day change vs previous close from /api/markets (Snapshot / tape). */
+  /** Day change vs session open from /api/markets (Snapshot / tape). */
   change?: number | null;
   changePercent?: number | null;
   dayOpen?: number | null;
@@ -421,6 +421,18 @@ export function CandlestickChart({
       setTimeout(() => setPriceFlash(false), 700);
     }
     prevPriceRef.current = newPrice;
+
+    // 1D headline must share the tape's session open (NSE/BSE venue),
+    // not a lagged Yahoo first-bar open from the chart poll.
+    if (
+      timeframe === "1D" &&
+      syncedQuote.dayOpen != null &&
+      Number.isFinite(syncedQuote.dayOpen) &&
+      syncedQuote.dayOpen > 0
+    ) {
+      setPeriodReference(syncedQuote.dayOpen);
+      setReturnBasis("day_open");
+    }
 
     // Keep the forming candle glued to tape LTP between chart polls.
     if (timeframe !== "1D") return;

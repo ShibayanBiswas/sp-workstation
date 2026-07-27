@@ -35,7 +35,8 @@ export function sessionBarsAreToday(
 /**
  * Pick the open used for day % and spark anchors.
  *
- * - Live session (venue print or OHLC is today) → prefer exchange/Yahoo venue open
+ * - Venue has today's print (BSE dttm / confirmed NSE) → prefer exchange open
+ * - Yahoo has today bars but venue stamp lags → prefer OHLC open (avoid stale I_open)
  * - Holiday / weekend / empty morning (neither is today) → prefer OHLC first print
  *   of the last completed session (matches the plotted day)
  * - If venue open has collapsed to LTP (feed quirk) but OHLC has a real session
@@ -79,13 +80,19 @@ export function resolveSessionOpen(opts: {
     return ohlc;
   }
 
-  const isToday =
-    opts.venueIsToday === true || opts.sessionIsToday === true;
+  // Exchange confirmed today → venue open (BSE I_open / NSE open).
+  if (opts.venueIsToday === true) {
+    return venue ?? ohlc;
+  }
 
-  if (!isToday) {
+  // Yahoo already on today but venue stamp still prior-day → OHLC open wins
+  // (prevents Friday Sensex I_open while ^BSESN has Monday bars).
+  if (opts.sessionIsToday === true) {
     return ohlc ?? venue;
   }
-  return venue ?? ohlc;
+
+  // Holiday / weekend / empty morning → last completed session OHLC open.
+  return ohlc ?? venue;
 }
 
 /** Open of the trading session represented by these OHLC bars. */
