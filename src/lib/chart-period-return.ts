@@ -27,27 +27,32 @@ const LOOKBACK_SEC: Record<
   "5Y": 5 * 365 * 24 * 3600,
 };
 
-/** Zoom Off chart window starts this many prior periods before the active one. */
-export const ZOOM_OFF_VIEW_OFFSET = 1;
-
-/** 1M / 3M keep a wider Zoom Off window; all other TFs use offset 1. */
+/**
+ * Zoom Off starts at the active period open (new day / week / month / lookback),
+ * matching the original daily session-from-open behaviour.
+ *
+ * 1M and 3M keep two like-period windows (active + one prior) for context.
+ */
 export function zoomOffViewOffset(timeframeId: ChartTimeframeId): number {
   switch (timeframeId) {
     case "1M":
     case "3M":
-      return 2;
+      return 1; // two windows: prior + active
     case "1D":
     case "1W":
     case "6M":
     case "1Y":
     case "5Y":
-      return ZOOM_OFF_VIEW_OFFSET;
+      return 0; // load from the new / active period start only
     default: {
       const _exhaustive: never = timeframeId;
       return _exhaustive;
     }
   }
 }
+
+/** @deprecated Prefer zoomOffViewOffset — most TFs are now period-start (0). */
+export const ZOOM_OFF_VIEW_OFFSET = 0;
 
 const BASIS_LABEL: Record<ReturnBasis, string> = {
   day_open: "vs session open",
@@ -195,7 +200,7 @@ export function timeframePeriodBars(
   }
 }
 
-/** Zoom Off chart clip — active period plus prior like-period window(s). */
+/** Zoom Off chart clip — active period from its open (1M/3M: two windows). */
 export function timeframeViewBars(
   bars: OhlcBar[],
   timeframeId: ChartTimeframeId,
