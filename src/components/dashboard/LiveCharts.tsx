@@ -212,7 +212,7 @@ export function LiveCharts() {
           </span>
         ) : (
           <span className="text-[10px] text-[var(--fg-subtle)]">
-            Last 5 periods · Zoom On for full history
+            Last 3 periods · Zoom On for full history
           </span>
         )}
       </div>

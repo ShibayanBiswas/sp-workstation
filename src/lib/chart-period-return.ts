@@ -28,7 +28,7 @@ const LOOKBACK_SEC: Record<
 };
 
 /** Zoom Off chart window starts this many prior periods before the active one. */
-export const ZOOM_OFF_VIEW_OFFSET = 4;
+export const ZOOM_OFF_VIEW_OFFSET = 2;
 
 const BASIS_LABEL: Record<ReturnBasis, string> = {
   day_open: "vs session open",
@@ -126,8 +126,8 @@ function currentMonthAnchorUnix(bars: OhlcBar[], nowUnix: number): number {
  * - 1M → IST calendar month from the 1st (current month if any, else last)
  * - 3M / 6M / 1Y / 5Y → rolling lookback from the latest print
  *
- * Pass `viewOffset` (default 0) to start the chart earlier — e.g. 4 for the
- * 4th-last week / month / lookback block while keeping period returns on the
+ * Pass `viewOffset` (default 0) to start the chart earlier — e.g. 2 for the
+ * 2nd-last week / month / lookback block while keeping period returns on the
  * active window via `computeTimeframeReturn`.
  *
  * Zoom On keeps the full fetched series (do not call this).
@@ -176,7 +176,7 @@ export function timeframePeriodBars(
   }
 }
 
-/** Zoom Off chart clip — active period plus the prior four like-period windows. */
+/** Zoom Off chart clip — active period plus the prior two like-period windows. */
 export function timeframeViewBars(
   bars: OhlcBar[],
   timeframeId: ChartTimeframeId,
