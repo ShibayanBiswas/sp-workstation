@@ -167,20 +167,84 @@ function chartInteractionOptions(zoomEnabled: boolean) {
 function fitChartFullWidth(
   chart: IChartApi,
   container: HTMLDivElement,
-  barCount: number
+  barCount: number,
+  opts?: { fixEdges?: boolean }
 ) {
   const scaleWidth = 72;
   const width = Math.max(container.clientWidth - scaleWidth, 200);
   const spacing = Math.max(4, Math.min(14, width / Math.max(barCount, 1)));
+  const fixEdges = opts?.fixEdges !== false;
   chart.applyOptions({
     timeScale: {
       rightOffset: 0,
-      fixLeftEdge: true,
-      fixRightEdge: true,
+      fixLeftEdge: fixEdges,
+      fixRightEdge: fixEdges,
       barSpacing: spacing,
     },
   });
   chart.timeScale().fitContent();
+}
+
+function easeOutCubic(t: number) {
+  return 1 - (1 - t) ** 3;
+}
+
+/** Smoothly morph the visible logical window (Zoom On/Off transitions). */
+function animateLogicalRange(
+  chart: IChartApi,
+  targetFrom: number,
+  targetTo: number,
+  opts?: { durationMs?: number; isCancelled?: () => boolean }
+): Promise<void> {
+  const durationMs = opts?.durationMs ?? 520;
+  const current = chart.timeScale().getVisibleLogicalRange();
+  if (!current || durationMs <= 0) {
+    chart.timeScale().setVisibleLogicalRange({
+      from: targetFrom,
+      to: targetTo,
+    });
+    return Promise.resolve();
+  }
+
+  const startFrom = current.from;
+  const startTo = current.to;
+  if (
+    Math.abs(startFrom - targetFrom) < 0.2 &&
+    Math.abs(startTo - targetTo) < 0.2
+  ) {
+    chart.timeScale().setVisibleLogicalRange({
+      from: targetFrom,
+      to: targetTo,
+    });
+    return Promise.resolve();
+  }
+
+  // Unlock edges so the animated window can move freely.
+  chart.applyOptions({
+    timeScale: { fixLeftEdge: false, fixRightEdge: false },
+  });
+
+  const t0 = performance.now();
+  return new Promise((resolve) => {
+    const step = (now: number) => {
+      if (opts?.isCancelled?.()) {
+        resolve();
+        return;
+      }
+      const t = Math.min(1, (now - t0) / durationMs);
+      const e = easeOutCubic(t);
+      chart.timeScale().setVisibleLogicalRange({
+        from: startFrom + (targetFrom - startFrom) * e,
+        to: startTo + (targetTo - startTo) * e,
+      });
+      if (t < 1) {
+        requestAnimationFrame(step);
+      } else {
+        resolve();
+      }
+    };
+    requestAnimationFrame(step);
+  });
 }
 
 function mergeBars(
@@ -712,9 +776,15 @@ export function CandlestickChart({
     };
 
     /** When Zoom turns on, keep pulling older chunks until Yahoo has no more. */
-    const loadAllHistory = async () => {
+    const loadAllHistory = async (isCancelled?: () => boolean) => {
       let guard = 0;
-      while (alive && zoomRef.current && hasMoreRef.current && guard < 40) {
+      while (
+        alive &&
+        zoomRef.current &&
+        hasMoreRef.current &&
+        guard < 40 &&
+        !isCancelled?.()
+      ) {
         const before = barsRef.current.length;
         const earliest = barsRef.current[0]?.time;
         if (!earliest) break;
@@ -722,36 +792,126 @@ export function CandlestickChart({
         if (barsRef.current.length <= before) break;
         guard += 1;
       }
-      if (alive && zoomRef.current && barsRef.current.length > 0) {
-        fitChartFullWidth(chart, container, barCountRef.current);
+      if (
+        !alive ||
+        !zoomRef.current ||
+        barsRef.current.length === 0 ||
+        isCancelled?.()
+      ) {
+        return;
+      }
+      const count = barCountRef.current;
+      const range = chart.timeScale().getVisibleLogicalRange();
+      // Expand gently to full history instead of a hard fit jump.
+      if (range && range.from > 1.5) {
+        await animateLogicalRange(chart, 0, count + 0.35, {
+          durationMs: 580,
+          isCancelled,
+        });
+        if (isCancelled?.()) return;
+        chart.applyOptions(chartInteractionOptions(true));
+      } else {
+        fitChartFullWidth(chart, container, count, { fixEdges: false });
+        chart.applyOptions(chartInteractionOptions(true));
       }
     };
 
     /**
-     * Seamless Zoom On/Off: never tear down the chart — only interaction,
-     * visible window, and optional background history expansion change.
+     * Seamless Zoom On/Off: animate the viewport, keep candles warm,
+     * and restore cached history when toggling back On.
      */
+    let zoomAnimToken = 0;
+    const historyCache: { bars: OhlcBar[] | null } = { bars: null };
+
     const applyZoomMode = (enabled: boolean) => {
+      const token = ++zoomAnimToken;
+      const isCancelled = () => !alive || token !== zoomAnimToken;
+
       chart.applyOptions(chartInteractionOptions(enabled));
       const count = barCountRef.current;
       if (count <= 0) return;
 
-      // Leaving Zoom On: clip back to this timeframe's period from its start.
       if (!enabled) {
-        const period = timeframePeriodBars(barsRef.current, tf.id);
-        if (period.length > 0) {
-          applyBars(period);
-          return;
+        // Remember extended history so Zoom On can restore without a blank gap.
+        if (barsRef.current.length > 0) {
+          historyCache.bars = barsRef.current.slice();
         }
+        const period = timeframePeriodBars(barsRef.current, tf.id);
+        if (period.length === 0) return;
+
+        const startTime = period[0]!.time;
+        let fromIdx = barsRef.current.findIndex((b) => b.time >= startTime);
+        if (fromIdx < 0) fromIdx = 0;
+        const toIdx = Math.max(fromIdx + 1, barsRef.current.length);
+
+        void (async () => {
+          await animateLogicalRange(chart, fromIdx, toIdx + 0.25, {
+            durationMs: 520,
+            isCancelled,
+          });
+          if (isCancelled()) return;
+
+          // Remap period bars to 0…N and settle the window without a hard jump.
+          applyBars(period);
+          chart.timeScale().setVisibleLogicalRange({
+            from: 0,
+            to: Math.max(period.length - 1, 1) + 0.25,
+          });
+          fitChartFullWidth(chart, container, period.length, {
+            fixEdges: true,
+          });
+          chart.applyOptions(chartInteractionOptions(false));
+        })();
+        return;
       }
 
-      fitChartFullWidth(chart, container, count);
-      if (enabled) {
-        // Period-clipped Zoom Off responses still have older history to pull.
-        hasMoreRef.current = true;
-        historyExhaustedRef.current = false;
-        void loadAllHistory();
-      }
+      // Zoom On — unlock first, restore cache under the current window, then expand.
+      hasMoreRef.current = true;
+      historyExhaustedRef.current = false;
+
+      void (async () => {
+        const cached = historyCache.bars;
+        const periodLen = barsRef.current.length;
+
+        if (cached && cached.length > periodLen + 2) {
+          const startIdx = Math.max(0, cached.length - periodLen);
+          const { candles, volumes } = buildChartSeries(
+            cached,
+            tf.intraday,
+            colors.volumeUp,
+            colors.volumeDown
+          );
+          candleSeries.setData(candles);
+          volumeSeries.setData(volumes);
+          barsRef.current = cached;
+          barCountRef.current = candles.length;
+          updateOverlayLines(cached);
+
+          // Keep the same visual window (former period) while history sits to the left.
+          chart.timeScale().setVisibleLogicalRange({
+            from: startIdx,
+            to: cached.length + 0.25,
+          });
+
+          await animateLogicalRange(chart, 0, cached.length + 0.35, {
+            durationMs: 640,
+            isCancelled,
+          });
+          if (isCancelled()) return;
+        } else {
+          // No cache yet — hold the period view while older bars stream in.
+          chart.applyOptions({
+            timeScale: {
+              fixLeftEdge: false,
+              fixRightEdge: false,
+              rightOffset: 6,
+            },
+          });
+        }
+
+        if (isCancelled()) return;
+        await loadAllHistory(isCancelled);
+      })();
     };
     onZoomModeChangeRef.current = applyZoomMode;
     // Sync current prop in case Zoom toggled before chart finished mounting.

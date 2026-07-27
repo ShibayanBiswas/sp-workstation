@@ -176,13 +176,16 @@ export function LiveCharts() {
                 ? "Disable pan and zoom"
                 : "Enable pan, scroll, and zoom"
             }
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all duration-300 ${
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all duration-300 ease-out active:scale-[0.97] ${
               zoomEnabled
-                ? "border-[color-mix(in_srgb,var(--gold)_45%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_14%,transparent)] text-[var(--gold-deep)] dark:text-[var(--gold)]"
-                : "border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--bg-muted)]"
+                ? "border-[color-mix(in_srgb,var(--gold)_45%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_14%,transparent)] text-[var(--gold-deep)] shadow-[0_6px_16px_color-mix(in_srgb,var(--gold)_14%,transparent)] dark:text-[var(--gold)]"
+                : "border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--bg-muted)] hover:border-[color-mix(in_srgb,var(--gold)_28%,var(--border))]"
             }`}
           >
-            <Move size={14} />
+            <Move
+              size={14}
+              className={`transition-transform duration-300 ${zoomEnabled ? "rotate-45" : ""}`}
+            />
             Zoom {zoomEnabled ? "On" : "Off"}
           </button>
         </div>
