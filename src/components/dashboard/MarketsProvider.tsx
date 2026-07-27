@@ -426,11 +426,9 @@ export function IndianMarketCards() {
                     >
                       {formatMarketChange(q.change, q.id)} (
                       {formatMarketChangePercent(q.changePercent)})
-                      {awaitingPrint ? (
-                        <span className="ml-1 text-[10px] font-medium text-[var(--fg-subtle)]">
-                          last session
-                        </span>
-                      ) : null}
+                      <span className="ml-1 text-[10px] font-medium text-[var(--fg-subtle)]">
+                        vs session open
+                      </span>
                     </p>
                     <div className="market-card-spark mt-auto w-full min-w-0 pt-2.5 sm:pt-3">
                       <Sparkline
