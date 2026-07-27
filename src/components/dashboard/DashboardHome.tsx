@@ -16,7 +16,7 @@ type Props = {
 export function DashboardHome({ name }: Props) {
   return (
     <MarketsProvider>
-      <div className="terminal-shell terminal-shell-alive app-alive min-h-full">
+      <div className="terminal-shell terminal-shell-alive app-alive home-hide-scrollbars min-h-full">
         <div className="terminal-canvas space-y-4 px-3 pt-3 pb-0 sm:space-y-5 sm:px-5 sm:pt-5 md:space-y-6 md:px-8 md:pt-8">
           <div className="animate-rise space-y-5">
             <TerminalHeader />

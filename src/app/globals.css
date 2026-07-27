@@ -1498,6 +1498,21 @@ a {
   border-radius: 999px;
 }
 
+/* Home page: keep scroll, hide every scrollbar chrome. */
+.home-hide-scrollbars,
+.home-hide-scrollbars * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.home-hide-scrollbars::-webkit-scrollbar,
+.home-hide-scrollbars *::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent;
+}
+
 .glass-panel {
   background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
   backdrop-filter: blur(12px);

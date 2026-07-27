@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { SessionGuard } from "@/components/auth/SessionGuard";
@@ -39,6 +40,8 @@ type Props = {
 const COLLAPSE_KEY = "sp-sidebar-collapsed";
 
 export function DashboardShell({ userName, userEmail, children }: Props) {
+  const pathname = usePathname();
+  const hideHomeScrollbars = pathname === "/dashboard";
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [ready, setReady] = useState(false);
@@ -133,7 +136,11 @@ export function DashboardShell({ userName, userEmail, children }: Props) {
           />
         ) : null}
 
-        <main className="dashboard-main">{children}</main>
+        <main
+          className={`dashboard-main ${hideHomeScrollbars ? "home-hide-scrollbars" : ""}`}
+        >
+          {children}
+        </main>
       </div>
     </ShellContext.Provider>
   );

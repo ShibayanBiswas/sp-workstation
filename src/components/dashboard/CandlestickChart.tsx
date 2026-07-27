@@ -35,7 +35,7 @@ import {
   findPeriodExtremes,
   formatVolumeShort,
 } from "@/lib/chart-indicators";
-import { buildChartSeries, barToChartTime, resolveBarVolume } from "@/lib/chart-series";
+import { buildChartSeries, barToChartTime, resolveBarVolume, dedupeBarsForChart } from "@/lib/chart-series";
 import {
   applyLiveCloseToBars,
   snapFormingBarTip,
@@ -1024,8 +1024,9 @@ export function CandlestickChart({
         ? chart.timeScale().getVisibleLogicalRange()
         : null;
 
+      const uniqueBars = dedupeBarsForChart(bars, tf.intraday);
       const { candles, volumes } = buildChartSeries(
-        bars,
+        uniqueBars,
         tf.intraday,
         colors.volumeUp,
         colors.volumeDown
@@ -1033,10 +1034,10 @@ export function CandlestickChart({
 
       candleSeries.setData(candles);
       volumeSeries.setData(volumes);
-      barsRef.current = bars;
+      barsRef.current = uniqueBars;
       barCountRef.current = candles.length;
-      updateOverlayLines(bars);
-      setBarStats(extremesFromBars(bars));
+      updateOverlayLines(uniqueBars);
+      setBarStats(extremesFromBars(uniqueBars));
 
       if (candles.length === 0) return;
 

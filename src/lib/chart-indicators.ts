@@ -4,7 +4,7 @@ import type {
   Time,
   WhitespaceData,
 } from "lightweight-charts";
-import { barToChartTime } from "@/lib/chart-series";
+import { barToChartTime, dedupeBarsForChart } from "@/lib/chart-series";
 import { istDateString } from "@/lib/chart-ist";
 import type { OhlcBar } from "@/lib/yahoo-ohlc";
 
@@ -16,13 +16,14 @@ export function computeSmaSeries(
   period: number,
   intraday: boolean
 ): ChartLinePoint[] {
-  if (period < 1 || bars.length === 0) return [];
+  const unique = dedupeBarsForChart(bars, intraday);
+  if (period < 1 || unique.length === 0) return [];
   const out: ChartLinePoint[] = [];
   let sum = 0;
-  for (let i = 0; i < bars.length; i++) {
-    sum += bars[i].close;
-    if (i >= period) sum -= bars[i - period].close;
-    const time = barToChartTime(bars[i], intraday);
+  for (let i = 0; i < unique.length; i++) {
+    sum += unique[i].close;
+    if (i >= period) sum -= unique[i - period].close;
+    const time = barToChartTime(unique[i], intraday);
     if (i < period - 1) {
       out.push({ time });
     } else {
@@ -46,7 +47,8 @@ export function computeBollingerBands(
   upper: ChartLinePoint[];
   lower: ChartLinePoint[];
 } {
-  if (period < 1 || bars.length === 0) {
+  const unique = dedupeBarsForChart(bars, intraday);
+  if (period < 1 || unique.length === 0) {
     return { middle: [], upper: [], lower: [] };
   }
 
@@ -55,10 +57,10 @@ export function computeBollingerBands(
   const lower: ChartLinePoint[] = [];
   let sum = 0;
 
-  for (let i = 0; i < bars.length; i++) {
-    sum += bars[i].close;
-    if (i >= period) sum -= bars[i - period].close;
-    const time = barToChartTime(bars[i], intraday);
+  for (let i = 0; i < unique.length; i++) {
+    sum += unique[i].close;
+    if (i >= period) sum -= unique[i - period].close;
+    const time = barToChartTime(unique[i], intraday);
 
     if (i < period - 1) {
       middle.push({ time });
@@ -70,7 +72,7 @@ export function computeBollingerBands(
     const mean = sum / period;
     let sq = 0;
     for (let j = i - period + 1; j <= i; j++) {
-      const d = bars[j].close - mean;
+      const d = unique[j].close - mean;
       sq += d * d;
     }
     const sigma = Math.sqrt(sq / period);
