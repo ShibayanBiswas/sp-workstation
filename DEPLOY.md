@@ -261,9 +261,12 @@ Replace:
 
 1. Confirm live tape and Nifty chart load
 2. Switch **1D / 1W / 1M / …** — the chart header **% change** should update
-   for that period (session / week / month / lookback), while tape chips keep
-   day change vs previous close
-3. Wait ~60 seconds — **Live** pill should refresh prices
+   for that period (session / week / month / lookback). Tape chips keep
+   **day change vs session open**; the chart quote panel also shows
+   **vs previous close** (should match NSE / Zerodha after the close)
+3. While markets are open, wait ~15 seconds — sync pill should refresh prices
+4. Use **Expand** on the chart for a larger centered view; Esc / Exit closes it
+5. Confirm desktop layout is roughly **70% chart / 30% quote panel**
 
 ---
 

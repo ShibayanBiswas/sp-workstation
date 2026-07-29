@@ -85,18 +85,28 @@ Return to login and sign in again to regenerate the code. Codes expire after
 Expected behaviour for non-roster emails and incorrect passwords. Verify the
 email exists in `src/data/team.ts` and the password matches the seeded value.
 
-### Primary SP Dashboard is blank
-
-Use “Open in new tab.” The external dashboard may reject iframe embedding
-through CSP or `X-Frame-Options`. This cannot be overridden by the workstation.
-
 ### Quotes or chart data missing
 
-Yahoo Finance is an unofficial best-effort integration. Provider rate limits,
-schema changes, or outages may cause partial data. The user must be logged in
-for `/api/markets` and `/api/chart`. The dashboard auto-refreshes every **60
-seconds**; look for the green **Live · synced** pill in the terminal header.
+Live LTP / open / previous close come from NSE or BSE when available; candles
+come from Yahoo Finance (best-effort). Provider rate limits, schema changes,
+or outages may cause partial data. The user must be logged in for
+`/api/markets` and `/api/chart`. While markets are open the dashboard
+auto-refreshes about every **15 seconds**; when closed it slows to about
+**15 minutes**. Look for the green sync pill in the terminal header.
 This data is informational and must not be used for trade execution.
+
+### Post-trade numbers look wrong vs Zerodha
+
+1. Confirm **vs previous close** on the chart quote panel — that is the
+   Zerodha day change (close − previous close).
+2. Tape / Snapshot primary % is **vs session open** by design.
+3. After 15:30 IST, open and LTP should match NSE/BSE venue prints. If they
+   do not, hard-refresh and check `/api/health` + `/api/markets`.
+
+### Desk module iframe is blank
+
+Use “Open in new tab.” The external app may reject iframe embedding through
+CSP or `X-Frame-Options`. This cannot be overridden by the workstation.
 
 ## Production run
 

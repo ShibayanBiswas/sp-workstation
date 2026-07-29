@@ -2,7 +2,8 @@
 
 Internal Anand Rathi Wealth Structured Products team workstation. It provides
 local OTP authentication, a live Indian markets home terminal, dark mode, and
-mapped access to the Primary SP Dashboard.
+iframe access to desk modules (Primary SP, Gift City AIF, Options Lab, Option
+Chain Archive).
 
 ## Main capabilities
 
@@ -10,9 +11,12 @@ mapped access to the Primary SP Dashboard.
 - Distinct login errors: **Invalid email ID** (non-roster) and **Wrong password** (valid email)
 - MongoDB-backed users and OTP records
 - Live tape, snapshot cards, and candlestick charts for 13 Indian indices
-- **Unified live sync** — prices refresh every 60 seconds across tape, cards, and chart
-- **Timeframe period returns** on the chart header (1D session / 1W week / 1M month / …)
-- Primary SP Dashboard module and submodule navigation
+- **Unified live sync** — prices refresh every **15 seconds** while the cash session is open (slower when closed)
+- Tape / Snapshot day % is **vs session open**; chart quote panel also shows **vs previous close** (Zerodha-aligned)
+- Post-trade LTP / open / previous close prefer **NSE / BSE** venue prints over Yahoo
+- **~70% / 30%** chart layout plus an **Expand** overlay for a larger centered chart
+- Timeframe period returns on the chart header (1D session / 1W week / 1M month / …)
+- Module navigation: Primary SP Dashboard, Gift City AIF, Options Lab, Option Chain Archive
 - Responsive light and dark themes with polished motion
 
 ## Ubuntu quick start with PowerShell
@@ -58,7 +62,8 @@ pwsh ./run.ps1 lint
 pwsh ./run.ps1 build
 pwsh ./run.ps1 start
 pwsh ./run.ps1 seed
-node scripts/smoke-test.mjs   # optional API smoke test (set SMOKE_PASSWORD)
+node scripts/smoke-test.mjs            # optional API smoke test (set SMOKE_PASSWORD)
+node scripts/verify-markets-docs.mjs   # NSE cross-check for LTP/open/prev close
 ```
 
 ## Configuration

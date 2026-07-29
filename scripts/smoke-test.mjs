@@ -166,8 +166,8 @@ async function main() {
   pass(`Markets: ${markets1.json.quotes.length} quotes, Nifty ${nifty.price}`);
   pass(`Markets Cache-Control: ${markets1.cacheControl}`);
 
-  // 7b. Dynamic freshness — consecutive polls must mint distinct asOf stamps
-  await new Promise((r) => setTimeout(r, 400));
+  // 7b. Dynamic freshness — wait past server markets cache (10s) then poll again
+  await new Promise((r) => setTimeout(r, 11_000));
   const marketsFresh = await request("/api/markets");
   assert(marketsFresh.status === 200, "Markets refresh poll failed");
   assert(

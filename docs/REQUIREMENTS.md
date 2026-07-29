@@ -61,9 +61,13 @@ Passwords: `scripts/seed-passwords.local.json` or `SEED_DEFAULT_PASSWORD_MAP`.
 | IST time axis | ✅ | `src/lib/chart-ist.ts` |
 | Index order | ✅ | Benchmarks → sectors → VIX |
 | No raw Yahoo tickers in UI | ✅ | Names only (e.g. "Nifty 50") |
-| 30s live refresh | ✅ | **60s** unified refresh (`LIVE_REFRESH_MS`) |
+| Live refresh | ✅ | **15s** while open (`LIVE_REFRESH_MS`); **15m** when closed |
 | Live sync indicator | ✅ | `LiveSyncIndicator` in header, tape, cards, chart |
 | Zoom toggle on chart | ✅ | Off by default; optional pan/zoom |
+| Expand chart overlay | ✅ | Centered fullscreen chart; Esc / Exit / backdrop |
+| ~70/30 chart layout | ✅ | Chart pane dominant vs quote panel on desktop |
+| vs session open (tape) | ✅ | NSE/BSE open; post-trade prefers venue open |
+| vs previous close (chart) | ✅ | Matches NSE / Zerodha day change |
 | Login error popups | ✅ | Invalid email ID / Wrong password |
 
 ### Indices covered
@@ -77,6 +81,9 @@ FMCG, Metal, Pharma, Energy, Fin Service), India VIX.
 |---|---|---|
 | Left sidebar navigation | ✅ | `Sidebar.tsx` (fixed width, no collapse) |
 | Primary SP Dashboard | ✅ | `src/data/modules.ts` |
+| Gift City AIF | ✅ | iframe module |
+| Options Lab | ✅ | Learning & Development module |
+| Option Chain Archive | ✅ | Database Hub module |
 | Submodule routing | ✅ | `[[...path]]` catch-all + iframe |
 
 ## 7. Dark mode

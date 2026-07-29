@@ -104,22 +104,34 @@ Returns live index quotes in display order (benchmarks → sectors → VIX):
     {
       "id": "nifty",
       "name": "Nifty 50",
-      "price": 24158.75,
-      "change": -239.95,
-      "changePercent": -0.98,
-      "sparkline": [24000, 24100, 24158],
+      "price": 24250.2,
+      "change": 73.55,
+      "changePercent": 0.304,
+      "dayOpen": 24176.65,
+      "previousClose": 23985.35,
+      "sparkline": [0, 0.12, 0.3],
       "group": "benchmark",
-      "marketTime": 1720866600
+      "marketTime": 1785319200,
+      "sessionPrinted": true,
+      "source": "nse"
     }
   ],
-  "marketStatus": "open",
-  "asOf": "2026-07-13T06:40:00.000Z"
+  "marketStatus": "closed",
+  "asOf": "2026-07-29T12:00:00.000Z"
 }
 ```
 
-Quotes are normalized in `src/lib/market-quote.ts` (change and return computed
-from price vs previous close). The client polls every **60 seconds** via
-`MarketsProvider`. Yahoo Finance is best-effort; data may be delayed.
+`change` / `changePercent` are **vs session open** (`dayOpen`), not vs previous
+close. `previousClose` is included so the chart UI can show Zerodha-aligned
+**vs prev close**. LTP / open / previous close prefer **NSE** (cash indices) or
+**BSE** (Sensex); Yahoo is fallback only.
+
+After the cash close on a trading day, the tape freezes to today’s completed
+session (venue last + venue open), not the prior trading day.
+
+The client polls about every **15 seconds** while open / pre-open, and every
+**15 minutes** when closed (`LIVE_REFRESH_MS` / `CLOSED_REFRESH_MS` in
+`src/lib/live-refresh.ts` via `MarketsProvider`).
 
 ## Charts
 
@@ -134,22 +146,27 @@ Query parameters:
 - `before` — optional Unix timestamp for scroll-back history
 
 Response includes `bars`, `last` (price, change, changePercent, **reference**,
-time), and `asOf`.
+**basis**, dayOpen, previousClose, time), and `asOf`.
 
 **Period returns are timeframe-aware** (`src/lib/chart-period-return.ts`):
 
 | Timeframe | Change / % measured from |
 |-----------|--------------------------|
-| `1D` | **Previous close** (same as Snapshot / tape) |
+| `1D` | **Session open** (same basis as Snapshot / tape) |
 | `1W` | Week open (Monday IST) → last |
 | `1M` | Calendar month open (1st IST) → last |
 | `3M` / `6M` / `1Y` / `5Y` | Open of first bar ~lookback ago → last |
 
-On **1D**, chart header change/% matches Snapshot. Longer timeframes show
-period returns and label the basis (e.g. “vs week open”).
+On **1D**, chart headline change/% matches Snapshot (**vs session open**). The
+quote panel also shows **vs previous close** using `previousClose`. Longer
+timeframes show period returns and label the basis (e.g. “vs week open”).
 
-The chart client polls every **60 seconds** (`LIVE_REFRESH_MS` in
-`src/lib/live-refresh.ts`).
+Candles come from Yahoo Finance; the forming tip is glued to venue LTP so the
+post-trade close matches NSE/BSE. Official day high/low may differ slightly
+from Yahoo bar extremes.
+
+The chart client uses the same open-session **15s** / closed-session **15m**
+cadence (`LIVE_REFRESH_MS` in `src/lib/live-refresh.ts`).
 
 ## Todos
 
