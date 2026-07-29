@@ -1832,52 +1832,66 @@ export function CandlestickChart({
                 </div>
               ))}
             </div>
-            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 border-t border-[var(--border)] pt-1.5 text-[10px]">
+            <div className="mt-1.5 grid grid-cols-2 gap-1 border-t border-[var(--border)] pt-1.5">
               {barReadout?.changePct ? (
-                <span className="tv-num text-[var(--fg-muted)]">
-                  Δ{" "}
-                  <span
-                    className={
+                <div className="quote-metric rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
+                  <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
+                    Δ
+                  </p>
+                  <p
+                    className={`tv-num mt-0.5 text-[11px] font-semibold tabular-nums ${
                       barReadout.changePct.startsWith("-")
-                        ? "font-semibold text-red-600 dark:text-red-400"
-                        : "font-semibold text-emerald-600 dark:text-emerald-400"
-                    }
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-emerald-600 dark:text-emerald-400"
+                    }`}
                   >
                     {barReadout.changePct}
-                  </span>
-                </span>
+                  </p>
+                </div>
               ) : null}
               {barReadout?.volume ? (
-                <span className="tv-num text-[var(--fg-muted)]">
-                  Vol{" "}
-                  <span className="font-semibold text-[var(--fg)]">
+                <div className="quote-metric rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
+                  <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
+                    VOL
+                  </p>
+                  <p className="tv-num mt-0.5 text-[11px] font-semibold tabular-nums text-[var(--fg)]">
                     {barReadout.volume}
-                  </span>
-                </span>
+                  </p>
+                </div>
               ) : null}
               {barReadout?.vwap ? (
-                <span className="tv-num text-[var(--fg-muted)]">
-                  VWAP{" "}
-                  <span className="font-semibold text-[var(--gold-deep)] dark:text-[var(--gold)]">
+                <div className="quote-metric rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
+                  <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
+                    VWAP
+                  </p>
+                  <p className="tv-num mt-0.5 text-[11px] font-semibold tabular-nums text-[var(--gold-deep)] dark:text-[var(--gold)]">
                     {barReadout.vwap}
-                  </span>
-                </span>
+                  </p>
+                </div>
               ) : null}
               {barReadout?.sma ? (
-                <span className="tv-num text-[var(--fg-muted)]">
-                  SMA{" "}
-                  <span className="font-semibold text-sky-700 dark:text-sky-300">
+                <div className="quote-metric rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
+                  <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
+                    SMA
+                  </p>
+                  <p className="tv-num mt-0.5 text-[11px] font-semibold tabular-nums text-sky-700 dark:text-sky-300">
                     {barReadout.sma}
-                  </span>
-                </span>
+                  </p>
+                </div>
               ) : null}
               {barReadout?.bbUpper && barReadout?.bbLower ? (
-                <span className="tv-num text-[var(--fg-muted)]">
-                  BB{" "}
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">
-                    {barReadout.bbLower}–{barReadout.bbUpper}
-                  </span>
-                </span>
+                <div className="quote-metric col-span-2 rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
+                  <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
+                    BB
+                  </p>
+                  <p className="tv-num mt-0.5 flex items-center justify-between gap-2 text-[11px] font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+                    <span>{barReadout.bbLower}</span>
+                    <span className="text-[9px] font-medium tracking-wide text-[var(--fg-subtle)]">
+                      —
+                    </span>
+                    <span>{barReadout.bbUpper}</span>
+                  </p>
+                </div>
               ) : null}
             </div>
           </div>
