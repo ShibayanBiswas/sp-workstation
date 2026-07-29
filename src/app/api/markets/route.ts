@@ -193,9 +193,12 @@ function finalizeQuote(args: {
       : (spark.sessionLastClose ?? livePrice)
     : livePrice;
 
+  // Pre-open / closed / holiday: freeze to last completed session.
+  // Prefer exchange (NSE/BSE) open over Yahoo's first print so Open / vs-session-open
+  // match Zerodha / TradingView / NSE official after the close.
   const sessionOpen = showPriorSession
-    ? (spark.ohlcOpen ??
-      (venueOpen != null && venueOpen > 0 ? venueOpen : null))
+    ? ((venueOpen != null && venueOpen > 0 ? venueOpen : null) ??
+      spark.ohlcOpen)
     : resolveSessionOpen({
         venueOpen,
         ohlcSessionOpen: spark.ohlcOpen,
