@@ -15,7 +15,7 @@ import {
   type MouseEventParams,
   type Time,
 } from "lightweight-charts";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, Maximize2, Minimize2, RefreshCw } from "lucide-react";
 import {
   getTimeframe,
   type ChartTimeframeId,
@@ -112,6 +112,9 @@ type Props = {
   fallbackPrice?: number | null;
   syncedQuote?: SyncedQuote | null;
   syncedAsOf?: string;
+  /** Fullscreen / expanded chart overlay. */
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 };
 
 const TV_FONT =
@@ -437,6 +440,8 @@ export function CandlestickChart({
   fallbackPrice,
   syncedQuote,
   syncedAsOf,
+  expanded = false,
+  onToggleExpand,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -1706,18 +1711,32 @@ export function CandlestickChart({
                         : "CLOSED"}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setReloadKey((k) => k + 1)}
-              className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_80%,transparent)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-muted)] transition hover:border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] hover:text-[var(--fg)] active:scale-[0.97]"
-            >
-              <RefreshCw size={12} />
-              Refresh
-            </button>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {onToggleExpand ? (
+                <button
+                  type="button"
+                  onClick={onToggleExpand}
+                  aria-pressed={expanded}
+                  title={expanded ? "Exit full chart" : "Expand chart"}
+                  className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_80%,transparent)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-muted)] transition hover:border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] hover:text-[var(--fg)] active:scale-[0.97]"
+                >
+                  {expanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                  {expanded ? "Exit" : "Expand"}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setReloadKey((k) => k + 1)}
+                className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_80%,transparent)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-muted)] transition hover:border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] hover:text-[var(--fg)] active:scale-[0.97]"
+              >
+                <RefreshCw size={12} />
+                Refresh
+              </button>
+            </div>
           </div>
 
           <div
-            className={`quote-block quote-hero rounded-xl border border-[color-mix(in_srgb,var(--gold)_22%,var(--border))] bg-[color-mix(in_srgb,var(--bg-elevated)_78%,transparent)] px-3 py-2.5 backdrop-blur-sm ${priceFlash ? "price-flash" : ""}`}
+            className={`quote-block quote-hero rounded-xl border border-[color-mix(in_srgb,var(--gold)_22%,var(--border))] bg-[color-mix(in_srgb,var(--bg-elevated)_78%,transparent)] px-2 py-1.5 backdrop-blur-sm ${priceFlash ? "price-flash" : ""}`}
           >
             <div className="relative z-[1] flex flex-wrap items-end justify-between gap-2">
               <div className="min-w-0">
@@ -1765,7 +1784,7 @@ export function CandlestickChart({
             ) : null}
           </div>
 
-          <div className="quote-block rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_78%,transparent)] px-3 py-2">
+          <div className="quote-block rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_78%,transparent)] px-2 py-1.5">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[9px] font-bold tracking-[0.16em] text-[var(--fg-subtle)]">
                 {barReadout?.hovering ? "CROSSHAIR" : "LATEST BAR"}
@@ -1864,7 +1883,7 @@ export function CandlestickChart({
           </div>
 
           <div className="quote-block grid grid-cols-2 gap-1.5">
-            <div className="quote-metric rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+            <div className="quote-metric rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2 py-1">
               <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                 {sameSessionOpen || timeframe === "1D" ? "OPEN" : "PERIOD OPEN"}
               </p>
@@ -1874,7 +1893,7 @@ export function CandlestickChart({
                   : "—"}
               </p>
             </div>
-            <div className="quote-metric rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+            <div className="quote-metric rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2 py-1">
               <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                 PREV CLOSE
               </p>
@@ -1884,7 +1903,7 @@ export function CandlestickChart({
                   : "—"}
               </p>
             </div>
-            <div className="quote-metric rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+            <div className="quote-metric rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2 py-1">
               <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                 HIGH
               </p>
@@ -1894,7 +1913,7 @@ export function CandlestickChart({
                   : "—"}
               </p>
             </div>
-            <div className="quote-metric rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+            <div className="quote-metric rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2 py-1">
               <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                 LOW
               </p>
@@ -1907,7 +1926,7 @@ export function CandlestickChart({
             {!sameSessionOpen &&
             timeframe !== "1D" &&
             syncedQuote?.dayOpen != null ? (
-              <div className="quote-metric col-span-2 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2.5 py-1.5">
+              <div className="quote-metric col-span-2 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] px-2 py-1">
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="text-[9px] font-bold tracking-[0.14em] text-[var(--fg-subtle)]">
                     SESSION OPEN

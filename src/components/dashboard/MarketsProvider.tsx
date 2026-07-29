@@ -269,7 +269,7 @@ export function IndianMarketTape() {
         <div
           key={`tape-${q.id}-${keySuffix}`}
           style={{ animationDelay: `${index * 60}ms` }}
-          className={`tape-chip tape-chip-7 tape-chip-animate flex shrink-0 flex-col justify-between gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2.5 py-2 sm:px-3 sm:py-2.5 ${flash ? "price-flash" : ""}`}
+          className={`tape-chip tape-chip-7 tape-chip-animate flex shrink-0 flex-col justify-between gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-1.5 py-1.5 sm:px-2 sm:py-2 ${flash ? "price-flash" : ""}`}
         >
           <div className="flex min-w-0 flex-col gap-0.5">
             <p className="truncate text-[10px] font-semibold leading-tight text-[var(--fg)] sm:text-[11px]">
@@ -306,7 +306,7 @@ export function IndianMarketTape() {
 
   return (
     <section className="panel-stable panel-luxe overflow-hidden rounded-2xl">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-2.5 md:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-2 py-1.5 md:px-3">
         <div>
           <p className="section-kicker">
             {sessionActive ? "Live tape" : "Market tape"}
@@ -326,7 +326,7 @@ export function IndianMarketTape() {
         className={`tape-viewport relative min-h-[108px] overflow-hidden py-1 ${pauseTape ? "tape-viewport-paused" : ""}`}
       >
         {loading && quotes.length === 0 ? (
-          <div className="flex h-[96px] items-center gap-2 px-3">
+          <div className="flex h-[96px] items-center gap-1.5 px-1.5">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
@@ -335,7 +335,7 @@ export function IndianMarketTape() {
             ))}
           </div>
         ) : (
-          <div className="tape-track flex min-h-[96px] items-center gap-2 px-3">
+          <div className="tape-track flex min-h-[96px] items-center gap-1.5 px-1.5">
             {renderTapeChips("a")}
             {sessionActive ? renderTapeChips("b") : null}
           </div>
@@ -362,7 +362,7 @@ export function IndianMarketCards() {
 
   return (
     <section className="panel-stable panel-luxe rounded-2xl">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-2.5 md:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-2 py-1.5 md:px-3">
         <div>
           <p className="section-kicker">Snapshot</p>
           <p className="section-title">Index performance</p>
@@ -380,8 +380,8 @@ export function IndianMarketCards() {
           />
         </div>
       </div>
-      <div className="snapshot-viewport overflow-x-auto overscroll-x-contain p-3 scrollbar-thin md:p-4">
-        <div className="flex w-max min-w-full gap-2">
+      <div className="snapshot-viewport overflow-x-auto overscroll-x-contain p-1.5 scrollbar-thin sm:p-2">
+        <div className="flex w-max min-w-full gap-1.5">
           {loading && quotes.length === 0
             ? Array.from({ length: 5 }).map((_, i) => (
                 <div
@@ -411,7 +411,7 @@ export function IndianMarketCards() {
                         .getElementById("live-chart")
                         ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
                     }}
-                    className={`market-card market-card-animate snapshot-card-5 flex shrink-0 flex-col rounded-xl border p-3 text-left sm:p-3.5 md:p-4 ${
+                    className={`market-card market-card-animate snapshot-card-5 flex shrink-0 flex-col rounded-xl border p-1.5 text-left sm:p-2 ${
                       active
                         ? "market-card-active border-[color-mix(in_srgb,var(--gold)_45%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_10%,var(--bg-muted))]"
                         : "border-[var(--border)] bg-[var(--bg-elevated)]"
@@ -420,11 +420,11 @@ export function IndianMarketCards() {
                     <p className="truncate text-[10px] font-bold leading-tight tracking-[0.08em] text-[var(--fg-subtle)]">
                       {q.name.toUpperCase()}
                     </p>
-                    <p className="tv-num mt-1.5 truncate text-[1.35rem] font-semibold leading-none text-[var(--fg)] sm:mt-2 sm:text-[1.5rem] md:text-[1.65rem]">
+                    <p className="tv-num mt-1 truncate text-[1.35rem] font-semibold leading-none text-[var(--fg)] sm:text-[1.5rem] md:text-[1.65rem]">
                       {formatMarketPrice(q.price, q.id)}
                     </p>
                     <p
-                      className={`tv-num mt-1.5 truncate text-[11px] font-medium sm:mt-2 sm:text-xs ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+                      className={`tv-num mt-1 truncate text-[11px] font-medium sm:text-xs ${up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
                     >
                       {formatMarketChange(q.change, q.id)} (
                       {formatMarketChangePercent(q.changePercent)})
@@ -432,7 +432,7 @@ export function IndianMarketCards() {
                         vs session open
                       </span>
                     </p>
-                    <div className="market-card-spark mt-auto w-full min-w-0 pt-2.5 sm:pt-3">
+                    <div className="market-card-spark mt-auto w-full min-w-0 pt-1.5 sm:pt-2">
                       <Sparkline
                         data={spark}
                         up={up}
@@ -445,13 +445,13 @@ export function IndianMarketCards() {
                       />
                     </div>
                     {cardStamp ? (
-                      <p className="mt-2 truncate text-[10px] leading-tight text-[var(--fg-subtle)]">
+                      <p className="mt-1 truncate text-[10px] leading-tight text-[var(--fg-subtle)]">
                         {awaitingPrint
                           ? `Awaiting open · ${cardStamp} IST`
                           : `${cardStamp} IST`}
                       </p>
                     ) : awaitingPrint ? (
-                      <p className="mt-2 truncate text-[10px] leading-tight text-[var(--fg-subtle)]">
+                      <p className="mt-1 truncate text-[10px] leading-tight text-[var(--fg-subtle)]">
                         Awaiting today&apos;s print
                       </p>
                     ) : null}

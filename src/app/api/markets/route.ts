@@ -186,8 +186,11 @@ function finalizeQuote(args: {
     status !== "open" || (!spark.sessionIsToday && !venueIsToday);
 
   // Pre-open / closed / holiday: freeze to last session close so % is that day's move.
+  // Prefer venue LTP (NSE/BSE last) over Yahoo tip so vs-prev-close uses one vendor.
   const price = showPriorSession
-    ? (spark.sessionLastClose ?? livePrice)
+    ? livePrice > 0
+      ? livePrice
+      : (spark.sessionLastClose ?? livePrice)
     : livePrice;
 
   const sessionOpen = showPriorSession

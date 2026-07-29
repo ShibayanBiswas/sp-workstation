@@ -32,7 +32,9 @@ function barsByIstDay(bars: OhlcBar[]): Map<string, OhlcBar[]> {
  * Pick which cash session the tape/snapshot spark should draw.
  *
  * - Live open + today's bars → today from 09:15 (grows as bars print)
- * - Pre-open / closed / weekend / holiday → last completed session only
+ * - Closed after hours + today's bars → today's completed session
+ *   (must NOT skip today — that made vs-prev-close use yesterday's close)
+ * - Pre-open / holiday / weekend → last completed session only
  * - Live open but Yahoo still on a prior day → empty today (caller uses open→LTP)
  */
 export function selectTapeSessionBars(
@@ -70,8 +72,12 @@ export function selectTapeSessionBars(
     // Cash is live but Yahoo has not printed today yet — do not draw yesterday.
     sessionBars = [];
     sessionIsToday = false;
+  } else if (status === "closed" && todayBars.length > 0) {
+    // After 15:30 IST on a trading day — freeze to today's completed session.
+    sessionBars = todayBars;
+    sessionIsToday = true;
   } else {
-    // Pre-open / closed / weekend / holiday → last completed session.
+    // Pre-open / weekend / holiday / closed with no today bars yet.
     const priorDay =
       [...days].reverse().find((d) => d < today) ?? days[days.length - 1]!;
     sessionBars = byDay.get(priorDay) ?? [];

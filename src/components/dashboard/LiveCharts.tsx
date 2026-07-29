@@ -54,6 +54,7 @@ export function LiveCharts() {
   const [timeframe, setTimeframe] = useState<ChartTimeframeId>("1D");
   const [zoomEnabled, setZoomEnabled] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setMounted(true));
@@ -74,6 +75,20 @@ export function LiveCharts() {
     });
     return () => obs.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [expanded]);
 
   const active =
     INDIAN_MARKET_INDICES.find((i) => i.id === selectedIndexId) ??
@@ -96,12 +111,47 @@ export function LiveCharts() {
   const sectors = indicesByGroup("sector");
   const volatility = indicesByGroup("volatility");
 
+  const chartNode = mounted ? (
+    <CandlestickChart
+      key={`${selectedIndexId}-${timeframe}-${expanded ? "x" : "n"}`}
+      indexId={selectedIndexId}
+      timeframe={timeframe}
+      theme={theme}
+      name={active.name}
+      zoomEnabled={zoomEnabled}
+      marketStatus={chartStatus}
+      fallbackPrice={liveQuote?.price}
+      syncedQuote={
+        liveQuote
+          ? {
+              price: liveQuote.price,
+              change: liveQuote.change,
+              changePercent: liveQuote.changePercent,
+              dayOpen: liveQuote.dayOpen,
+              previousClose: liveQuote.previousClose,
+              marketTime: liveQuote.marketTime,
+              sessionPrinted: liveQuote.sessionPrinted,
+            }
+          : null
+      }
+      syncedAsOf={asOf}
+      expanded={expanded}
+      onToggleExpand={() => setExpanded((v) => !v)}
+    />
+  ) : (
+    <div className="live-chart-pane flex items-center justify-center text-sm text-[var(--fg-subtle)] lg:min-h-[560px]">
+      <span className={instrumentLive ? "animate-pulse-live" : ""}>
+        Preparing chart…
+      </span>
+    </div>
+  );
+
   return (
     <section
       id="live-chart"
       className="panel-stable panel-luxe overflow-hidden rounded-2xl"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2.5 sm:gap-3 sm:px-4 md:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-2 py-1.5 sm:gap-3 sm:px-3 md:px-4">
         <div className="min-w-0">
           <p className="section-kicker">
             {instrumentLive
@@ -151,7 +201,7 @@ export function LiveCharts() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-3 py-2 sm:px-4 md:px-5">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-2 py-1.5 sm:px-3 md:px-4">
         <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto overscroll-x-contain scrollbar-thin">
           {CHART_TIMEFRAMES.map((tf) => (
             <button
@@ -209,37 +259,31 @@ export function LiveCharts() {
         </div>
       </div>
 
-      {mounted ? (
-        <CandlestickChart
-          key={`${selectedIndexId}-${timeframe}`}
-          indexId={selectedIndexId}
-          timeframe={timeframe}
-          theme={theme}
-          name={active.name}
-          zoomEnabled={zoomEnabled}
-          marketStatus={chartStatus}
-          fallbackPrice={liveQuote?.price}
-          syncedQuote={
-            liveQuote
-              ? {
-                  price: liveQuote.price,
-                  change: liveQuote.change,
-                  changePercent: liveQuote.changePercent,
-                  dayOpen: liveQuote.dayOpen,
-                  previousClose: liveQuote.previousClose,
-                  marketTime: liveQuote.marketTime,
-                  sessionPrinted: liveQuote.sessionPrinted,
-                }
-              : null
-          }
-          syncedAsOf={asOf}
-        />
+      {expanded ? (
+        <>
+          <button
+            type="button"
+            aria-label="Close expanded chart"
+            className="chart-expand-backdrop"
+            onClick={() => setExpanded(false)}
+          />
+          <div
+            className="chart-expand-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${active.name} expanded chart`}
+          >
+            {chartNode}
+          </div>
+          <div
+            className="live-chart-pane flex items-center justify-center text-sm text-[var(--fg-subtle)] lg:min-h-[560px]"
+            aria-hidden
+          >
+            Chart expanded
+          </div>
+        </>
       ) : (
-        <div className="live-chart-pane flex items-center justify-center text-sm text-[var(--fg-subtle)] lg:min-h-[520px]">
-          <span className={instrumentLive ? "animate-pulse-live" : ""}>
-            Preparing chart…
-          </span>
-        </div>
+        chartNode
       )}
     </section>
   );
