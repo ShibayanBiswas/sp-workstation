@@ -1832,67 +1832,69 @@ export function CandlestickChart({
                 </div>
               ))}
             </div>
-            <div className="mt-1.5 grid grid-cols-2 gap-1 border-t border-[var(--border)] pt-1.5">
-              {barReadout?.changePct ? (
-                <div className="quote-metric rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
-                  <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
-                    Δ
-                  </p>
-                  <p
-                    className={`tv-num mt-0.5 text-[11px] font-semibold tabular-nums ${
-                      barReadout.changePct.startsWith("-")
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-emerald-600 dark:text-emerald-400"
-                    }`}
-                  >
-                    {barReadout.changePct}
-                  </p>
-                </div>
-              ) : null}
-              {barReadout?.volume ? (
-                <div className="quote-metric rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
-                  <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
-                    VOL
-                  </p>
-                  <p className="tv-num mt-0.5 text-[11px] font-semibold tabular-nums text-[var(--fg)]">
-                    {barReadout.volume}
-                  </p>
-                </div>
-              ) : null}
-              {barReadout?.vwap ? (
-                <div className="quote-metric rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
-                  <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
-                    VWAP
-                  </p>
-                  <p className="tv-num mt-0.5 text-[11px] font-semibold tabular-nums text-[var(--gold-deep)] dark:text-[var(--gold)]">
-                    {barReadout.vwap}
-                  </p>
-                </div>
-              ) : null}
-              {barReadout?.sma ? (
-                <div className="quote-metric rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
-                  <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
-                    SMA
-                  </p>
-                  <p className="tv-num mt-0.5 text-[11px] font-semibold tabular-nums text-sky-700 dark:text-sky-300">
-                    {barReadout.sma}
-                  </p>
-                </div>
-              ) : null}
-              {barReadout?.bbUpper && barReadout?.bbLower ? (
-                <div className="quote-metric col-span-2 rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
-                  <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
-                    BB
-                  </p>
-                  <p className="tv-num mt-0.5 flex items-center justify-between gap-2 text-[11px] font-semibold tabular-nums text-slate-700 dark:text-slate-300">
-                    <span>{barReadout.bbLower}</span>
-                    <span className="text-[9px] font-medium tracking-wide text-[var(--fg-subtle)]">
-                      —
-                    </span>
-                    <span>{barReadout.bbUpper}</span>
-                  </p>
-                </div>
-              ) : null}
+            <div className="mt-1.5 border-t border-[var(--border)] pt-1.5">
+              <div className="flex gap-1 overflow-x-auto overscroll-x-contain scrollbar-thin pb-0.5">
+                {barReadout?.changePct ? (
+                  <div className="quote-metric min-w-[4.75rem] shrink-0 rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
+                    <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
+                      Δ
+                    </p>
+                    <p
+                      className={`tv-num mt-0.5 text-[11px] font-semibold tabular-nums ${
+                        barReadout.changePct.startsWith("-")
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-emerald-600 dark:text-emerald-400"
+                      }`}
+                    >
+                      {barReadout.changePct}
+                    </p>
+                  </div>
+                ) : null}
+                {barReadout?.volume ? (
+                  <div className="quote-metric min-w-[4.75rem] shrink-0 rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
+                    <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
+                      VOL
+                    </p>
+                    <p className="tv-num mt-0.5 text-[11px] font-semibold tabular-nums text-[var(--fg)]">
+                      {barReadout.volume}
+                    </p>
+                  </div>
+                ) : null}
+                {barReadout?.vwap ? (
+                  <div className="quote-metric min-w-[5.5rem] shrink-0 rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
+                    <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
+                      VWAP
+                    </p>
+                    <p className="tv-num mt-0.5 text-[11px] font-semibold tabular-nums text-[var(--gold-deep)] dark:text-[var(--gold)]">
+                      {barReadout.vwap}
+                    </p>
+                  </div>
+                ) : null}
+                {barReadout?.sma ? (
+                  <div className="quote-metric min-w-[5.5rem] shrink-0 rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
+                    <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
+                      SMA
+                    </p>
+                    <p className="tv-num mt-0.5 text-[11px] font-semibold tabular-nums text-sky-700 dark:text-sky-300">
+                      {barReadout.sma}
+                    </p>
+                  </div>
+                ) : null}
+                {barReadout?.bbUpper && barReadout?.bbLower ? (
+                  <div className="quote-metric min-w-[9.5rem] shrink-0 rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
+                    <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
+                      BB
+                    </p>
+                    <p className="tv-num mt-0.5 whitespace-nowrap text-[11px] font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+                      {barReadout.bbLower}
+                      <span className="mx-1 text-[9px] font-medium text-[var(--fg-subtle)]">
+                        —
+                      </span>
+                      {barReadout.bbUpper}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
 
