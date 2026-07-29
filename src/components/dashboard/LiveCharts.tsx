@@ -113,7 +113,7 @@ export function LiveCharts() {
 
   const chartNode = mounted ? (
     <CandlestickChart
-      key={`${selectedIndexId}-${timeframe}-${expanded ? "x" : "n"}`}
+      key={`${selectedIndexId}-${timeframe}`}
       indexId={selectedIndexId}
       timeframe={timeframe}
       theme={theme}
@@ -260,31 +260,27 @@ export function LiveCharts() {
       </div>
 
       {expanded ? (
-        <>
-          <button
-            type="button"
-            aria-label="Close expanded chart"
-            className="chart-expand-backdrop"
-            onClick={() => setExpanded(false)}
-          />
-          <div
-            className="chart-expand-overlay"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${active.name} expanded chart`}
-          >
-            {chartNode}
-          </div>
-          <div
-            className="live-chart-pane flex items-center justify-center text-sm text-[var(--fg-subtle)] lg:min-h-[560px]"
-            aria-hidden
-          >
-            Chart expanded
-          </div>
-        </>
-      ) : (
-        chartNode
-      )}
+        <button
+          type="button"
+          aria-label="Close expanded chart"
+          className="chart-expand-backdrop"
+          onClick={() => setExpanded(false)}
+        />
+      ) : null}
+      {expanded ? (
+        <div
+          className="live-chart-pane lg:min-h-[560px]"
+          aria-hidden
+        />
+      ) : null}
+      <div
+        className={expanded ? "chart-expand-overlay" : undefined}
+        role={expanded ? "dialog" : undefined}
+        aria-modal={expanded ? true : undefined}
+        aria-label={expanded ? `${active.name} expanded chart` : undefined}
+      >
+        {chartNode}
+      </div>
     </section>
   );
 }
