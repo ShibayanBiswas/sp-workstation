@@ -39,13 +39,15 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     label: "1D",
     interval: "5m",
     range: "5d",
+    // Zoom On: prefer long daily history; Yahoo 5m caps ~60d and max-daily is downsampled.
     inceptionRange: "60d",
     fallbacks: [{ interval: "5m", range: "1mo" }],
     inceptionFallbacks: [
-      { interval: "1d", range: "max" },
-      { interval: "1wk", range: "max" },
+      { interval: "1d", range: "10y" },
+      { interval: "1d", range: "5y" },
+      { interval: "1wk", range: "10y" },
       { interval: "1h", range: "1y" },
-      { interval: "15m", range: "60d" },
+      { interval: "5m", range: "60d" },
     ],
     intraday: true,
     axisLabelMode: "time",
@@ -66,7 +68,7 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     ],
     inceptionFallbacks: [
       { interval: "1d", range: "5y" },
-      { interval: "1wk", range: "max" },
+      { interval: "1wk", range: "10y" },
     ],
     intraday: false,
     axisLabelMode: "day",
@@ -82,7 +84,7 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     inceptionRange: "10y",
     inceptionFallbacks: [
       { interval: "1d", range: "5y" },
-      { interval: "1wk", range: "max" },
+      { interval: "1wk", range: "10y" },
     ],
     intraday: false,
     axisLabelMode: "date",
@@ -97,7 +99,7 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     inceptionRange: "10y",
     inceptionFallbacks: [
       { interval: "1d", range: "5y" },
-      { interval: "1wk", range: "max" },
+      { interval: "1wk", range: "10y" },
     ],
     intraday: false,
     axisLabelMode: "date",
@@ -111,8 +113,8 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     range: "5y",
     inceptionRange: "10y",
     inceptionFallbacks: [
-      { interval: "1d", range: "max" },
-      { interval: "1wk", range: "max" },
+      { interval: "1d", range: "10y" },
+      { interval: "1wk", range: "10y" },
     ],
     intraday: false,
     axisLabelMode: "date",
@@ -126,8 +128,8 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     range: "5y",
     inceptionRange: "10y",
     inceptionFallbacks: [
-      { interval: "1d", range: "max" },
-      { interval: "1wk", range: "max" },
+      { interval: "1d", range: "10y" },
+      { interval: "1wk", range: "10y" },
     ],
     intraday: false,
     axisLabelMode: "date",
@@ -142,7 +144,7 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     // Prefer dense weekly 10y — Yahoo range=max often returns monthly-spaced bars.
     inceptionRange: "10y",
     inceptionFallbacks: [
-      { interval: "1wk", range: "max" },
+      { interval: "1wk", range: "10y" },
       { interval: "1mo", range: "max" },
     ],
     intraday: false,

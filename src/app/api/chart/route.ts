@@ -103,10 +103,12 @@ export async function GET(req: Request) {
     );
   }
 
-  // Re-assert interval buckets (history path / cache may predate snap).
-  const intervalSec = yahooIntervalSeconds(timeframe.interval);
+  // Snap only when the returned series is actually intraday (Zoom On may
+  // switch 1D from 5m → daily — never re-bucket daily as 5m).
+  const barInterval = ohlc.interval ?? timeframe.interval;
+  const intervalSec = yahooIntervalSeconds(barInterval);
   const fullBars =
-    timeframe.intraday && intervalSec != null && intervalSec < 86_400
+    intervalSec != null && intervalSec < 86_400
       ? snapFormingBarTip(ohlc.bars, intervalSec)
       : ohlc.bars.slice();
 

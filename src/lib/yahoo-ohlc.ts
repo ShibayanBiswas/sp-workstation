@@ -17,6 +17,8 @@ export type OhlcResult = {
   bars: OhlcBar[];
   currency?: string;
   exchange?: string;
+  /** Yahoo interval that produced these bars (may differ on Zoom On). */
+  interval?: string;
 };
 
 export type YahooLiveQuote = {
@@ -402,9 +404,11 @@ function timeframeCandidates(
   opts?: { inception?: boolean }
 ) {
   if (opts?.inception) {
+    // Prefer long-span fallbacks first (timeout budget) — native intraday
+    // ranges often cannot cover "since inception".
     return [
-      { interval: timeframe.interval, range: timeframe.inceptionRange },
       ...(timeframe.inceptionFallbacks ?? []),
+      { interval: timeframe.interval, range: timeframe.inceptionRange },
       ...(timeframe.fallbacks ?? []),
       { interval: timeframe.interval, range: timeframe.range },
     ];
@@ -428,13 +432,14 @@ async function fetchOhlcCandidate(
 
   // Only snap intraday tips (5m/15m/30m/1h). Daily/weekly already stable.
   const intervalSec = yahooIntervalSeconds(interval);
+  const withInterval: OhlcResult = { ...parsed, interval };
   if (intraday && intervalSec != null && intervalSec < 86_400) {
     return {
-      ...parsed,
+      ...withInterval,
       bars: snapFormingBarTip(parsed.bars, intervalSec),
     };
   }
-  return parsed;
+  return withInterval;
 }
 
 /** Minimum history span we want when Zoom On / inception loads. */
@@ -488,7 +493,8 @@ export async function fetchYahooOhlc(
   opts?: { inception?: boolean }
 ): Promise<OhlcResult | null> {
   const scope = opts?.inception ? "full" : "default";
-  const cacheKey = `ohlc:${yahooSymbol}:${timeframe.id}:${scope}`;
+  // v3: prefer long daily/weekly Zoom On history over capped intraday.
+  const cacheKey = `ohlc:v3:${yahooSymbol}:${timeframe.id}:${scope}`;
   const cached = getCached<OhlcResult>(cacheKey, OHLC_CACHE_MS);
   if (cached) return cached;
 
@@ -526,15 +532,15 @@ export async function fetchYahooOhlc(
       bestScore = score;
     }
 
-    // Good enough dense native series covering the inception target — stop.
+    const first = parsed.bars[0]?.time ?? 0;
+    const last = parsed.bars[parsed.bars.length - 1]?.time ?? 0;
+    const spanDays = (last - first) / 86_400;
+    // Stop once we have multi-year dense history (native or fallback).
     if (
-      candidate.interval === timeframe.interval &&
-      parsed.bars.length >= 500
+      spanDays >= inceptionMinSpanDays(timeframe.id) &&
+      parsed.bars.length >= 200
     ) {
-      const first = parsed.bars[0]?.time ?? 0;
-      const last = parsed.bars[parsed.bars.length - 1]?.time ?? 0;
-      const spanDays = (last - first) / 86_400;
-      if (spanDays >= inceptionMinSpanDays(timeframe.id)) break;
+      break;
     }
   }
 

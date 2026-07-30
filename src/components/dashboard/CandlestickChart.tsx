@@ -395,6 +395,15 @@ function mergeBars(
   return bars;
 }
 
+/** Detect daily/weekly Zoom On series even when the TF default is intraday. */
+function barsLookIntraday(bars: OhlcBar[], tfIntraday: boolean): boolean {
+  if (!tfIntraday || bars.length < 3) return tfIntraday;
+  const first = bars[0]!.time;
+  const last = bars[bars.length - 1]!.time;
+  const avgGap = (last - first) / (bars.length - 1);
+  return avgGap < 12 * 3600;
+}
+
 function syncPriceLine(
   series: ISeriesApi<"Candlestick">,
   current: IPriceLine | null,
@@ -450,6 +459,8 @@ export function CandlestickChart({
   const zoomRef = useRef(zoomEnabled);
   const tfRef = useRef(getTimeframe(timeframe));
   const barsRef = useRef<OhlcBar[]>([]);
+  /** False when Zoom On loaded daily/weekly history on an intraday TF. */
+  const seriesIntradayRef = useRef(getTimeframe(timeframe).intraday);
   const hasMoreRef = useRef(true);
   const historyExhaustedRef = useRef(false);
   const loadingHistoryRef = useRef(false);
@@ -1019,10 +1030,12 @@ export function CandlestickChart({
         ? chart.timeScale().getVisibleLogicalRange()
         : null;
 
-      const uniqueBars = dedupeBarsForChart(bars, tf.intraday);
+      const useIntraday = barsLookIntraday(bars, tf.intraday);
+      seriesIntradayRef.current = useIntraday;
+      const uniqueBars = dedupeBarsForChart(bars, useIntraday);
       const { candles, volumes } = buildChartSeries(
         uniqueBars,
-        tf.intraday,
+        useIntraday,
         colors.volumeUp,
         colors.volumeDown
       );
@@ -1137,18 +1150,39 @@ export function CandlestickChart({
             signal: AbortSignal.timeout(
               Math.max(CLIENT_API_TIMEOUT_MS, 18_000)
             ),
+          }
+        );
+        const data = await res.json();
+        if (!alive || isCancelled?.() || !res.ok || !data.bars?.length) {
+          return false;
+        }
+
+        const intervalSec = yahooIntervalSeconds(tf.interval);
+        let incoming = data.bars as OhlcBar[];
+        const incomingIntraday = barsLookIntraday(incoming, tf.intraday);
+        if (
+          incomingIntraday &&
+          intervalSec != null &&
+          intervalSec < 86_400
+        ) {
+          incoming = snapFormingBarTip(incoming, intervalSec);
+        }
+        const tip = barsRef.current[barsRef.current.length - 1]?.close;
         if (tip != null && Number.isFinite(tip) && tip > 0) {
           incoming = applyLiveCloseToBars(incoming, tip);
         }
 
-        const merged = mergeBars(barsRef.current, incoming, intervalSec);
-        const next =
-          merged.length >= incoming.length &&
-          merged.length >= barsRef.current.length
-            ? merged
-            : incoming.length >= barsRef.current.length
-              ? incoming
-              : merged;
+        // Never merge mismatched resolutions (e.g. 5m session + 10y daily).
+        const existingIntraday = barsLookIntraday(
+          barsRef.current,
+          tf.intraday
+        );
+        const next: OhlcBar[] =
+          barsRef.current.length === 0 ||
+          existingIntraday !== incomingIntraday ||
+          incoming.length >= barsRef.current.length + 10
+            ? incoming
+            : mergeBars(barsRef.current, incoming, intervalSec);
 
         if (next.length <= barsRef.current.length + 2) {
           hasMoreRef.current = data.hasMore !== false;
@@ -1256,6 +1290,46 @@ export function CandlestickChart({
         if (barsRef.current.length > 0) {
           historyCache.bars = barsRef.current.slice();
         }
+
+        // Daily Zoom On history can't clip to a 1D cash session — refetch period.
+        if (
+          tf.intraday &&
+          barsRef.current.length > 0 &&
+          !barsLookIntraday(barsRef.current, true)
+        ) {
+          void (async () => {
+            try {
+              const res = await fetch(
+                `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}`,
+                {
+                  cache: "no-store",
+                  credentials: "include",
+                  signal: AbortSignal.timeout(CLIENT_API_TIMEOUT_MS),
+                }
+              );
+              const data = await res.json();
+              if (isCancelled() || !res.ok || !data.bars?.length) return;
+              let incoming = data.bars as OhlcBar[];
+              const intervalSec = yahooIntervalSeconds(tf.interval);
+              if (intervalSec != null && intervalSec < 86_400) {
+                incoming = snapFormingBarTip(incoming, intervalSec);
+              }
+              incoming = timeframeViewBars(incoming, tf.id);
+              applyBars(incoming);
+              hasMoreRef.current = true;
+              historyExhaustedRef.current = false;
+              layoutLiveChart(chart, container, incoming.length, {
+                zoomEnabled: false,
+                barSpacing: barSpacingForTimeframe(tf.id),
+              });
+              chart.applyOptions(chartInteractionOptions(false));
+            } catch {
+              /* ignore — next poll recovers */
+            }
+          })();
+          return;
+        }
+
         const period = timeframeViewBars(barsRef.current, tf.id);
         if (period.length === 0) return;
 
@@ -1292,9 +1366,11 @@ export function CandlestickChart({
 
         if (cached && cached.length > periodLen + 2) {
           const startIdx = Math.max(0, cached.length - periodLen);
+          const useIntraday = barsLookIntraday(cached, tf.intraday);
+          seriesIntradayRef.current = useIntraday;
           const { candles, volumes } = buildChartSeries(
             cached,
-            tf.intraday,
+            useIntraday,
             colors.volumeUp,
             colors.volumeDown
           );
@@ -1367,7 +1443,7 @@ export function CandlestickChart({
       }
       try {
         const res = await fetch(
-          `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}${zoomRef.current ? "&full=1" : ""}`,
+          `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}${zoomRef.current && !silent ? "&full=1" : ""}`,
           {
             cache: "no-store",
             credentials: "include",
@@ -1392,7 +1468,11 @@ export function CandlestickChart({
         hasMoreRef.current = data.hasMore !== false;
         const intervalSec = yahooIntervalSeconds(tf.interval);
         let incoming = data.bars as OhlcBar[];
-        if (intervalSec != null && tf.intraday && intervalSec < 86_400) {
+        if (
+          barsLookIntraday(incoming, tf.intraday) &&
+          intervalSec != null &&
+          intervalSec < 86_400
+        ) {
           incoming = snapFormingBarTip(incoming, intervalSec);
         }
         const livePrice =
@@ -1409,6 +1489,33 @@ export function CandlestickChart({
         }
 
         if (silent && barsRef.current.length > 0) {
+          // Zoom On inception (often daily on 1D) — only refresh the tip, never
+          // merge a short period window into the long series.
+          if (
+            zoomRef.current &&
+            !barsLookIntraday(barsRef.current, tf.intraday)
+          ) {
+            let tipped = barsRef.current;
+            if (livePrice != null) {
+              tipped = applyLiveCloseToBars(barsRef.current, livePrice);
+            }
+            const lastBar = tipped[tipped.length - 1]!;
+            const useIntraday = seriesIntradayRef.current;
+            const { candles, volumes } = buildChartSeries(
+              [lastBar],
+              useIntraday,
+              colors.volumeUp,
+              colors.volumeDown
+            );
+            if (candles[0]) candleSeries.update(candles[0]);
+            if (volumes[0]) volumeSeries.update(volumes[0]);
+            barsRef.current = tipped;
+            updateOverlayLines(tipped);
+            setBarStats(extremesFromBars(tipped));
+            lastCandle = candles[0] ?? lastCandle;
+            lastUnix = lastBar.time;
+            lastBarIndex = tipped.length - 1;
+          } else {
           let merged = mergeBars(barsRef.current, incoming, intervalSec);
           if (!zoomRef.current) {
             merged = timeframeViewBars(merged, tf.id);
@@ -1420,9 +1527,10 @@ export function CandlestickChart({
             merged.length === barsRef.current.length &&
             lastIncoming.time === prevLast.time
           ) {
+            const useIntraday = seriesIntradayRef.current;
             const { candles, volumes } = buildChartSeries(
               [lastIncoming],
-              tf.intraday,
+              useIntraday,
               colors.volumeUp,
               colors.volumeDown
             );
@@ -1441,9 +1549,10 @@ export function CandlestickChart({
           ) {
             // New bar in Zoom Off — append via update so shiftVisibleRangeOnNewBar
             // slides it into the reserved right runway (keeps left at period open).
+            const useIntraday = seriesIntradayRef.current;
             const { candles, volumes } = buildChartSeries(
               [lastIncoming],
-              tf.intraday,
+              useIntraday,
               colors.volumeUp,
               colors.volumeDown
             );
@@ -1472,6 +1581,7 @@ export function CandlestickChart({
             applyBars(merged, {
               preserveRange: zoomRef.current,
             });
+          }
           }
         } else {
           applyBars(incoming);
