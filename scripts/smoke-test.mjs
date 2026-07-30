@@ -287,15 +287,25 @@ async function main() {
     );
   }
 
-  // 1D Zoom On expands beyond the session window.
+  // 1D Zoom On expands beyond the session window — prefer multi-year daily.
   const chartFull = await request("/api/chart?indexId=nifty&timeframe=1D&full=1");
   assert(chartFull.status === 200, `1D Zoom On failed: ${chartFull.status}`);
   assert(
     (chartFull.json?.bars?.length ?? 0) > (chart.json.bars?.length ?? 0),
     `1D Zoom On should expand past session (${chartFull.json?.bars?.length} vs Off ${chart.json.bars.length})`
   );
+  const fullFirst = chartFull.json.bars[0];
+  const fullLast = chartFull.json.bars[chartFull.json.bars.length - 1];
+  const fullSpanDays =
+    fullFirst && fullLast
+      ? (fullLast.time - fullFirst.time) / 86_400
+      : 0;
+  assert(
+    fullSpanDays >= 365 * 4,
+    `1D Zoom On should cover multi-year history (got ${Math.round(fullSpanDays)}d)`
+  );
   pass(
-    `1D Zoom On ${chartFull.json.bars.length} bars (> Off ${chart.json.bars.length})`
+    `1D Zoom On ${chartFull.json.bars.length} bars · ${Math.round(fullSpanDays)}d (> Off ${chart.json.bars.length})`
   );
 
   // Month-to-date open should differ from today's session open in normal weeks.

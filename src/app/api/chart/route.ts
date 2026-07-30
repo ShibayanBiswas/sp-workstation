@@ -181,6 +181,7 @@ export async function GET(req: Request) {
   const sessionIsToday =
     timeframe.id === "1D" ? sessionBarsAreToday(returnBars) : true;
 
+  const marketStatus = getCashMarketStatus();
   const nseOpenMoved =
     nse != null &&
     nse.previousClose > 0 &&
@@ -189,8 +190,13 @@ export async function GET(req: Request) {
     nse != null &&
     nse.previousClose > 0 &&
     Math.abs(nse.price - nse.previousClose) >= 0.05;
+  // Mirror markets finalizeQuote: NSE has no stamp — confirm via bars/open/LTP
+  // only while the cash session is live.
   const nseConfirmedToday =
-    nse != null && !bse && (sessionIsToday || nseOpenMoved || nseLtpMoved);
+    nse != null &&
+    !bse &&
+    marketStatus === "open" &&
+    (sessionIsToday || nseOpenMoved || nseLtpMoved);
 
   // Venue "today" from exchange stamp (BSE dttm) or NSE confirmation — never
   // from Yahoo alone, so a stale BSE I_open cannot win early open.
@@ -200,17 +206,24 @@ export async function GET(req: Request) {
       ? nseConfirmedToday
       : hasTodaySessionPrint(live?.marketTime);
 
-  // Day % / Open line = venue session open while today; else last session OHLC open.
+  const venueOpen = venue?.dayOpen ?? live?.dayOpen ?? null;
+  // Pre-open / closed / holiday: freeze like the tape — prefer exchange open
+  // over Yahoo's first print (Sensex BSE I_open vs ^BSESN mismatch).
+  const showPriorSession =
+    marketStatus !== "open" || (!sessionIsToday && !venueIsToday);
+
   const sessionOpen =
     timeframe.id === "1D"
-      ? resolveSessionOpen({
-          venueOpen: venue?.dayOpen ?? live?.dayOpen ?? null,
-          ohlcSessionOpen: ohlcOpen,
-          price,
-          sessionIsToday,
-          venueIsToday,
-        })
-      : (venue?.dayOpen ?? live?.dayOpen ?? null);
+      ? showPriorSession
+        ? ((venueOpen != null && venueOpen > 0 ? venueOpen : null) ?? ohlcOpen)
+        : resolveSessionOpen({
+            venueOpen,
+            ohlcSessionOpen: ohlcOpen,
+            price,
+            sessionIsToday,
+            venueIsToday,
+          })
+      : venueOpen;
 
   // Headline % is always vs active period open (day / week / month / lookback),
   // never vs the Zoom Off view start.
