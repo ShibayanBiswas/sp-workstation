@@ -1678,14 +1678,14 @@ export function CandlestickChart({
           }}
         />
         <div className="live-chart-quote-scroll">
-          <div className="quote-block flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
+          <div className="quote-block flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
               {exchange ? (
                 <span className="shrink-0 rounded-md border border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em] text-[var(--gold-deep)] dark:text-[var(--gold)]">
                   {exchange}
                 </span>
               ) : null}
-              <p className="truncate text-[11px] font-bold tracking-[0.16em] text-[var(--fg)]">
+              <p className="text-[11px] font-bold tracking-[0.14em] text-[var(--fg)]">
                 {name.toUpperCase()}
               </p>
               <span
@@ -1711,26 +1711,27 @@ export function CandlestickChart({
                         : "CLOSED"}
               </span>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1">
               {onToggleExpand ? (
                 <button
                   type="button"
                   onClick={onToggleExpand}
                   aria-pressed={expanded}
+                  aria-label={expanded ? "Exit full chart" : "Expand chart"}
                   title={expanded ? "Exit full chart" : "Expand chart"}
-                  className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_80%,transparent)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-muted)] transition hover:border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] hover:text-[var(--fg)] active:scale-[0.97]"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_80%,transparent)] text-[var(--fg-muted)] transition hover:border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] hover:text-[var(--fg)] active:scale-[0.97]"
                 >
-                  {expanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                  {expanded ? "Exit" : "Expand"}
+                  {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
                 </button>
               ) : null}
               <button
                 type="button"
                 onClick={() => setReloadKey((k) => k + 1)}
-                className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_80%,transparent)] px-2 py-1 text-[10px] font-semibold text-[var(--fg-muted)] transition hover:border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] hover:text-[var(--fg)] active:scale-[0.97]"
+                aria-label="Refresh chart"
+                title="Refresh chart"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_80%,transparent)] text-[var(--fg-muted)] transition hover:border-[color-mix(in_srgb,var(--gold)_35%,var(--border))] hover:text-[var(--fg)] active:scale-[0.97]"
               >
-                <RefreshCw size={12} />
-                Refresh
+                <RefreshCw size={13} />
               </button>
             </div>
           </div>
@@ -1831,70 +1832,6 @@ export function CandlestickChart({
                   </p>
                 </div>
               ))}
-            </div>
-            <div className="mt-1.5 border-t border-[var(--border)] pt-1.5">
-              <div className="flex gap-1 overflow-x-auto overscroll-x-contain scrollbar-thin pb-0.5">
-                {barReadout?.changePct ? (
-                  <div className="quote-metric min-w-[4.75rem] shrink-0 rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
-                    <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
-                      Δ
-                    </p>
-                    <p
-                      className={`tv-num mt-0.5 text-[11px] font-semibold tabular-nums ${
-                        barReadout.changePct.startsWith("-")
-                          ? "text-red-600 dark:text-red-400"
-                          : "text-emerald-600 dark:text-emerald-400"
-                      }`}
-                    >
-                      {barReadout.changePct}
-                    </p>
-                  </div>
-                ) : null}
-                {barReadout?.volume ? (
-                  <div className="quote-metric min-w-[4.75rem] shrink-0 rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
-                    <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
-                      VOL
-                    </p>
-                    <p className="tv-num mt-0.5 text-[11px] font-semibold tabular-nums text-[var(--fg)]">
-                      {barReadout.volume}
-                    </p>
-                  </div>
-                ) : null}
-                {barReadout?.vwap ? (
-                  <div className="quote-metric min-w-[5.5rem] shrink-0 rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
-                    <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
-                      VWAP
-                    </p>
-                    <p className="tv-num mt-0.5 text-[11px] font-semibold tabular-nums text-[var(--gold-deep)] dark:text-[var(--gold)]">
-                      {barReadout.vwap}
-                    </p>
-                  </div>
-                ) : null}
-                {barReadout?.sma ? (
-                  <div className="quote-metric min-w-[5.5rem] shrink-0 rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
-                    <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
-                      SMA
-                    </p>
-                    <p className="tv-num mt-0.5 text-[11px] font-semibold tabular-nums text-sky-700 dark:text-sky-300">
-                      {barReadout.sma}
-                    </p>
-                  </div>
-                ) : null}
-                {barReadout?.bbUpper && barReadout?.bbLower ? (
-                  <div className="quote-metric min-w-[9.5rem] shrink-0 rounded-md bg-[color-mix(in_srgb,var(--bg-muted)_70%,transparent)] px-1.5 py-1">
-                    <p className="text-[9px] font-bold tracking-[0.12em] text-[var(--fg-subtle)]">
-                      BB
-                    </p>
-                    <p className="tv-num mt-0.5 whitespace-nowrap text-[11px] font-semibold tabular-nums text-slate-700 dark:text-slate-300">
-                      {barReadout.bbLower}
-                      <span className="mx-1 text-[9px] font-medium text-[var(--fg-subtle)]">
-                        —
-                      </span>
-                      {barReadout.bbUpper}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
             </div>
           </div>
 
