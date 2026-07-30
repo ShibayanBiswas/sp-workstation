@@ -110,6 +110,9 @@ Index display order: main benchmarks → sectors → India VIX.
 - Chart time axis uses IST (Asia/Kolkata). Zoom is **off** by default; users
   can toggle pan/zoom from the chart toolbar. Expanding the chart keeps the
   same chart instance mounted (no candle reload flash).
+- **Zoom On** loads the full available history for that index (Yahoo max /
+  inception range), then lets the user pan and zoom. **Zoom Off** clips back
+  to the active period window (session / week / month / …).
 
 There is no global Next.js middleware. Protected page enforcement lives in
 the dashboard server layout; each protected API checks `getSession()`.

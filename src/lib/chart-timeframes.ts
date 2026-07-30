@@ -42,9 +42,10 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     inceptionRange: "60d",
     fallbacks: [{ interval: "5m", range: "1mo" }],
     inceptionFallbacks: [
-      { interval: "15m", range: "60d" },
-      { interval: "1h", range: "1y" },
       { interval: "1d", range: "max" },
+      { interval: "1wk", range: "max" },
+      { interval: "1h", range: "1y" },
+      { interval: "15m", range: "60d" },
     ],
     intraday: true,
     axisLabelMode: "time",

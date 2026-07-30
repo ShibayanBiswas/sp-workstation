@@ -441,17 +441,18 @@ async function fetchOhlcCandidate(
 function inceptionMinSpanDays(timeframeId: ChartTimeframe["id"]): number {
   switch (timeframeId) {
     case "1D":
-      return 40;
+      // Prefer multi-year daily over Yahoo’s ~60d 5m cap when Zoom is On.
+      return 365 * 5;
     case "1W":
-      return 180;
+      return 365 * 5;
     case "1M":
     case "3M":
-      return 365 * 3;
+      return 365 * 5;
     case "6M":
     case "1Y":
-      return 365 * 5;
-    case "5Y":
       return 365 * 8;
+    case "5Y":
+      return 365 * 10;
     default: {
       const _exhaustive: never = timeframeId;
       return _exhaustive;
@@ -525,7 +526,7 @@ export async function fetchYahooOhlc(
       bestScore = score;
     }
 
-    // Good enough dense native series with enough span — stop hunting.
+    // Good enough dense native series covering the inception target — stop.
     if (
       candidate.interval === timeframe.interval &&
       parsed.bars.length >= 500
@@ -533,7 +534,7 @@ export async function fetchYahooOhlc(
       const first = parsed.bars[0]?.time ?? 0;
       const last = parsed.bars[parsed.bars.length - 1]?.time ?? 0;
       const spanDays = (last - first) / 86_400;
-      if (spanDays >= inceptionMinSpanDays(timeframe.id) * 0.5) break;
+      if (spanDays >= inceptionMinSpanDays(timeframe.id)) break;
     }
   }
 

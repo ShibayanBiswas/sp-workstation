@@ -1123,8 +1123,72 @@ export function CandlestickChart({
       }
     };
 
+    /** When Zoom turns on, pull the full inception snapshot first, then page older. */
+    const loadInceptionSnapshot = async (
+      isCancelled?: () => boolean
+    ): Promise<boolean> => {
+      if (!alive || !zoomRef.current || isCancelled?.()) return false;
+      try {
+        const res = await fetch(
+          `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}&full=1`,
+          {
+            cache: "no-store",
+            credentials: "include",
+            signal: AbortSignal.timeout(
+              Math.max(CLIENT_API_TIMEOUT_MS, 18_000)
+            ),
+        if (tip != null && Number.isFinite(tip) && tip > 0) {
+          incoming = applyLiveCloseToBars(incoming, tip);
+        }
+
+        const merged = mergeBars(barsRef.current, incoming, intervalSec);
+        const next =
+          merged.length >= incoming.length &&
+          merged.length >= barsRef.current.length
+            ? merged
+            : incoming.length >= barsRef.current.length
+              ? incoming
+              : merged;
+
+        if (next.length <= barsRef.current.length + 2) {
+          hasMoreRef.current = data.hasMore !== false;
+          return false;
+        }
+
+        const periodLen = Math.max(1, barCountRef.current);
+        applyBars(next);
+        hasMoreRef.current = data.hasMore !== false;
+        if (!hasMoreRef.current) historyExhaustedRef.current = true;
+
+        const count = barCountRef.current;
+        const startIdx = Math.max(0, count - periodLen);
+        chart.timeScale().setVisibleLogicalRange({
+          from: startIdx,
+          to: count + 0.25,
+        });
+        await animateLogicalRange(chart, 0, count + 0.35, {
+          durationMs: 640,
+          isCancelled,
+        });
+        if (isCancelled?.()) return true;
+        chart.applyOptions(chartInteractionOptions(true));
+        layoutLiveChart(chart, container, count, {
+          zoomEnabled: true,
+          preserveScroll: true,
+          barSpacing: barSpacingForTimeframe(tf.id),
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
     /** When Zoom turns on, keep pulling older chunks until Yahoo has no more. */
     const loadAllHistory = async (isCancelled?: () => boolean) => {
+      // Bulk inception load first — pagination alone is too slow / incomplete.
+      await loadInceptionSnapshot(isCancelled);
+      if (!alive || !zoomRef.current || isCancelled?.()) return;
+
       let guard = 0;
       while (
         alive &&

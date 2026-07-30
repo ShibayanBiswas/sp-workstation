@@ -132,8 +132,11 @@ export async function GET(req: Request) {
   const MIN_HISTORY_UNIX = 946_684_800; // 2000-01-01 UTC
   const hasMore = isHistory
     ? bars.length > 0 && earliest > MIN_HISTORY_UNIX
-    : // Period window (Zoom Off) still has older history available for Zoom On.
-      true;
+    : inception
+      ? // Zoom On snapshot may still have older Yahoo history to page in.
+        earliest > MIN_HISTORY_UNIX
+      : // Period window (Zoom Off) still has older history available for Zoom On.
+        true;
 
   if (isHistory) {
     return jsonDynamic({
