@@ -106,6 +106,9 @@ assert(
 const nse = await fetchNse();
 assert("NSE allIndices reachable", nse.size > 0);
 
+// Live prints move between our poll and NSE's allIndices scrape.
+const liveTol = markets.j?.marketStatus === "open" ? 50 : 0.05;
+
 for (const [id, name] of Object.entries(NSE_NAMES)) {
   const q = markets.j.quotes.find((x) => x.id === id);
   const row = nse.get(name);
@@ -113,7 +116,11 @@ for (const [id, name] of Object.entries(NSE_NAMES)) {
     assert(`${id} present`, false, `q=${!!q} nse=${!!row}`);
     continue;
   }
-  assert(`${id} LTP`, near(q.price, row.last, 0.05), `${q.price} vs ${row.last}`);
+  assert(
+    `${id} LTP`,
+    near(q.price, row.last, liveTol),
+    `${q.price} vs ${row.last}`
+  );
   assert(
     `${id} prevClose`,
     near(q.previousClose, row.previousClose, 0.05),
@@ -127,7 +134,7 @@ for (const [id, name] of Object.entries(NSE_NAMES)) {
   const vsPrev = q.price - q.previousClose;
   assert(
     `${id} vsPrev`,
-    near(vsPrev, row.variation, 0.05),
+    near(vsPrev, row.variation, liveTol),
     `${vsPrev} vs ${row.variation}`
   );
   const vsOpen = q.price - q.dayOpen;
@@ -144,7 +151,8 @@ assert("sensex source bse", sensex?.source === "bse");
 
 const chart = await req("/api/chart?indexId=nifty&timeframe=1D");
 assert("chart 200", chart.status === 200);
-assert("chart bars", (chart.j?.bars?.length || 0) > 10);
+// Early in the cash session Zoom Off 1D may only have the forming 5m bar.
+assert("chart bars", (chart.j?.bars?.length || 0) >= 1);
 assert("chart basis day_open", chart.j?.last?.basis === "day_open");
 const nifty = markets.j.quotes.find((q) => q.id === "nifty");
 assert(
