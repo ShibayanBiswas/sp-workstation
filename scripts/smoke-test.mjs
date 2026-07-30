@@ -287,7 +287,7 @@ async function main() {
     );
   }
 
-  // 1D Zoom On expands beyond the session window — prefer multi-year daily.
+  // 1D Zoom On expands history but keeps the same 5m candle interval.
   const chartFull = await request("/api/chart?indexId=nifty&timeframe=1D&full=1");
   assert(chartFull.status === 200, `1D Zoom On failed: ${chartFull.status}`);
   assert(
@@ -300,12 +300,22 @@ async function main() {
     fullFirst && fullLast
       ? (fullLast.time - fullFirst.time) / 86_400
       : 0;
+  const fullAvgGapMin =
+    fullFirst && fullLast && chartFull.json.bars.length > 1
+      ? (fullLast.time - fullFirst.time) /
+        (chartFull.json.bars.length - 1) /
+        60
+      : 0;
   assert(
-    fullSpanDays >= 365 * 4,
-    `1D Zoom On should cover multi-year history (got ${Math.round(fullSpanDays)}d)`
+    fullSpanDays >= 20 && fullSpanDays <= 120,
+    `1D Zoom On should stay on ~60d 5m history (got ${Math.round(fullSpanDays)}d)`
+  );
+  assert(
+    fullAvgGapMin > 0 && fullAvgGapMin < 45,
+    `1D Zoom On must keep intraday 5m spacing (avg gap ${fullAvgGapMin.toFixed(1)}m)`
   );
   pass(
-    `1D Zoom On ${chartFull.json.bars.length} bars · ${Math.round(fullSpanDays)}d (> Off ${chart.json.bars.length})`
+    `1D Zoom On ${chartFull.json.bars.length} bars · ${Math.round(fullSpanDays)}d · ~${Math.round(fullAvgGapMin)}m gap (> Off ${chart.json.bars.length})`
   );
 
   // Month-to-date open should differ from today's session open in normal weeks.

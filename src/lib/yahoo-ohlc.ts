@@ -404,12 +404,14 @@ function timeframeCandidates(
   opts?: { inception?: boolean }
 ) {
   if (opts?.inception) {
-    // Prefer long-span fallbacks first (timeout budget) — native intraday
-    // ranges often cannot cover "since inception".
+    // Zoom On must keep the same candle interval as the selected TF
+    // (1D stays 5m — never jump to daily/weekly just to stretch history).
+    const sameInterval = (c: { interval: string; range: string }) =>
+      c.interval === timeframe.interval;
     return [
-      ...(timeframe.inceptionFallbacks ?? []),
       { interval: timeframe.interval, range: timeframe.inceptionRange },
-      ...(timeframe.fallbacks ?? []),
+      ...(timeframe.inceptionFallbacks ?? []).filter(sameInterval),
+      ...(timeframe.fallbacks ?? []).filter(sameInterval),
       { interval: timeframe.interval, range: timeframe.range },
     ];
   }
@@ -446,8 +448,8 @@ async function fetchOhlcCandidate(
 function inceptionMinSpanDays(timeframeId: ChartTimeframe["id"]): number {
   switch (timeframeId) {
     case "1D":
-      // Prefer multi-year daily over Yahoo’s ~60d 5m cap when Zoom is On.
-      return 365 * 5;
+      // Yahoo 5m history tops out around ~60 calendar days.
+      return 40;
     case "1W":
       return 365 * 5;
     case "1M":
@@ -473,18 +475,16 @@ function inceptionCandidateScore(
   if (isDownsampledSeries(bars, candidateInterval)) {
     return -1;
   }
+  // Reject interval changes — Zoom On must match the selected TF candles.
+  if (candidateInterval !== timeframe.interval) {
+    return -1;
+  }
 
   const first = bars[0]?.time ?? 0;
   const last = bars[bars.length - 1]?.time ?? 0;
   const spanDays = Math.max(0, (last - first) / 86_400);
-  const native = candidateInterval === timeframe.interval;
-  const minSpan = inceptionMinSpanDays(timeframe.id);
-  const spanOk = spanDays >= minSpan * 0.5;
-
-  // Prefer native interval only when Yahoo actually delivered enough history.
-  // Otherwise (e.g. 30m capped ~60d) favor longer-span fallbacks.
-  const nativeBoost = native && spanOk ? 1_000_000 : 0;
-  return bars.length + nativeBoost + spanDays * (native && spanOk ? 10 : 200);
+  // Prefer the densest same-interval series covering the most history.
+  return bars.length + spanDays * 50;
 }
 
 export async function fetchYahooOhlc(
@@ -493,8 +493,8 @@ export async function fetchYahooOhlc(
   opts?: { inception?: boolean }
 ): Promise<OhlcResult | null> {
   const scope = opts?.inception ? "full" : "default";
-  // v3: prefer long daily/weekly Zoom On history over capped intraday.
-  const cacheKey = `ohlc:v3:${yahooSymbol}:${timeframe.id}:${scope}`;
+  // v4: Zoom On keeps the TF’s native candle interval (1D = 5m, not daily).
+  const cacheKey = `ohlc:v4:${yahooSymbol}:${timeframe.id}:${scope}`;
   const cached = getCached<OhlcResult>(cacheKey, OHLC_CACHE_MS);
   if (cached) return cached;
 
@@ -506,7 +506,6 @@ export async function fetchYahooOhlc(
       yahooSymbol,
       candidate.interval,
       candidate.range,
-      // Daily/weekly inception fallbacks are not intraday even if the TF is.
       timeframe.intraday &&
         !candidate.interval.endsWith("d") &&
         candidate.interval !== "1wk" &&
@@ -535,10 +534,11 @@ export async function fetchYahooOhlc(
     const first = parsed.bars[0]?.time ?? 0;
     const last = parsed.bars[parsed.bars.length - 1]?.time ?? 0;
     const spanDays = (last - first) / 86_400;
-    // Stop once we have multi-year dense history (native or fallback).
+    // Good enough same-interval history for this TF — stop.
     if (
+      candidate.interval === timeframe.interval &&
       spanDays >= inceptionMinSpanDays(timeframe.id) &&
-      parsed.bars.length >= 200
+      parsed.bars.length >= 100
     ) {
       break;
     }

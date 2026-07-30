@@ -110,10 +110,11 @@ Index display order: main benchmarks → sectors → India VIX.
 - Chart time axis uses IST (Asia/Kolkata). Zoom is **off** by default; users
   can toggle pan/zoom from the chart toolbar. Expanding the chart keeps the
   same chart instance mounted (no candle reload flash).
-- **Zoom On** loads full available history immediately (`/api/chart?full=1`).
-  For **1D**, Yahoo’s 5m feed only covers ~60 days, so Zoom On switches to
-  multi-year **daily** bars (~10y) rather than paging short intraday chunks.
-  **Zoom Off** clips back to the active period window (session / week / …).
+- **Zoom On** loads as much history as Yahoo allows for the **same candle
+  interval** as the selected timeframe (`/api/chart?full=1`). Example: **1D**
+  stays on **5m** bars (~60d Yahoo cap), not daily. Longer TFs (1W+) stay on
+  daily/weekly and extend toward multi-year history. **Zoom Off** clips back
+  to the active period window (session / week / …).
 
 There is no global Next.js middleware. Protected page enforcement lives in
 the dashboard server layout; each protected API checks `getSession()`.
