@@ -109,6 +109,11 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
       if (!res.ok) return;
       const data = await res.json();
       const next = dedupeQuotes(data.quotes || []);
+      // Don't wipe a good tape with a timed-out empty payload.
+      const hasPriced = next.some(
+        (q) => q.price != null && Number.isFinite(q.price) && q.price > 0
+      );
+      if (!hasPriced) return;
       const changed = new Set<string>();
       const cashLive = isMarketLive(status);
       // Flash cash ticks only while the NSE/BSE session is open.

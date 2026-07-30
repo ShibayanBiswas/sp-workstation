@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomInt, randomUUID } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
@@ -41,8 +41,8 @@ export type SessionPayload = {
   exp?: number;
 };
 
-/** Avoid a Mongo round-trip on every 15s markets/chart poll (Vercel cold path). */
-const SESSION_CACHE_MS = 15_000;
+/** Avoid a Mongo round-trip on every markets/chart poll (Vercel cold path). */
+const SESSION_CACHE_MS = 5_000;
 type SessionCacheEntry = { at: number; session: SessionPayload };
 const sessionCache = new Map<string, SessionCacheEntry>();
 
@@ -202,7 +202,8 @@ export async function getPending(): Promise<PendingPayload | null> {
 }
 
 export function generateOtp(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  // Uniform 6-digit OTP via crypto (avoid Math.random predictability).
+  return String(randomInt(100000, 1000000));
 }
 
 export function newSessionId(): string {

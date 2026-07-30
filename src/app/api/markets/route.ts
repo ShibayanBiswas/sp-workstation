@@ -168,17 +168,10 @@ function finalizeQuote(args: {
     status,
   } = args;
 
-  // NSE has no stamp — treat as venue-today once Yahoo or open/LTP confirm.
-  const openMoved =
-    venueOpen != null &&
-    previousClose > 0 &&
-    Math.abs(venueOpen - previousClose) >= 0.05;
-  const ltpMoved =
-    previousClose > 0 && Math.abs(livePrice - previousClose) >= 0.05;
+  // NSE has no stamp — only confirm "today" once Yahoo session bars are today.
+  // open/LTP vs prevClose alone falsely marks stale prior-session quotes as live.
   const nseConfirmedToday =
-    source === "nse" &&
-    status === "open" &&
-    (spark.sessionIsToday || openMoved || ltpMoved);
+    source === "nse" && status === "open" && spark.sessionIsToday;
 
   const venueIsToday =
     hasTodaySessionPrint(marketTime) || nseConfirmedToday;

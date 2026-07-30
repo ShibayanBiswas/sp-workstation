@@ -79,18 +79,40 @@ export async function GET(req: Request) {
     parsed.data.full === "1" || parsed.data.full === "true";
   const isHistory = parsed.data.before != null;
   // Budget must cover Yahoo host attempts without eating the whole Vercel slot.
-  const ohlcBudgetMs = inception || isHistory ? 12_000 : 8_000;
-  const ohlc = isHistory
-    ? await withTimeout(
+  const ohlcBudgetMs = inception || isHistory ? 12_000 : 6_000;
+
+  // Kick venue LTP in parallel with OHLC — first paint must not wait serially.
+  const wantNse =
+    !isHistory &&
+    timeframe.id === "1D" &&
+    index.id !== "sensex" &&
+    !!nseIndexNameForId(index.id);
+  const wantBse = !isHistory && timeframe.id === "1D" && index.id === "sensex";
+
+  const ohlcPromise = isHistory
+    ? withTimeout(
         fetchYahooOhlcBefore(index.yahoo, timeframe, parsed.data.before!),
         ohlcBudgetMs,
         null
       )
-    : await withTimeout(
+    : withTimeout(
         fetchYahooOhlc(index.yahoo, timeframe, { inception }),
         ohlcBudgetMs,
         null
       );
+  const nsePromise = wantNse
+    ? withTimeout(fetchNseIndexQuotes(), 4_000, new Map())
+    : Promise.resolve(new Map());
+  const bsePromise = wantBse
+    ? withTimeout(fetchBseSensexQuote(), 3_500, null)
+    : Promise.resolve(null);
+
+  const [ohlc, nseMap, bse] = await Promise.all([
+    ohlcPromise,
+    nsePromise,
+    bsePromise,
+  ]);
+  const nse = wantNse ? nseMap.get(index.id) : undefined;
 
   if (!ohlc || ohlc.bars.length === 0) {
     return jsonDynamic(
@@ -103,8 +125,7 @@ export async function GET(req: Request) {
     );
   }
 
-  // Snap only when the returned series is actually intraday (Zoom On may
-  // switch 1D from 5m → daily — never re-bucket daily as 5m).
+  // Snap only when the returned series is actually intraday.
   const barInterval = ohlc.interval ?? timeframe.interval;
   const intervalSec = yahooIntervalSeconds(barInterval);
   const fullBars =
@@ -153,53 +174,29 @@ export async function GET(req: Request) {
   }
 
   // Prefer per-venue LTP (NSE / BSE) over lagged Yahoo closes.
-  const nse =
-    timeframe.id === "1D" && nseIndexNameForId(index.id)
-      ? (await withTimeout(fetchNseIndexQuotes(), 5_000, new Map())).get(
-          index.id
-        )
-      : undefined;
-  const bse =
-    timeframe.id === "1D" && index.id === "sensex"
-      ? await withTimeout(fetchBseSensexQuote(), 4_000, null)
-      : undefined;
+  // Sensex skips NSE (already parallelized above); other indices skip BSE.
   const venue = bse ?? nse;
   const live = venue
     ? null
-    : await withTimeout(fetchYahooLiveQuote(index.yahoo), 4_000, null);
+    : await withTimeout(fetchYahooLiveQuote(index.yahoo), 3_500, null);
   const price = venue?.price ?? live?.price ?? lastBar.close;
-  // Candle pane must track exchange LTP — not a lagged Yahoo close.
-  bars = applyLiveCloseToBars(bars, price);
-  const returnBars = applyLiveCloseToBars(fullBars, price);
 
   const ohlcOpen =
     timeframe.id === "1D"
-      ? ohlcSessionOpen(returnBars) ??
-        sessionSparkPath(returnBars, 96)?.sessionOpen ??
+      ? ohlcSessionOpen(fullBars) ??
+        sessionSparkPath(fullBars, 96)?.sessionOpen ??
         null
       : null;
   const sessionIsToday =
-    timeframe.id === "1D" ? sessionBarsAreToday(returnBars) : true;
+    timeframe.id === "1D" ? sessionBarsAreToday(fullBars) : true;
 
   const marketStatus = getCashMarketStatus();
-  const nseOpenMoved =
-    nse != null &&
-    nse.previousClose > 0 &&
-    Math.abs(nse.dayOpen - nse.previousClose) >= 0.05;
-  const nseLtpMoved =
-    nse != null &&
-    nse.previousClose > 0 &&
-    Math.abs(nse.price - nse.previousClose) >= 0.05;
-  // Mirror markets finalizeQuote: NSE has no stamp — confirm via bars/open/LTP
-  // only while the cash session is live.
+  // NSE has no print stamp — only trust Yahoo session bars for "today".
+  // open/LTP vs prevClose alone falsely marks stale prior-session quotes as live.
   const nseConfirmedToday =
-    nse != null &&
-    !bse &&
-    marketStatus === "open" &&
-    (sessionIsToday || nseOpenMoved || nseLtpMoved);
+    nse != null && !bse && marketStatus === "open" && sessionIsToday;
 
-  // Venue "today" from exchange stamp (BSE dttm) or NSE confirmation — never
-  // from Yahoo alone, so a stale BSE I_open cannot win early open.
+  // Venue "today" from exchange stamp (BSE dttm) or NSE+Yahoo confirmation.
   const venueIsToday = bse
     ? hasTodaySessionPrint(bse.marketTime)
     : nse
@@ -211,6 +208,16 @@ export async function GET(req: Request) {
   // over Yahoo's first print (Sensex BSE I_open vs ^BSESN mismatch).
   const showPriorSession =
     marketStatus !== "open" || (!sessionIsToday && !venueIsToday);
+
+  // Never rewrite prior-session candles with a live LTP while awaiting today's print.
+  const allowLiveTip =
+    timeframe.id !== "1D" || sessionIsToday || marketStatus !== "open";
+  if (allowLiveTip) {
+    bars = applyLiveCloseToBars(bars, price);
+  }
+  const returnBars = allowLiveTip
+    ? applyLiveCloseToBars(fullBars, price)
+    : fullBars;
 
   const sessionOpen =
     timeframe.id === "1D"

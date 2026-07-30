@@ -38,10 +38,15 @@ export const CHART_TIMEFRAMES: ChartTimeframe[] = [
     id: "1D",
     label: "1D",
     interval: "5m",
-    range: "5d",
+    // Zoom Off: pull today (+buffer). Prefer 1d/2d so first paint is light on Vercel.
+    range: "1d",
     // Zoom On keeps 5m candles — Yahoo caps ~60 trading days of 5m history.
     inceptionRange: "60d",
-    fallbacks: [{ interval: "5m", range: "1mo" }],
+    fallbacks: [
+      { interval: "5m", range: "2d" },
+      { interval: "5m", range: "5d" },
+      { interval: "5m", range: "1mo" },
+    ],
     inceptionFallbacks: [
       { interval: "5m", range: "1mo" },
       { interval: "5m", range: "5d" },

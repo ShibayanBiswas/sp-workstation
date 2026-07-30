@@ -62,23 +62,24 @@ function setCached<T>(key: string, value: T) {
 }
 
 async function fetchYahooJson(path: string): Promise<unknown | null> {
-  for (const host of YAHOO_HOSTS) {
-    try {
-      const res = await fetchWithTimeout(
-        `${host}${path}`,
-        {
-          cache: "no-store",
-          headers: FETCH_HEADERS,
-        },
-        UPSTREAM_TIMEOUT_MS
-      );
-      if (!res.ok) continue;
-      return await res.json();
-    } catch {
-      continue;
-    }
+  // Race hosts — first OK JSON wins (cuts cold failover wait on Vercel).
+  const attempts = YAHOO_HOSTS.map(async (host) => {
+    const res = await fetchWithTimeout(
+      `${host}${path}`,
+      {
+        cache: "no-store",
+        headers: FETCH_HEADERS,
+      },
+      UPSTREAM_TIMEOUT_MS
+    );
+    if (!res.ok) throw new Error(`yahoo ${res.status}`);
+    return res.json();
+  });
+  try {
+    return await Promise.any(attempts);
+  } catch {
+    return null;
   }
-  return null;
 }
 
 function parseBar(
@@ -493,8 +494,8 @@ export async function fetchYahooOhlc(
   opts?: { inception?: boolean }
 ): Promise<OhlcResult | null> {
   const scope = opts?.inception ? "full" : "default";
-  // v4: Zoom On keeps the TF’s native candle interval (1D = 5m, not daily).
-  const cacheKey = `ohlc:v4:${yahooSymbol}:${timeframe.id}:${scope}`;
+  // v5: lighter Zoom Off 1D (1d/2d) + raced Yahoo hosts.
+  const cacheKey = `ohlc:v5:${yahooSymbol}:${timeframe.id}:${scope}`;
   const cached = getCached<OhlcResult>(cacheKey, OHLC_CACHE_MS);
   if (cached) return cached;
 

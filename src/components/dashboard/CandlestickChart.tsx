@@ -621,13 +621,15 @@ export function CandlestickChart({
     }
     prevPriceRef.current = newPrice;
 
-    // Keep forming candle + quote panel OHLC / SMA / BB / VWAP glued to tape.
-    applyLiveTipRef.current?.(newPrice);
+    // Don't rewrite prior-session candles while awaiting today's print.
+    if (!awaitingPrint) {
+      applyLiveTipRef.current?.(newPrice);
+    }
 
     return () => {
       if (flashTimer) window.clearTimeout(flashTimer);
     };
-  }, [syncedQuote, timeframe]);
+  }, [syncedQuote, timeframe, awaitingPrint]);
 
   useEffect(() => {
     zoomRef.current = zoomEnabled;
@@ -1102,7 +1104,7 @@ export function CandlestickChart({
       loadingHistoryRef.current = true;
       try {
         const res = await fetch(
-          `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}&before=${earliest}&full=1`,
+          `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}&before=${earliest}`,
           {
             cache: "no-store",
             credentials: "include",
@@ -1443,7 +1445,7 @@ export function CandlestickChart({
       }
       try {
         const res = await fetch(
-          `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}${zoomRef.current && !silent ? "&full=1" : ""}`,
+          `/api/chart?indexId=${encodeURIComponent(indexId)}&timeframe=${encodeURIComponent(timeframe)}`,
           {
             cache: "no-store",
             credentials: "include",
@@ -1585,9 +1587,8 @@ export function CandlestickChart({
           }
         } else {
           applyBars(incoming);
-          if (zoomRef.current) {
-            void loadAllHistory();
-          }
+          // Zoom On history is owned by applyZoomMode → loadAllHistory.
+          // Do not kick a second full=1 inception load from the period fetch.
         }
 
         const last = data.last;
