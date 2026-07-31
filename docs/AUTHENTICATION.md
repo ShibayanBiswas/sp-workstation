@@ -25,20 +25,22 @@ Only approved `@rathi.com` addresses listed in `src/data/team.ts` can sign in.
 ```mermaid
 sequenceDiagram
     participant User
-    participant Login as POST /api/auth/login
+    participant Login as login API
     participant DB as MongoDB
-    participant OtpPage as /otp
-    participant Verify as POST /api/auth/verify-otp
+    participant OtpPage as OTP page
+    participant Verify as verify-otp API
 
     User->>Login: Email and password
     Login->>DB: Find User and compare bcrypt hash
     Login->>DB: Store 10-minute OTP
     Login-->>User: sp_pending cookie and otp in response
-    User->>OtpPage: Code displayed on screen
+    User->>OtpPage: Open OTP page and read code on screen
     User->>Verify: Enter code
     Verify->>DB: Validate and consume OTP
     Verify-->>User: Set sp_session and clear sp_pending
 ```
+
+Routes involved: `POST /api/auth/login` → `/otp` → `POST /api/auth/verify-otp`.
 
 ### Cookies
 
