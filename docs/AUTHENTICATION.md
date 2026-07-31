@@ -33,11 +33,11 @@ sequenceDiagram
     User->>Login: Email and password
     Login->>DB: Find User and compare bcrypt hash
     Login->>DB: Store 10-minute OTP
-    Login-->>User: sp_pending cookie + otp in response
+    Login-->>User: sp_pending cookie and otp in response
     User->>OtpPage: Code displayed on screen
     User->>Verify: Enter code
     Verify->>DB: Validate and consume OTP
-    Verify-->>User: sp_session; clear sp_pending
+    Verify-->>User: Set sp_session and clear sp_pending
 ```
 
 ### Cookies
