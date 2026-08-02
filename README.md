@@ -2,7 +2,8 @@
 
 Internal Anand Rathi Wealth Structured Products team workstation. It provides
 local OTP authentication, a live Indian markets home terminal, dark mode, and
-iframe access to desk modules (Primary SP, Gift City AIF, Options Lab, Option
+iframe access to desk modules (Primary SP, Gift City AIF, Gift City AIF
+Forwardtester, Options Lab, Option
 Chain Archive).
 
 ## Main capabilities
@@ -16,7 +17,8 @@ Chain Archive).
 - Post-trade LTP / open / previous close prefer **NSE / BSE** venue prints over Yahoo
 - **~70% / 30%** chart layout plus an **Expand** overlay for a larger centered chart
 - Timeframe period returns on the chart header (1D session / 1W week / 1M month / …)
-- Module navigation: Primary SP Dashboard, Gift City AIF, Options Lab, Option Chain Archive
+- Module navigation: Primary SP Dashboard, Gift City AIF, Gift City AIF
+  Forwardtester, Options Lab, Option Chain Archive
 - Responsive light and dark themes with polished motion
 
 ## Ubuntu quick start with PowerShell

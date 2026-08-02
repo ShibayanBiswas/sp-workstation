@@ -53,10 +53,16 @@ const GIFT_CITY_AIF_BASE =
   process.env.NEXT_PUBLIC_GIFT_CITY_AIF_URL ??
   "https://gift-city-aif-backtester.vercel.app";
 
+const GIFT_CITY_AIF_FORWARDTESTER_BASE =
+  process.env.NEXT_PUBLIC_GIFT_CITY_AIF_FORWARDTESTER_URL ??
+  "https://gift-city-aif-forwardtester.vercel.app";
+
 export const SP_DASHBOARD_BASE = SP_BASE;
 export const OPTIONS_LAB_EMBED_BASE = OPTIONS_LAB_BASE;
 export const OPTION_CHAIN_ARCHIVE_EMBED_BASE = OPTION_CHAIN_ARCHIVE_BASE;
 export const GIFT_CITY_AIF_EMBED_BASE = GIFT_CITY_AIF_BASE;
+export const GIFT_CITY_AIF_FORWARDTESTER_EMBED_BASE =
+  GIFT_CITY_AIF_FORWARDTESTER_BASE;
 
 const PRIMARY_LEAVES: SubModule[] = [
   {
@@ -239,6 +245,59 @@ const GIFT_CITY_AIF_LEAVES: SubModule[] = [
   },
 ];
 
+/** GIFT City Cat-III AIF forwardtester — same desk surfaces, forward from today. */
+const GIFT_CITY_AIF_FORWARDTESTER_LEAVES: SubModule[] = [
+  {
+    id: "gift-ft-home",
+    label: "Home",
+    description: "GIFT City Cat-III AIF forwardtester home",
+    path: "/dashboard/module/gift-city-aif-forwardtester",
+    spPath: "/",
+  },
+  {
+    id: "gift-ft-analytics",
+    label: "Analytics",
+    description: "Forward-test analytics lab",
+    path: "/dashboard/module/gift-city-aif-forwardtester/analytics",
+    spPath: "/analytics",
+  },
+  {
+    id: "gift-ft-product",
+    label: "Product",
+    description: "Structured units product sheet",
+    path: "/dashboard/module/gift-city-aif-forwardtester/product",
+    spPath: "/product",
+  },
+  {
+    id: "gift-ft-paths",
+    label: "Paths",
+    description: "Path calendar from today through simulation end",
+    path: "/dashboard/module/gift-city-aif-forwardtester/paths",
+    spPath: "/paths",
+  },
+  {
+    id: "gift-ft-hedging",
+    label: "Hedging Sheet",
+    description: "Hedging sheet for structured units",
+    path: "/dashboard/module/gift-city-aif-forwardtester/hedging",
+    spPath: "/hedging",
+  },
+  {
+    id: "gift-ft-computation",
+    label: "Computation",
+    description: "Forward-test computation engine",
+    path: "/dashboard/module/gift-city-aif-forwardtester/computation",
+    spPath: "/computation",
+  },
+  {
+    id: "gift-ft-intel",
+    label: "Intel",
+    description: "GIFT City AIF forwardtester intelligence",
+    path: "/dashboard/module/gift-city-aif-forwardtester/intel",
+    spPath: "/intel",
+  },
+];
+
 function leafFrom(list: SubModule[], id: string): NavItem {
   const sub = list.find((s) => s.id === id)!;
   return {
@@ -255,6 +314,10 @@ function primaryLeaf(id: string): NavItem {
 
 function giftCityLeaf(id: string): NavItem {
   return leafFrom(GIFT_CITY_AIF_LEAVES, id);
+}
+
+function giftCityForwardtesterLeaf(id: string): NavItem {
+  return leafFrom(GIFT_CITY_AIF_FORWARDTESTER_LEAVES, id);
 }
 
 function optionsLabLeaf(id: string): NavItem {
@@ -329,6 +392,35 @@ export const MODULES: ModuleGroup[] = [
       giftCityLeaf("gift-intel"),
     ],
     submodules: GIFT_CITY_AIF_LEAVES,
+  },
+  {
+    id: "gift-city-aif-forwardtester",
+    label: "Gift City AIF Forwardtester",
+    description:
+      "GIFT City Category III AIF structured units forwardtester — paths from today through simulation end",
+    icon: "shield",
+    href: "/dashboard/module/gift-city-aif-forwardtester",
+    routeSlug: "gift-city-aif-forwardtester",
+    embedBase: GIFT_CITY_AIF_FORWARDTESTER_BASE,
+    frameTitle: "GIFT CITY AIF · FORWARDTESTER",
+    nav: [
+      giftCityForwardtesterLeaf("gift-ft-home"),
+      giftCityForwardtesterLeaf("gift-ft-analytics"),
+      {
+        id: "gift-ft-desk-group",
+        label: "Desk",
+        description: "Product, paths, hedging & computation",
+        path: "/dashboard/module/gift-city-aif-forwardtester/product",
+        children: [
+          giftCityForwardtesterLeaf("gift-ft-product"),
+          giftCityForwardtesterLeaf("gift-ft-paths"),
+          giftCityForwardtesterLeaf("gift-ft-hedging"),
+          giftCityForwardtesterLeaf("gift-ft-computation"),
+        ],
+      },
+      giftCityForwardtesterLeaf("gift-ft-intel"),
+    ],
+    submodules: GIFT_CITY_AIF_FORWARDTESTER_LEAVES,
   },
   {
     id: "lnd",
