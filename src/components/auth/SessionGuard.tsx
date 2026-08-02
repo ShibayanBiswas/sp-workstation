@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 /** Poll interval while waiting for JWT expiry (also catches clock skew / revoked cookies). */
-const POLL_MS = 60_000;
+const POLL_MS = 15_000;
 /** Sign out this many ms before JWT exp so the next request never races expiry. */
 const SKEW_MS = 5_000;
 

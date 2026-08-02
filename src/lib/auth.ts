@@ -41,8 +41,9 @@ export type SessionPayload = {
   exp?: number;
 };
 
-/** Avoid a Mongo round-trip on every markets/chart poll (Vercel cold path). */
-const SESSION_CACHE_MS = 5_000;
+/** Avoid a Mongo round-trip on burst markets/chart polls (Vercel cold path).
+ *  Keep short so a new sign-in on another device revokes this one quickly. */
+const SESSION_CACHE_MS = 2_000;
 type SessionCacheEntry = { at: number; session: SessionPayload };
 const sessionCache = new Map<string, SessionCacheEntry>();
 

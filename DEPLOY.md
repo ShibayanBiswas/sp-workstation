@@ -43,7 +43,7 @@ Without `0.0.0.0/0`, Vercel **cannot** use MongoDB and login cannot succeed.
   `sp_session` after verify).
 - **One device per account:** a successful sign-in rotates `activeSessionId`.
   Any other open workstation for that user is signed out automatically
-  (SessionGuard polls `/api/auth/me`).
+  (SessionGuard polls `/api/auth/me` about every 15s, and on tab focus).
 - Sign out clears the cookie **and** revokes the server session.
 
 ---
