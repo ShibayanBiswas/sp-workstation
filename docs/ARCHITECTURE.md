@@ -5,7 +5,7 @@
 SP Workstation is an internal web application for the Anand Rathi Wealth
 Structured Products team. It combines secure team authentication, a live Indian
 markets home terminal, and iframe access to desk tools (Primary SP Dashboard,
-Gift City AIF, Gift City AIF Forwardtester, Options Lab, Option Chain Archive).
+Gift City AIF Backtester, Gift City AIF Forwardtester, Options Lab, Option Chain Archive).
 
 ## Technology stack
 
@@ -144,8 +144,8 @@ pinned to the venue.
 The workstation maps internal module routes to:
 
 - `NEXT_PUBLIC_SP_DASHBOARD_URL` — Primary SP Dashboard
-- `NEXT_PUBLIC_GIFT_CITY_AIF_URL` — Gift City AIF backtester
-- `NEXT_PUBLIC_GIFT_CITY_AIF_FORWARDTESTER_URL` — Gift City AIF forwardtester
+- `NEXT_PUBLIC_GIFT_CITY_AIF_URL` — Gift City AIF Backtester
+- `NEXT_PUBLIC_GIFT_CITY_AIF_FORWARDTESTER_URL` — Gift City AIF Forwardtester
 - `NEXT_PUBLIC_OPTIONS_LAB_URL` — Options Lab
 - `NEXT_PUBLIC_OPTION_CHAIN_ARCHIVE_URL` — Option Chain Archive
 

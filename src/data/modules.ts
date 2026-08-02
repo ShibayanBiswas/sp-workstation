@@ -367,7 +367,7 @@ export const MODULES: ModuleGroup[] = [
   },
   {
     id: "gift-city-aif",
-    label: "Gift City AIF",
+    label: "Gift City AIF Backtester",
     description:
       "GIFT City Category III AIF structured units backtester — rolling paths since 2001",
     icon: "layers",

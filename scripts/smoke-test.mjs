@@ -355,7 +355,7 @@ async function main() {
     [
       "/dashboard/module/gift-city-aif",
       "gift-city-aif-backtester.vercel.app",
-      "Gift City AIF",
+      "Gift City AIF Backtester",
     ],
     [
       "/dashboard/module/gift-city-aif-forwardtester",
@@ -399,8 +399,9 @@ async function main() {
     "Dashboard SSR missing Options Lab nav"
   );
   assert(
-    dashHtml.includes("Gift City AIF"),
-    "Dashboard SSR missing Gift City AIF nav"
+    dashHtml.includes("Gift City AIF Backtester") ||
+      dashHtml.includes("Gift City AIF"),
+    "Dashboard SSR missing Gift City AIF Backtester nav"
   );
   assert(
     dashHtml.includes("Forwardtester") ||
