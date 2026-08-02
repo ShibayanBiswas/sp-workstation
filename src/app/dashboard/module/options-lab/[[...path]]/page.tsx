@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { SpModuleFrame } from "@/components/dashboard/SpModuleFrame";
 import {
   findSubmoduleBySegments,
@@ -11,7 +12,8 @@ type Props = {
 
 export default async function OptionsLabModulePage({ params }: Props) {
   const { path } = await params;
-  const group = getModuleByRouteSlug("options-lab")!;
+  const group = getModuleByRouteSlug("options-lab");
+  if (!group) notFound();
   const sub = findSubmoduleBySegments("options-lab", path);
   const src = resolveEmbedUrl(group, sub.spPath);
 

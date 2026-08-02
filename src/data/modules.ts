@@ -299,7 +299,10 @@ const GIFT_CITY_AIF_FORWARDTESTER_LEAVES: SubModule[] = [
 ];
 
 function leafFrom(list: SubModule[], id: string): NavItem {
-  const sub = list.find((s) => s.id === id)!;
+  const sub = list.find((s) => s.id === id);
+  if (!sub) {
+    throw new Error(`Unknown submodule id "${id}" in module registry`);
+  }
   return {
     id: sub.id,
     label: sub.label,

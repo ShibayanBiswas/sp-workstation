@@ -350,7 +350,40 @@ async function main() {
     pass(`${path} embeds Options Lab`);
   }
 
-  // Dashboard SSR must include L&D nav (ThemeProvider must not blank the tree)
+  // 8d. Gift City AIF backtester + forwardtester embeds
+  for (const [path, needle, label] of [
+    [
+      "/dashboard/module/gift-city-aif",
+      "gift-city-aif-backtester.vercel.app",
+      "Gift City AIF",
+    ],
+    [
+      "/dashboard/module/gift-city-aif-forwardtester",
+      "gift-city-aif-forwardtester.vercel.app",
+      "Gift City AIF Forwardtester",
+    ],
+    [
+      "/dashboard/module/gift-city-aif-forwardtester/analytics",
+      "gift-city-aif-forwardtester.vercel.app/analytics",
+      "Forwardtester Analytics",
+    ],
+  ]) {
+    const page = await fetch(`${BASE}${path}`, {
+      headers: cookieHeader() ? { Cookie: cookieHeader() } : {},
+    });
+    assert(page.ok, `${path} should load (${page.status})`);
+    const html = await page.text();
+    assert(
+      html.includes(needle) ||
+        html.includes("GIFT CITY AIF") ||
+        html.includes("FORWARDTESTER") ||
+        html.includes("BACKTESTER"),
+      `${path} missing ${label} embed (${needle})`
+    );
+    pass(`${path} embeds ${label}`);
+  }
+
+  // Dashboard SSR must include L&D + Gift City nav (ThemeProvider must not blank)
   const dash = await fetch(`${BASE}/dashboard`, {
     headers: cookieHeader() ? { Cookie: cookieHeader() } : {},
   });
@@ -365,7 +398,16 @@ async function main() {
     dashHtml.includes("Options Lab"),
     "Dashboard SSR missing Options Lab nav"
   );
-  pass("Dashboard SSR includes L&D / Options Lab nav");
+  assert(
+    dashHtml.includes("Gift City AIF"),
+    "Dashboard SSR missing Gift City AIF nav"
+  );
+  assert(
+    dashHtml.includes("Forwardtester") ||
+      dashHtml.includes("forwardtester"),
+    "Dashboard SSR missing Gift City AIF Forwardtester nav"
+  );
+  pass("Dashboard SSR includes L&D / Options Lab / Gift City nav");
 
   // 9. Second markets fetch (simulates minute refresh)
   await new Promise((r) => setTimeout(r, 1500));

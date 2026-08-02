@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { SpModuleFrame } from "@/components/dashboard/SpModuleFrame";
 import {
   findSubmoduleBySegments,
@@ -13,7 +14,8 @@ export default async function GiftCityAifForwardtesterModulePage({
   params,
 }: Props) {
   const { path } = await params;
-  const group = getModuleByRouteSlug("gift-city-aif-forwardtester")!;
+  const group = getModuleByRouteSlug("gift-city-aif-forwardtester");
+  if (!group) notFound();
   const sub = findSubmoduleBySegments("gift-city-aif-forwardtester", path);
   const src = resolveEmbedUrl(group, sub.spPath);
 
