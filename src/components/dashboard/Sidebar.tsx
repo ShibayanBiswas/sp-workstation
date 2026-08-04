@@ -14,6 +14,7 @@ import {
   Layers,
   Shield,
   Database,
+  Percent,
 } from "lucide-react";
 import {
   MODULES,
@@ -30,6 +31,7 @@ const MODULE_ICONS: Record<ModuleGroup["icon"], typeof BarChart3> = {
   shield: Shield,
   graduation: GraduationCap,
   database: Database,
+  percent: Percent,
 };
 
 type Props = {

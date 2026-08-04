@@ -350,8 +350,18 @@ async function main() {
     pass(`${path} embeds Options Lab`);
   }
 
-  // 8d. Gift City AIF backtester + forwardtester embeds
+  // 8d. Gift City AIF + Dynamic Probability Calculator embeds
   for (const [path, needle, label] of [
+    [
+      "/dashboard/module/dynamic-probability-calculator",
+      "dynamic-probability-calculator-9aso.vercel.app",
+      "Dynamic Probability Calculator",
+    ],
+    [
+      "/dashboard/module/dynamic-probability-calculator/probability",
+      "dynamic-probability-calculator-9aso.vercel.app/probability",
+      "DPC Probability",
+    ],
     [
       "/dashboard/module/gift-city-aif",
       "gift-city-aif-backtester.vercel.app",
@@ -377,7 +387,9 @@ async function main() {
       html.includes(needle) ||
         html.includes("GIFT CITY AIF") ||
         html.includes("FORWARDTESTER") ||
-        html.includes("BACKTESTER"),
+        html.includes("BACKTESTER") ||
+        html.includes("DYNAMIC PROBABILITY") ||
+        html.includes("Probability Calculator"),
       `${path} missing ${label} embed (${needle})`
     );
     pass(`${path} embeds ${label}`);
@@ -397,6 +409,11 @@ async function main() {
   assert(
     dashHtml.includes("Options Lab"),
     "Dashboard SSR missing Options Lab nav"
+  );
+  assert(
+    dashHtml.includes("Dynamic Probability Calculator") ||
+      dashHtml.includes("Probability Calculator"),
+    "Dashboard SSR missing Dynamic Probability Calculator nav"
   );
   assert(
     dashHtml.includes("Gift City AIF Backtester") ||

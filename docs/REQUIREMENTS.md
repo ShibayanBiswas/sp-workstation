@@ -80,7 +80,8 @@ FMCG, Metal, Pharma, Energy, Fin Service), India VIX.
 | Requirement | Status | Implementation |
 |---|---|---|
 | Left sidebar navigation | ✅ | `Sidebar.tsx` (fixed width, no collapse) |
-| Primary SP Dashboard | ✅ | `src/data/modules.ts` |
+| Primary SP Dashboard | ✅ | iframe module |
+| Dynamic Probability Calculator | ✅ | iframe module |
 | Gift City AIF Backtester | ✅ | iframe module (backtester) |
 | Gift City AIF Forwardtester | ✅ | iframe module |
 | Options Lab | ✅ | Learning & Development module |

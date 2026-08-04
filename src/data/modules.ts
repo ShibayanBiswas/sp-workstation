@@ -22,7 +22,7 @@ export type ModuleGroup = {
   id: string;
   label: string;
   description: string;
-  icon: "chart" | "layers" | "shield" | "graduation" | "database";
+  icon: "chart" | "layers" | "shield" | "graduation" | "database" | "percent";
   /** Primary module home — clicking the module row goes here. */
   href: string;
   /** Route segment under /dashboard/module/… */
@@ -57,12 +57,18 @@ const GIFT_CITY_AIF_FORWARDTESTER_BASE =
   process.env.NEXT_PUBLIC_GIFT_CITY_AIF_FORWARDTESTER_URL ??
   "https://gift-city-aif-forwardtester.vercel.app";
 
+const DYNAMIC_PROBABILITY_CALCULATOR_BASE =
+  process.env.NEXT_PUBLIC_DYNAMIC_PROBABILITY_CALCULATOR_URL ??
+  "https://dynamic-probability-calculator-9aso.vercel.app";
+
 export const SP_DASHBOARD_BASE = SP_BASE;
 export const OPTIONS_LAB_EMBED_BASE = OPTIONS_LAB_BASE;
 export const OPTION_CHAIN_ARCHIVE_EMBED_BASE = OPTION_CHAIN_ARCHIVE_BASE;
 export const GIFT_CITY_AIF_EMBED_BASE = GIFT_CITY_AIF_BASE;
 export const GIFT_CITY_AIF_FORWARDTESTER_EMBED_BASE =
   GIFT_CITY_AIF_FORWARDTESTER_BASE;
+export const DYNAMIC_PROBABILITY_CALCULATOR_EMBED_BASE =
+  DYNAMIC_PROBABILITY_CALCULATOR_BASE;
 
 const PRIMARY_LEAVES: SubModule[] = [
   {
@@ -119,6 +125,66 @@ const PRIMARY_LEAVES: SubModule[] = [
     label: "Upload",
     description: "Product master & data ingest",
     path: "/dashboard/module/primary-sp/upload",
+    spPath: "/upload",
+  },
+];
+
+/** Dynamic Probability Calculator — Primary/Rollover book probabilities. */
+const DYNAMIC_PROBABILITY_LEAVES: SubModule[] = [
+  {
+    id: "dpc-home",
+    label: "Home",
+    description: "Dynamic Probability Calculator home",
+    path: "/dashboard/module/dynamic-probability-calculator",
+    spPath: "/",
+  },
+  {
+    id: "dpc-analytics",
+    label: "Analytics",
+    description: "Portfolio analytics by lifecycle",
+    path: "/dashboard/module/dynamic-probability-calculator/portfolio/analytics",
+    spPath: "/portfolio/analytics",
+  },
+  {
+    id: "dpc-desk",
+    label: "Desk",
+    description: "Desk modules hub",
+    path: "/dashboard/module/dynamic-probability-calculator/desk",
+    spPath: "/desk",
+  },
+  {
+    id: "dpc-probability",
+    label: "Probability",
+    description: "Probability desk module",
+    path: "/dashboard/module/dynamic-probability-calculator/probability",
+    spPath: "/probability",
+  },
+  {
+    id: "dpc-initial-probability",
+    label: "Initial Probability",
+    description: "Initial probability views",
+    path: "/dashboard/module/dynamic-probability-calculator/initial-probability",
+    spPath: "/initial-probability",
+  },
+  {
+    id: "dpc-current-probability",
+    label: "Current Probability",
+    description: "Current probability views",
+    path: "/dashboard/module/dynamic-probability-calculator/current-probability",
+    spPath: "/current-probability",
+  },
+  {
+    id: "dpc-intel",
+    label: "Intel",
+    description: "Intel · Logic Atlas",
+    path: "/dashboard/module/dynamic-probability-calculator/intelligence",
+    spPath: "/intelligence",
+  },
+  {
+    id: "dpc-upload",
+    label: "Upload",
+    description: "Upload New Product Master workbook",
+    path: "/dashboard/module/dynamic-probability-calculator/upload",
     spPath: "/upload",
   },
 ];
@@ -315,6 +381,10 @@ function primaryLeaf(id: string): NavItem {
   return leafFrom(PRIMARY_LEAVES, id);
 }
 
+function dpcLeaf(id: string): NavItem {
+  return leafFrom(DYNAMIC_PROBABILITY_LEAVES, id);
+}
+
 function giftCityLeaf(id: string): NavItem {
   return leafFrom(GIFT_CITY_AIF_LEAVES, id);
 }
@@ -364,6 +434,40 @@ export const MODULES: ModuleGroup[] = [
       primaryLeaf("upload"),
     ],
     submodules: PRIMARY_LEAVES,
+  },
+  {
+    id: "dynamic-probability-calculator",
+    label: "Dynamic Probability Calculator",
+    description:
+      "Live Primary/Rollover book probabilities, observation ladder & desk analytics",
+    icon: "percent",
+    href: "/dashboard/module/dynamic-probability-calculator",
+    routeSlug: "dynamic-probability-calculator",
+    embedBase: DYNAMIC_PROBABILITY_CALCULATOR_BASE,
+    frameTitle: "DYNAMIC PROBABILITY CALCULATOR",
+    nav: [
+      dpcLeaf("dpc-home"),
+      {
+        id: "dpc-portfolio",
+        label: "Portfolio",
+        description: "Portfolio by lifecycle & analytics",
+        children: [dpcLeaf("dpc-analytics")],
+      },
+      {
+        id: "dpc-desk-group",
+        label: "Desk",
+        description: "Probability desk modules",
+        path: "/dashboard/module/dynamic-probability-calculator/desk",
+        children: [
+          dpcLeaf("dpc-probability"),
+          dpcLeaf("dpc-initial-probability"),
+          dpcLeaf("dpc-current-probability"),
+        ],
+      },
+      dpcLeaf("dpc-intel"),
+      dpcLeaf("dpc-upload"),
+    ],
+    submodules: DYNAMIC_PROBABILITY_LEAVES,
   },
   {
     id: "gift-city-aif",
